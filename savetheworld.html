@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Save the World - AI Timeline Interactive Story</title>
+    <style>
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .status-bar {
+            border: 2px solid #333;
+            padding: 15px;
+            margin-bottom: 20px;
+            background-color: #f9f9f9;
+            display: none;
+        }
+        .status-columns {
+            display: flex;
+            justify-content: space-between;
+        }
+        .status-column {
+            flex: 1;
+        }
+        .story-content {
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+        .button {
+            background-color: #007cba;
+            color: white;
+            padding: 6px 12px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px 5px 5px 0;
+        }
+        .button:hover {
+            background-color: #005a87;
+        }
+        .actions-list {
+            margin: 20px 0;
+        }
+        .actions-list li {
+            margin: 10px 0;
+            cursor: pointer;
+            color: #007cba;
+        }
+        .actions-list li:hover {
+            text-decoration: underline;
+        }
+        .actions-panel {
+            background-color: #f9f9f9;
+            border: 2px solid #333;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .date-controls {
+            text-align: center;
+            margin: 10px 0;
+        }
+        .date-controls .button {
+            margin: 5px;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Save the World</h1>
+        <p style="text-align: center; color: #666;">An Interactive AI Timeline Story</p>
+        
+        <div id="status-bar" class="status-bar">
+            <div class="status-columns">
+                <div class="status-column">
+                    <strong>Geopolitics:</strong><br>
+                    Hype: <span id="hype">5</span>/10<br>
+                    US Lead: <span id="us-lead">60.0</span> days<br>
+                    US Mood: <span id="us-mood">Dovish</span>
+                </div>
+                <div class="status-column">
+                    <strong>AI Information:</strong><br>
+                    Capability: <span id="ai-capability">2.0x</span><br>
+                    Values: <span id="ai-values">Unknown</span><br>
+                    Corrigibility: <span id="ai-corrigibility">Unknown</span>
+                </div>
+            </div>
+        </div>
+        
+        <div id="date-ticker" style="text-align: center; font-size: 24px; font-weight: bold; margin: 20px 0; padding: 15px; background-color: #e8f4fd; border: 2px solid #007cba; border-radius: 8px; display: none;">
+            <div>Current Date:</div>
+            <div id="current-date">January 1, 2026</div>
+        </div>
+        
+        <div id="research-section" style="text-align: center; font-size: 18px; margin: 20px 0; padding: 15px; background-color: #f9f9f9; border: 2px solid #333; border-radius: 8px; display: none;">
+            <div><strong>Research:</strong></div>
+            <div style="margin-top: 10px;">
+                <span style="display: inline-block; width: 140px; text-align: left;">Alignment Project:</span>
+                <button id="alignment-project-btn" class="button" style="min-width: 120px;">Not Started</button>
+            </div>
+        </div>
+        
+        <div id="story-content" class="story-content">
+            <!-- Content will be loaded by JavaScript -->
+        </div>
+        
+        <div id="buttons">
+            <!-- Buttons will be loaded by JavaScript -->
+        </div>
+    </div>
+
+    <!-- JavaScript Files -->
+    <script src="utils.js"></script>
+    <script src="minigames.js"></script>
+    <script src="game-core.js"></script>
+</body>
+</html>

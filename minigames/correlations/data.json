@@ -1,0 +1,50 @@
+{
+  "images": [
+    {
+      "filename": "plot_1.png",
+      "correlation": 0.551,
+      "distractors": [
+        0.443,
+        0.741,
+        0.15
+      ]
+    },
+    {
+      "filename": "plot_2.png",
+      "correlation": 0.791,
+      "distractors": [
+        0.183,
+        0.579,
+        0.996
+      ]
+    },
+    {
+      "filename": "plot_3.png",
+      "correlation": 0.279,
+      "distractors": [
+        0.013,
+        0.661,
+        0.762
+      ]
+    },
+    {
+      "filename": "plot_4.png",
+      "correlation": 0.528,
+      "distractors": [
+        0.97,
+        0.787,
+        0.327
+      ]
+    },
+    {
+      "filename": "plot_5.png",
+      "correlation": 0.92,
+      "distractors": [
+        0.196,
+        0.392,
+        0.053
+      ]
+    }
+  ],
+  "description": "Correlation estimation minigame dataset"
+}
