@@ -100,6 +100,77 @@ const storyContent = {
             { text: "Restart", action: "goto", target: "start" }
         ]
     },
+    "2028-negotiation": {
+        title: "2028 - The Great Negotiation",
+        text: function() {
+            // Calculate China's lead and negotiation terms
+            const chinaLead = Math.abs(gameState.usLead);
+            const x = Math.floor(Math.random() * 21) - 10; // Random number between -10 and 10
+            const adjustedLead = x + chinaLead;
+            
+            // Determine China's lead description
+            let leadDescription;
+            if (chinaLead <= 20) {
+                leadDescription = "slight";
+            } else if (chinaLead <= 40) {
+                leadDescription = "moderate";
+            } else if (chinaLead <= 60) {
+                leadDescription = "large";
+            } else {
+                leadDescription = "overwhelming";
+            }
+            
+            // Determine China's governance style
+            const isHarmonious = Math.random() < 0.5;
+            const chinaStyle = isHarmonious ? "harmonious" : "authoritarian";
+            
+            // Store negotiation data for later use
+            gameState.negotiationData = {
+                chinaLead: chinaLead,
+                adjustedLead: adjustedLead,
+                chinaStyle: chinaStyle,
+                leadDescription: leadDescription
+            };
+            
+            // Determine proposal
+            let proposal;
+            if (adjustedLead <= 10) {
+                proposal = "China proposes that the US and China evenly split the cosmos.";
+                gameState.negotiationData.chinaShare = 50;
+            } else {
+                const chinaPercentage = Math.min(100, adjustedLead + 40); // Ensure it doesn't exceed 100%
+                proposal = `China proposes that China gets ${chinaPercentage}% of the cosmos.`;
+                gameState.negotiationData.chinaShare = chinaPercentage;
+            }
+            
+            return `China has a ${leadDescription} lead in AI, and it is insurmountable. Chinese Minister of Foreign Affairs Wang Yi delivers a treaty to Congress that will decide how a million billion billion stars are allocated.<br><br>${proposal}<br><br>China's AI systems are ${chinaStyle}, while the US remains free.`;
+        },
+        showStatus: true,
+        buttons: [
+            { text: "Accept Treaty", action: "accept-treaty", target: "treaty-accepted" },
+            { text: "Reject Treaty", action: "reject-treaty", target: "treaty-rejected" }
+        ]
+    },
+    "treaty-accepted": {
+        title: "Treaty Accepted",
+        text: async function() {
+            return await calculateFinalScore(false);
+        },
+        showStatus: false,
+        buttons: [
+            { text: "Restart", action: "goto", target: "start" }
+        ]
+    },
+    "treaty-rejected": {
+        title: "Nuclear War",
+        text: async function() {
+            return await calculateFinalScore(true);
+        },
+        showStatus: false,
+        buttons: [
+            { text: "Restart", action: "goto", target: "start" }
+        ]
+    },
     "capability-evals-minigame": {
         title: "Capability Evals",
         text: function() {
@@ -386,10 +457,10 @@ function updateDate() {
         gameState.usLead += 0.3;
     }
     
-    // Check for game over conditions
-    if (gameState.usLead <= 0) {
+    // Check for China negotiation condition (when capabilities reach 10000x and China is ahead)
+    if (gameState.aiCapability >= 10000 && gameState.usLead <= 0) {
         clearInterval(gameState.dateInterval);
-        showPage('china-gameover');
+        showPage('2028-negotiation');
         return;
     }
     
@@ -516,7 +587,7 @@ async function showPage(pageId) {
                     <button class="button speed-btn" data-speed="0.25" onclick="setSpeed(0.25)">0.25x</button>
                     <button class="button speed-btn" data-speed="1" onclick="setSpeed(1)" style="background-color: #005a87;">1x</button>
                     <button class="button speed-btn" data-speed="4" onclick="setSpeed(4)">4x</button>
-                    <button class="button speed-btn" data-speed="16" onclick="setSpeed(16)">16x</button>
+                    <button class="button speed-btn" data-speed="100" onclick="setSpeed(100)">100x</button>
                     <button class="button" onclick="skipTo2027()">Skip to 2027</button>
                 `;
                 dateTicker.appendChild(dateControls);
@@ -731,7 +802,8 @@ async function showPage(pageId) {
         buttonsDiv.appendChild(backBtn);
     } else {
         // Regular buttons
-        page.buttons.forEach(button => {
+        if (page.buttons && page.buttons.length > 0) {
+            page.buttons.forEach(button => {
             const btn = document.createElement('button');
             btn.className = 'button';
             btn.textContent = button.text;
@@ -757,11 +829,70 @@ async function showPage(pageId) {
                     // Replace the button with restart
                     const buttonsDiv = document.getElementById('buttons');
                     buttonsDiv.innerHTML = '<button class="button" onclick="showPage(\'start\'); gameState.currentPage = \'start\';">Restart</button>';
+                } else if (button.action === 'accept-treaty') {
+                    gameState.currentPage = button.target;
+                    showPage(button.target);
+                } else if (button.action === 'reject-treaty') {
+                    gameState.currentPage = button.target;
+                    showPage(button.target);
                 }
             };
             buttonsDiv.appendChild(btn);
-        });
+            });
+        }
     }
+}
+
+// Calculate final score for treaty outcomes
+async function calculateFinalScore(isNuclearWar) {
+    const endTexts = await loadEndTexts();
+    const negotiationData = gameState.negotiationData;
+    
+    if (!negotiationData) {
+        return "Error: Negotiation data not found.";
+    }
+    
+    // Get alignment-based long term score
+    const alignmentKey = getAlignmentKey(gameState.alignmentLevel);
+    const longTermScore = endTexts.long_term_scores[alignmentKey];
+    
+    // Calculate population score based on treaty terms
+    let populationScore;
+    if (isNuclearWar) {
+        // Half the population dies in nuclear war
+        populationScore = endTexts.population_scores.dead * 0.5 + 
+                         (negotiationData.chinaStyle === 'harmonious' ? 
+                          endTexts.population_scores.harmonious : 
+                          endTexts.population_scores.authoritarian) * 0.5;
+    } else {
+        // Population distributed based on territory control
+        const chinaShare = negotiationData.chinaShare / 100;
+        const usShare = 1 - chinaShare;
+        
+        const chinaPopScore = negotiationData.chinaStyle === 'harmonious' ? 
+                             endTexts.population_scores.harmonious : 
+                             endTexts.population_scores.authoritarian;
+        const usPopScore = endTexts.population_scores.free;
+        
+        populationScore = chinaPopScore * chinaShare + usPopScore * usShare;
+    }
+    
+    // Calculate final score
+    const finalScore = longTermScore * 10 + populationScore;
+    
+    // Generate result text
+    let resultText;
+    if (isNuclearWar) {
+        resultText = `The treaty was rejected, leading to nuclear war. Half of humanity perished in the conflict, but the survivors continue under their respective systems.`;
+    } else {
+        resultText = `The treaty was accepted. The cosmos will be divided with China controlling ${negotiationData.chinaShare}% and the US controlling ${100 - negotiationData.chinaShare}%.`;
+    }
+
+    resultText += `  In the near term, billions of people live under China's ${negotiationData.chinaStyle} system, while the US slowly transitions from democracy to AI-controlled life.`;
+    
+    const alignmentText = endTexts.end_text[alignmentKey];
+    
+    return `${resultText}<br>${alignmentText}<br><br><strong>Final Score:</strong> ${finalScore.toFixed(2)}<br>(Long-term: ${(longTermScore * 10).toFixed(1)} + Population: ${populationScore.toFixed(1)})`;
 }
 
 // Initialize the game

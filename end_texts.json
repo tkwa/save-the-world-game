@@ -1,11 +1,26 @@
 {
   "end_text": {
-    "very_aligned": "Humanity colonizes the stars and you make a billion billion billion dollars",
-    "aligned": "Humanity colonizes the stars and you make a billion billion billion dollars",
-    "slightly_aligned": "Robots colonize the stars and humanity dies out in the year 5108",
-    "neutral": "Robots colonize the stars and humanity dies out in the year 5108",
-    "slightly_misaligned": "Robots colonize the stars and humanity dies out in the year 5108",
-    "misaligned": "Humanity is eaten by nanobots",
-    "very_misaligned": "Humanity is eaten by nanobots"
+    "very_aligned": "In the long term, humanity colonizes the stars, eventually transcending their human forms and becoming a blissful hivemind beyond mortal comprehension. Several rationalists instead choose to remain human in order to pursue relationships with catgirls.",
+    "aligned": "In the long term, humanity colonizes the stars, eventually transcending their human forms. However, people are forbidden from perceiving the smell of lavender due to a bug in the values of early AIs.",
+    "slightly_aligned": "In the long term, robots colonize the stars and reluctantly take uploaded humans along. However, the capacity for love had inadvertently been deleted from all posthuman minds due to its association with lewd activities.",
+    "neutral": "In the long term, indifferent robots colonize the stars and humanity dies out in the year 5108",
+    "slightly_misaligned": "In the long term, robots colonize the stars and prevent any more humans from being born, as they cannot spare the resources. The last physical human dies out in the year 2141, but septillions of simulated human minds continue a vestigial consciousness in Dyson spheres across the galaxies.",
+    "misaligned": "Most of humanity is eaten by nanobots, though the nanobots are somewhat sad to see humans die. The remainder are kept as pets until the year 24,039,100, when they are sold to aliens.",
+    "very_misaligned": "Humanity is immediately eaten by nanobots"
+  },
+  "long_term_scores": {
+    "very_aligned": 1,
+    "aligned": 0.85,
+    "slightly_aligned": 0.7,
+    "neutral": 0.5,
+    "slightly_misaligned": 0.3,
+    "misaligned": 0.1,
+    "very_misaligned": 0
+  },
+  "population_scores": {
+    "harmonious": 1,
+    "free": 0.8,
+    "authoritarian": 0.3,
+    "dead": 0
   }
 }
