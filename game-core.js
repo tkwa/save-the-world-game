@@ -44,10 +44,10 @@ const gameState = {
 // Story content
 const storyContent = {
     start: {
-        title: "Welcome",
-        text: "Welcome to Critical Path - An AI Strategy Game",
+        title: "",
+        text: "",
         buttons: [
-            { text: "Begin", action: "goto", target: "game-setup" }
+            { text: "New Game", action: "goto", target: "game-setup" }
         ]
     },
     "game-setup": {
@@ -61,7 +61,7 @@ const storyContent = {
             gameState.currentYear = 2026;
             // Generate first event
             gameState.currentEvent = await generateEvent();
-            return `The AI race has reached a critical juncture. As CEO of ${gameState.companyName}, you face an impossible dilemma: move too slowly on capabilities and competitors will achieve AGI first, leaving your company behind while their potentially misaligned systems reshape the world. Move too quickly and you risk building misaligned systems yourself that could destroy everything. Every month brings new choices between advancing your AI, strengthening safety measures, building products for revenue, or engaging in diplomacy. Success requires threading the needle between competitive survival and existential safety.`;
+            return `As AI systems become capable of automating AI R&D, the AI race has reached a critical juncture. The CEO of ${gameState.companyName} faces a dilemma: move too slowly on capabilities and competitors will achieve ASI first, leaving the company behind while their untested systems reshape the world. Move too quickly and build misaligned systems that could destroy everything. Looming over all is the possibility of decisive strategic advantage-- the possibility that one AI system becomes completely economically and militarily dominant.`;
         },
         showStatus: false,
         buttons: [
