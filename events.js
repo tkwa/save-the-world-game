@@ -24,6 +24,13 @@ async function loadEventData() {
 async function generateEvent() {
     const events = await loadEventData();
     
+    // Sanctions event has 100% probability if sanctions are active
+    if (gameState.hasSanctions) {
+        const event = generateSanctionsEvent();
+        trackEventSeen(event);
+        return event;
+    }
+    
     // Calculate probability of safety incident based on doom level squared
     const safetyIncidentChance = Math.pow(gameState.doomLevel, 2) / 100;
     
@@ -61,6 +68,14 @@ function getAvailableEvents(allEvents) {
             }
         }
         
+        // Check special requirements for UN recognition
+        if (event.type === 'seek-un-recognition') {
+            const currentResources = calculateResources();
+            if (currentResources < 6) {
+                return false; // Need at least 6 resources
+            }
+        }
+        
         // Check if this event has already been accepted (one-time events)
         if (event.oneTime && gameState.dsaEventsAccepted.has(event.type)) {
             return false; // Already accepted
@@ -68,6 +83,27 @@ function getAvailableEvents(allEvents) {
         
         return true; // Event is available
     });
+}
+
+// Generate a sanctions event
+function generateSanctionsEvent() {
+    return {
+        type: 'sanctions',
+        text: `International sanctions are severely impacting your operations. Your resources are halved, and diplomatic relations are strained. Your legal team proposes spending significant resources to lobby for sanctions relief.`,
+        choices: [
+            {
+                text: "Remove sanctions (-$3B, -3 Diplomacy)",
+                action: "accept",
+                cost: { money: 3, diplomacyPoints: 3 },
+                result_text: "Your extensive lobbying campaign succeeds. International pressure is lifted through back-channel negotiations and strategic concessions. Your company can now operate freely again, though the political cost was significant."
+            },
+            {
+                text: "Accept sanctions",
+                action: "decline", 
+                result_text: "You decide to weather the sanctions rather than spend precious resources on lobbying. Operations remain constrained, but you preserve your diplomatic capital for future challenges."
+            }
+        ]
+    };
 }
 
 // Generate a safety incident event

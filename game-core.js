@@ -184,8 +184,8 @@ function updateStatusBar() {
     document.getElementById('safety-points').textContent = gameState.safetyPoints;
     
     // Status Effects
-    document.getElementById('sanctions-status').textContent = gameState.hasSanctions ? 'Sanctions Active' : 'No Sanctions';
-    document.getElementById('un-recognition-status').textContent = gameState.hasUNRecognition ? 'UN Recognition' : 'No UN Recognition';
+    document.getElementById('sanctions-status').textContent = gameState.hasSanctions ? 'Sanctions Active' : '';
+    document.getElementById('un-recognition-status').textContent = gameState.hasUNRecognition ? 'UN Recognition' : '';
 }
 
 
@@ -233,6 +233,11 @@ async function allocateResources(resourceType) {
     
     // Increase open-source AI level
     gameState.opensourceAILevel += Math.floor(Math.sqrt(Math.max(1, gameState.opensourceAILevel / 8)));
+    
+    // Apply overseas datacenter bonus
+    if (gameState.aiLevelPerTurn) {
+        gameState.playerAILevel += gameState.aiLevelPerTurn;
+    }
     
     // Apply event effects
     applyEventEffects(gameState.currentEvent);
@@ -399,7 +404,19 @@ function refreshEvalsDisplay() {
 
 function calculateResources() {
     // Formula from README: floor(sqrt(max(1, AL - OL)))
-    return Math.floor(Math.sqrt(Math.max(1, gameState.opensourceAILevel / 4, gameState.playerAILevel - gameState.opensourceAILevel)));
+    let baseResources = Math.floor(Math.sqrt(Math.max(1, gameState.opensourceAILevel / 4, gameState.playerAILevel - gameState.opensourceAILevel)));
+    
+    // Apply UN recognition multiplier
+    if (gameState.resourceMultiplier) {
+        baseResources = Math.floor(baseResources * gameState.resourceMultiplier);
+    }
+    
+    // Sanctions halve resources (rounded up)
+    if (gameState.hasSanctions) {
+        baseResources = Math.ceil(baseResources / 2);
+    }
+    
+    return baseResources;
 }
 
 function resetGameState() {
@@ -431,6 +448,8 @@ function resetGameState() {
     gameState.safetyIncidentCount = 0;
     gameState.selectedAllocation = null;
     gameState.incomeBonus = 0;
+    gameState.aiLevelPerTurn = 0;
+    gameState.resourceMultiplier = null;
     gameState.eventsSeen = {};
     gameState.choicesTaken = {};
     gameState.dsaEventsAccepted = new Set();
@@ -733,11 +752,11 @@ async function handleEventChoice(choiceIndex) {
     gameState.choicesTaken[event.type][choice.action]++;
     
     // Track events that are accepted (for requirement checking)
-    if (choice.action === 'accept') {
+    if (choice.action === 'accept' || choice.action === 'accept-sanctions') {
         gameState.dsaEventsAccepted.add(event.type);
     }
     
-    if (choice.action === 'accept') {
+    if (choice.action === 'accept' || choice.action === 'accept-sanctions') {
         // Apply costs and benefits
         if (choice.cost) {
             if (choice.cost.productPoints) {
@@ -753,6 +772,14 @@ async function handleEventChoice(choiceIndex) {
                     gameState.diplomacyPoints -= choice.cost.diplomacyPoints;
                 } else {
                     alert(`Insufficient Diplomacy Points. Need ${choice.cost.diplomacyPoints}, have ${gameState.diplomacyPoints}.`);
+                    return;
+                }
+            }
+            if (choice.cost.money) {
+                if (gameState.money >= choice.cost.money) {
+                    gameState.money -= choice.cost.money;
+                } else {
+                    alert(`Insufficient Money. Need $${choice.cost.money}B, have $${gameState.money}B.`);
                     return;
                 }
             }
@@ -772,11 +799,37 @@ async function handleEventChoice(choiceIndex) {
             }
         }
         
+        // Special handling for sanctions removal
+        if (event.type === 'sanctions' && choice.action === 'accept') {
+            gameState.hasSanctions = false;
+        }
+        
         if (choice.benefit) {
             if (choice.benefit.incomeBonus) {
                 // Add income bonus to game state (this would need to be tracked and applied each turn)
                 gameState.incomeBonus = (gameState.incomeBonus || 0) + choice.benefit.incomeBonus;
             }
+            if (choice.benefit.aiLevelPerTurn) {
+                // Add AI level per turn bonus (overseas datacenter)
+                gameState.aiLevelPerTurn = (gameState.aiLevelPerTurn || 0) + choice.benefit.aiLevelPerTurn;
+            }
+            if (choice.benefit.resourceMultiplier) {
+                // Set resource multiplier (UN recognition)
+                gameState.resourceMultiplier = choice.benefit.resourceMultiplier;
+            }
+            if (choice.benefit.unRecognition) {
+                // Grant UN recognition status
+                gameState.hasUNRecognition = true;
+            }
+        }
+        
+        // Special handling for DSA (immediate singularity)
+        if (event.type === 'decisive-strategic-advantage' && choice.action === 'accept') {
+            gameState.playerAILevel = 100;
+            gameState.gameOverReason = 'dsa-singularity';
+            updateStatusBar();
+            showPage('end-game');
+            return;
         }
     }
     

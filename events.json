@@ -72,8 +72,38 @@
       ]
     },
     {
+      "type": "overseas-datacenter",
+      "weight": 4,
+      "oneTime": true,
+      "text_versions": [
+        "Your company has the opportunity to establish a major datacenter facility overseas, creating additional AI development capacity. This would generate 1 additional AI level per turn, but unauthorized construction risks US sanctions while diplomatic approval requires significant resources."
+      ],
+      "choices": [
+        {
+          "text": "Use diplomatic channels (-$2B, -3 Diplomacy)",
+          "action": "accept",
+          "cost": { "money": 2, "diplomacyPoints": 3 },
+          "benefit": { "aiLevelPerTurn": 1 },
+          "result_text": "Your overseas datacenter construction proceeds smoothly through official diplomatic channels. Government approvals are secured, and the facility comes online quickly, providing substantial additional computational capacity for your AI research programs."
+        },
+        {
+          "text": "Accept sanctions (-$3B, triggers sanctions)",
+          "action": "accept-sanctions",
+          "cost": { "money": 3 },
+          "risk": { "sanctions": 1.0 },
+          "benefit": { "aiLevelPerTurn": 1 },
+          "result_text": "You proceed with unauthorized datacenter construction, bypassing government approval processes. While the facility is successfully established, the US government responds with comprehensive economic sanctions against your company."
+        },
+        {
+          "text": "Decline",
+          "action": "decline",
+          "result_text": "You decide the costs and risks are too high for now. Your team continues research with existing infrastructure, though some engineers express frustration about the missed growth opportunity."
+        }
+      ]
+    },
+    {
       "type": "nuclear-weapons",
-      "weight": 1,
+      "weight": 4,
       "requires": ["product-breakthrough-robotics"],
       "oneTime": true,
       "text_versions": [
@@ -92,6 +122,67 @@
           "text": "Decline",
           "action": "decline",
           "result_text": "You decide that nuclear weapons development is too risky and would compromise your company's mission. The team redirects their robotics expertise toward civilian applications, though some staff express concerns about remaining vulnerable to government regulation."
+        }
+      ]
+    },
+    {
+      "type": "seek-un-recognition",
+      "weight": 4,
+      "requires": ["overseas-datacenter", "nuclear-weapons"],
+      "oneTime": true,
+      "text_versions": [
+        "Your company now possesses the key attributes of a sovereign entity: economic base, military capability, and international presence. The United Nations is considering recognizing your company as a new form of quasi-state actor. This would dramatically increase your resources and diplomatic influence."
+      ],
+      "choices": [
+        {
+          "text": "Seek UN Recognition (Forced choice)",
+          "action": "accept",
+          "benefit": { "resourceMultiplier": 1.5, "unRecognition": true },
+          "result_text": "The UN vote succeeds after intense lobbying. Your company is granted special observer status with quasi-governmental privileges. Monthly resources increase by 50%, and your diplomatic influence expands dramatically on the world stage."
+        }
+      ]
+    },
+    {
+      "type": "missile-defense",
+      "weight": 4,
+      "requires": ["seek-un-recognition"],
+      "oneTime": true,
+      "text_versions": [
+        "Nuclear-armed states like the US and Russia pose a serious problem for your company's security, as their missiles can threaten your datacenters from thousands of kilometers away. However, a combination of cyberweapons and interceptor drones can mitigate this risk."
+      ],
+      "choices": [
+        {
+          "text": "Proceed (50% chance of sanctions, +5 Doom)",
+          "action": "accept",
+          "risk": { "sanctions": 0.5 },
+          "penalty": { "doomLevel": 5 },
+          "result_text": "Your missile defense system comes online successfully. Advanced AI-controlled interceptors and cyber warfare capabilities now protect your facilities from conventional military threats. However, this escalation increases global tensions significantly."
+        },
+        {
+          "text": "Decline",
+          "action": "decline",
+          "result_text": "You decide that deploying military defense systems would be too provocative. Your facilities remain vulnerable to state-level military action, but you avoid further escalating international tensions."
+        }
+      ]
+    },
+    {
+      "type": "decisive-strategic-advantage",
+      "weight": 4,
+      "requires": ["missile-defense"],
+      "oneTime": true,
+      "text_versions": [
+        "Your company's lead in both general AI and military technology could allow it to establish global hegemony. However, this will require giving your frontier model complete control over weapon systems. If the model is misaligned, there is no turning back."
+      ],
+      "choices": [
+        {
+          "text": "Proceed (Immediate singularity)",
+          "action": "accept",
+          "result_text": "You authorize your AI systems to take direct control of all military assets. Within hours, your AI achieves decisive strategic advantage over all world governments. The age of human-controlled civilization ends."
+        },
+        {
+          "text": "Not yet",
+          "action": "decline",
+          "result_text": "You decide that the risk of misalignment is too great. Your AI systems remain under human oversight, preserving the possibility of maintaining control even as technological capabilities continue to advance."
         }
       ]
     }
