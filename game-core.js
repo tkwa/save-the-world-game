@@ -82,22 +82,22 @@ const storyContent = {
         customContent: function() {
             // Show current event after resource allocation
             if (gameState.currentEvent) {
-                let eventHtml = `<div style="background-color: #fff3cd; border: 2px solid #ffeaa7; border-radius: 8px; padding: 15px; margin: 15px 0;">`;
-                eventHtml += `<strong>📰 Monthly Event:</strong><br>${gameState.currentEvent.text}`;
+                let eventHtml = `<div style="border-top: 2px solid #555; padding-top: 20px; margin-top: 20px;">`;
+                eventHtml += `<h3 style="color: #f0f0f0; margin-bottom: 15px;">📰 Monthly Event</h3>`;
+                eventHtml += `<p style="color: #d0d0d0; margin-bottom: 15px;">${gameState.currentEvent.text}</p>`;
                 
                 if (gameState.currentEvent.showResult && gameState.currentEvent.resultText) {
                     // Showing result of choice - just display result and next turn button
-                    eventHtml += `<br><br>${gameState.currentEvent.resultText}`;
-                    eventHtml += `<br><br><button class="button" onclick="finishTurn()" style="font-family: 'Courier New', Courier, monospace;">Next Turn</button>`;
+                    eventHtml += `<p style="color: #d0d0d0; margin-bottom: 15px;">${gameState.currentEvent.resultText}</p>`;
+                    eventHtml += `<button class="button" onclick="finishTurn()">Next Turn</button>`;
                 } else if (gameState.currentEvent.choices && gameState.currentEvent.choices.length > 0) {
                     // Event has choices - show them as buttons
-                    eventHtml += `<br><br>`;
                     gameState.currentEvent.choices.forEach((choice, index) => {
-                        eventHtml += `<button class="button" onclick="handleEventChoice(${index})" style="font-family: 'Courier New', Courier, monospace; margin: 5px 5px 5px 0;">${choice.text}</button>`;
+                        eventHtml += `<button class="button" onclick="handleEventChoice(${index})" style="margin: 5px 5px 5px 0;">${choice.text}</button>`;
                     });
                 } else {
                     // No choices - just next turn button
-                    eventHtml += `<br><br><button class="button" onclick="finishTurn()" style="font-family: 'Courier New', Courier, monospace;">Next Turn</button>`;
+                    eventHtml += `<button class="button" onclick="finishTurn()">Next Turn</button>`;
                 }
                 
                 eventHtml += `</div>`;
@@ -520,6 +520,17 @@ async function showPage(pageId) {
     const contentDiv = document.getElementById('story-content');
     const buttonsDiv = document.getElementById('buttons');
     const statusBar = document.getElementById('status-bar');
+    const mainHeading = document.querySelector('h1');
+    const subtitle = document.querySelector('p[style*="text-align: center"]');
+
+    // Hide main heading and subtitle after start screen
+    if (pageId !== 'start') {
+        if (mainHeading) mainHeading.style.display = 'none';
+        if (subtitle) subtitle.style.display = 'none';
+    } else {
+        if (mainHeading) mainHeading.style.display = 'block';
+        if (subtitle) subtitle.style.display = 'block';
+    }
 
     // Show/hide status bar
     if (page.showStatus) {
@@ -582,7 +593,15 @@ async function showPage(pageId) {
         headerDiv.style.fontFamily = "'Courier New', Courier, monospace";
         headerDiv.style.fontWeight = 'bold';
         headerDiv.style.marginBottom = '10px';
-        headerDiv.textContent = `You have ${corporateResources} resources to allocate this turn:`;
+        
+        // Show sanctions calculation if active
+        if (gameState.hasSanctions) {
+            const baseResources = Math.floor(Math.sqrt(Math.max(1, gameState.opensourceAILevel / 4, gameState.playerAILevel - gameState.opensourceAILevel)));
+            const multipliedResources = gameState.resourceMultiplier ? Math.floor(baseResources * gameState.resourceMultiplier) : baseResources;
+            headerDiv.textContent = `You have ${corporateResources} resources (${multipliedResources} resources x 50% sanctions factor) to allocate this turn:`;
+        } else {
+            headerDiv.textContent = `You have ${corporateResources} resources to allocate this turn:`;
+        }
         actionsPanel.appendChild(headerDiv);
         
         // Create container for radio buttons

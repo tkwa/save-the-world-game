@@ -10,19 +10,21 @@
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
-            background-color: #f0f0f0;
+            background-color: #1a1a1a;
+            color: #e0e0e0;
         }
         .container {
-            background-color: white;
+            background-color: #2d2d2d;
             padding: 30px;
             border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            border: 1px solid #404040;
         }
         .status-bar {
-            border: 2px solid #333;
+            border: 2px solid #555;
             padding: 15px;
             margin-bottom: 20px;
-            background-color: #f9f9f9;
+            background-color: #353535;
             display: none;
         }
         .status-columns {
@@ -37,7 +39,7 @@
             margin-bottom: 30px;
         }
         .button {
-            background-color: #007cba;
+            background-color: #0066a2;
             color: white;
             padding: 6px 12px;
             border: none;
@@ -45,9 +47,10 @@
             cursor: pointer;
             font-size: 14px;
             margin: 5px 5px 5px 0;
+            font-family: 'Courier New', Courier, monospace;
         }
         .button:hover {
-            background-color: #005a87;
+            background-color: #004d7a;
         }
         .actions-list {
             margin: 20px 0;
@@ -55,21 +58,30 @@
         .actions-list li {
             margin: 10px 0;
             cursor: pointer;
-            color: #007cba;
+            color: #66b3ff;
         }
         .actions-list li:hover {
             text-decoration: underline;
         }
         .actions-panel {
-            background-color: #f9f9f9;
-            border: 2px solid #333;
+            background-color: #353535;
+            border: 2px solid #555;
             border-radius: 8px;
             padding: 20px;
             margin: 20px 0;
         }
         h1 {
-            color: #333;
+            color: #e0e0e0;
             text-align: center;
+        }
+        h2 {
+            color: #e0e0e0;
+        }
+        p {
+            color: #d0d0d0;
+        }
+        strong {
+            color: #f0f0f0;
         }
     </style>
 </head>
@@ -81,20 +93,20 @@
         <div id="status-bar" class="status-bar">
             <div class="status-columns">
                 <div class="status-column">
-                    <strong>AI Information:</strong><br>
+                    <strong>AI Information</strong><br>
                     Player AI Level: <span id="player-ai-level">10</span><br>
                     Open-source AI: <span id="opensource-ai-level">2</span><br>
                     Rogue AI Risk: <span id="doom-level">20</span>%
                 </div>
                 <div class="status-column">
-                    <strong><span id="company-name-header">Company</span> Resources:</strong><br>
+                    <strong><span id="company-name-header">Company</span> Resources</strong><br>
                     Money: $<span id="money">1</span>B<br>
                     Diplomacy: <span id="diplomacy-points">0</span><br>
                     Product: <span id="product-points">0</span><br>
                     Safety: <span id="safety-points">0</span>
                 </div>
                 <div class="status-column">
-                    <strong>Status Effects:</strong><br>
+                    <strong>Status Effects</strong><br>
                     <span id="sanctions-status">No Sanctions</span><br>
                     <span id="un-recognition-status">No UN Recognition</span>
                 </div>
