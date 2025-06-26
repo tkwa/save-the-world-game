@@ -6,16 +6,16 @@ const gameState = {
     playerAILevel: 10,
     doomLevel: 20,
     opensourceAILevel: 2,
-    
+
     // Corporate Divisions
     diplomacyPoints: 0,
     productPoints: 0,
     safetyPoints: 0,
-    
+
     // Status Effects
     hasSanctions: false,
     hasUNRecognition: false,
-    
+
     // Other game state
     currentPage: "start",
     alignmentLevel: Math.random(), // 0-1 float for alignment
@@ -52,7 +52,7 @@ const storyContent = {
     },
     "game-setup": {
         title: "January 2026",
-        text: async function() {
+        text: async function () {
             // Randomly assign company
             const companies = ["OpenAI", "Anthropic", "Google", "Amazon", "Tencent", "xAI"];
             gameState.companyName = companies[Math.floor(Math.random() * companies.length)];
@@ -69,22 +69,22 @@ const storyContent = {
         ]
     },
     "main-game": {
-        title: function() {
+        title: function () {
             return `${gameState.currentMonth || 'January'} ${gameState.currentYear || 2026}`;
         },
-        text: function() {
+        text: function () {
             if (gameState.currentTurn === 1) {
                 return `You are the CEO of ${gameState.companyName}.`;
             } else {
                 return '';
             }
         },
-        customContent: function() {
+        customContent: function () {
             // Show current event after resource allocation
             if (gameState.currentEvent) {
                 let eventHtml = `<div style="border-top: 2px solid #555; padding-top: 20px; margin-top: 20px;">`;
                 eventHtml += `<p style="color: #d0d0d0; margin-bottom: 15px;">${gameState.currentEvent.text}</p>`;
-                
+
                 if (gameState.currentEvent.showResult && gameState.currentEvent.resultText) {
                     // Showing result of choice - just display result and next turn button
                     eventHtml += `<p style="color: #d0d0d0; margin-bottom: 15px;">${gameState.currentEvent.resultText}</p>`;
@@ -93,17 +93,25 @@ const storyContent = {
                     // Event has choices - show them as buttons
                     gameState.currentEvent.choices.forEach((choice, index) => {
                         const canAfford = canAffordChoice(choice);
-                        const buttonStyle = canAfford ? 
-                            `margin: 5px 5px 5px 0;` : 
+                        const allocationMade = gameState.selectedAllocation !== null;
+                        const enabled = allocationMade && canAfford;
+                        
+                        const buttonStyle = enabled ?
+                            `margin: 5px 5px 5px 0;` :
                             `margin: 5px 5px 5px 0; background-color: #666; cursor: not-allowed; opacity: 0.6;`;
-                        const onclick = canAfford ? `handleEventChoice(${index})` : '';
+                        const onclick = enabled ? `handleEventChoice(${index})` : '';
                         eventHtml += `<button class="button" onclick="${onclick}" style="${buttonStyle}">${choice.text}</button>`;
                     });
                 } else {
                     // No choices - just next turn button
-                    eventHtml += `<button class="button" onclick="finishTurn()">Next Turn</button>`;
+                    const allocationMade = gameState.selectedAllocation !== null;
+                    const buttonStyle = allocationMade ?
+                        `` :
+                        `background-color: #666; cursor: not-allowed; opacity: 0.6;`;
+                    const onclick = allocationMade ? `finishTurn()` : '';
+                    eventHtml += `<button class="button" onclick="${onclick}" style="${buttonStyle}">Next Turn</button>`;
                 }
-                
+
                 eventHtml += `</div>`;
                 return eventHtml;
             }
@@ -112,16 +120,16 @@ const storyContent = {
         showStatus: true,
         showActions: true,
         actions: [
-            "ai-rd", 
+            "ai-rd",
             "diplomacy",
-            "product", 
+            "product",
             "safety-rd",
             "revenue"
         ],
     },
     "end-game": {
         title: "Game Over",
-        text: function() {
+        text: function () {
             return calculateEndGameScore();
         },
         showStatus: true,
@@ -131,12 +139,12 @@ const storyContent = {
     },
     "capability-evals-minigame": {
         title: "Capability Evals",
-        text: function() {
+        text: function () {
             const minigame = gameState.currentMinigame;
             if (!minigame || minigame.type !== 'capability-evals') {
                 return "Error: Minigame data not found.";
             }
-            
+
             const imagePath = `minigames/correlations/images/${minigame.image.filename}`;
             return `<div style="text-align: center;">
                 <p>Estimate the correlation strength in this scatterplot:</p>
@@ -150,10 +158,10 @@ const storyContent = {
     },
     "forecasting-evals-minigame": {
         title: "Forecasting Evals",
-        text: function() {
+        text: function () {
             const coinData = gameState.coinFlipData;
             const percentage = coinData.total > 0 ? ((coinData.heads / coinData.total) * 100).toFixed(1) : '0.0';
-            
+
             return `<div style="text-align: center;">
                 <p>A weighted coin has been flipped daily. Estimate the true probability of heads:</p>
                 <div style="background-color: #f9f9f9; border: 2px solid #333; border-radius: 8px; padding: 20px; margin: 20px 0; display: inline-block;">
@@ -176,78 +184,111 @@ const storyContent = {
 
 function updateStatusBar() {
     // AI Information
-    document.getElementById('player-ai-level').textContent = gameState.playerAILevel;
-    document.getElementById('doom-level').textContent = gameState.doomLevel;
-    document.getElementById('opensource-ai-level').textContent = gameState.opensourceAILevel;
+    const playerAIElement = document.getElementById('player-ai-level');
+    playerAIElement.textContent = gameState.playerAILevel;
+    playerAIElement.style.fontWeight = 'bold';
+    // Red if less than open source AI level
+    playerAIElement.style.color = gameState.playerAILevel < gameState.opensourceAILevel ? '#ff6b6b' : '#e0e0e0';
     
+    const doomElement = document.getElementById('doom-level');
+    doomElement.textContent = `${gameState.doomLevel}%`;
+    doomElement.style.fontWeight = 'bold';
+    // Red if >50%, amber if >15%, otherwise white
+    if (gameState.doomLevel > 50) {
+        doomElement.style.color = '#ff6b6b';
+    } else if (gameState.doomLevel > 15) {
+        doomElement.style.color = '#ffa726';
+    } else {
+        doomElement.style.color = '#e0e0e0';
+    }
+    
+    // Make "Rogue AI Risk" label red and bold if >75%
+    const doomLabelElement = document.getElementById('doom-label');
+    if (gameState.doomLevel > 75) {
+        doomLabelElement.style.color = '#ff6b6b';
+        doomLabelElement.style.fontWeight = 'bold';
+    } else {
+        doomLabelElement.style.color = '#e0e0e0';
+        doomLabelElement.style.fontWeight = 'normal';
+    }
+    
+    const opensourceElement = document.getElementById('opensource-ai-level');
+    opensourceElement.textContent = gameState.opensourceAILevel;
+    opensourceElement.style.fontWeight = 'bold';
+    opensourceElement.style.color = '#e0e0e0';
+
     // Company Divisions
     document.getElementById('company-name-header').textContent = gameState.companyName || 'Company';
-    document.getElementById('money').textContent = gameState.money;
-    document.getElementById('diplomacy-points').textContent = gameState.diplomacyPoints;
-    document.getElementById('product-points').textContent = gameState.productPoints;
-    document.getElementById('safety-points').textContent = gameState.safetyPoints;
     
+    const moneyElement = document.getElementById('money');
+    moneyElement.textContent = `$${gameState.money}B`;
+    moneyElement.style.fontWeight = 'bold';
+    moneyElement.style.color = gameState.money === 0 ? '#ff6b6b' : '#e0e0e0';
+    
+    const diplomacyElement = document.getElementById('diplomacy-points');
+    diplomacyElement.textContent = gameState.diplomacyPoints;
+    diplomacyElement.style.fontWeight = 'bold';
+    diplomacyElement.style.color = gameState.diplomacyPoints === 0 ? '#ff6b6b' : '#e0e0e0';
+    
+    const productElement = document.getElementById('product-points');
+    productElement.textContent = gameState.productPoints;
+    productElement.style.fontWeight = 'bold';
+    productElement.style.color = gameState.productPoints === 0 ? '#ff6b6b' : '#e0e0e0';
+    
+    const safetyElement = document.getElementById('safety-points');
+    safetyElement.textContent = gameState.safetyPoints;
+    safetyElement.style.fontWeight = 'bold';
+    safetyElement.style.color = gameState.safetyPoints === 0 ? '#ff6b6b' : '#e0e0e0';
+
     // Status Effects
-    document.getElementById('sanctions-status').textContent = gameState.hasSanctions ? 'Sanctions Active' : '';
-    document.getElementById('un-recognition-status').textContent = gameState.hasUNRecognition ? 'UN Recognition' : '';
+    const sanctionsElement = document.getElementById('sanctions-status');
+    if (gameState.hasSanctions) {
+        sanctionsElement.textContent = 'Sanctions Active';
+        sanctionsElement.style.color = '#ffa726'; // Orange for bad status
+    } else {
+        sanctionsElement.textContent = '';
+    }
+    
+    const unRecognitionElement = document.getElementById('un-recognition-status');
+    if (gameState.hasUNRecognition) {
+        unRecognitionElement.textContent = 'UN Recognition';
+        unRecognitionElement.style.color = '#66bb6a'; // Green for good status
+    } else {
+        unRecognitionElement.textContent = '';
+    }
 }
 
 
 
 
 async function finishTurn() {
-    // Ensure there's always a default selection (AI R&D)
+    // Only advance turn if allocation has been made
     if (!gameState.selectedAllocation) {
-        gameState.selectedAllocation = "ai-rd";
+        return; // Don't advance turn
     }
-    
-    // Apply the selected allocation
-    await allocateResources(gameState.selectedAllocation);
+
+    // Advance turn without applying resources (already applied when button was clicked)
+    await advanceTurn();
 }
 
-async function allocateResources(resourceType) {
-    // Calculate corporate resources for this turn (expires if not used)
-    const corporateResources = calculateResources();
-    
-    switch(resourceType) {
-        case 'ai-rd':
-            gameState.playerAILevel += corporateResources;
-            gameState.doomLevel += corporateResources;
-            break;
-        case 'diplomacy':
-            gameState.diplomacyPoints += corporateResources;
-            break;
-        case 'product':
-            gameState.productPoints += corporateResources;
-            break;
-        case 'safety-rd':
-            gameState.safetyPoints += corporateResources;
-            // Each SP decreases XL by 3% (relative reduction)
-            const reductionFactor = 1 - (corporateResources * 0.03);
-            gameState.doomLevel = Math.floor(gameState.doomLevel * Math.max(0, reductionFactor));
-            break;
-        case 'revenue':
-            // Convert corporate resources to saved money
-            gameState.money += corporateResources;
-            break;
-    }
-    
+async function advanceTurn() {
+
     // Increase open-source AI level
     gameState.opensourceAILevel += Math.floor(Math.sqrt(Math.max(1, gameState.opensourceAILevel / 8)));
-    
+
     // Apply overseas datacenter bonus
     if (gameState.aiLevelPerTurn) {
         gameState.playerAILevel += gameState.aiLevelPerTurn;
     }
-    
+
     // Apply event effects
     applyEventEffects(gameState.currentEvent);
-    
+
     // Apply income bonus from product breakthroughs
     if (gameState.incomeBonus) {
         gameState.money += gameState.incomeBonus;
     }
-    
+
     // Advance turn
     gameState.currentTurn++;
     const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -256,28 +297,28 @@ async function allocateResources(resourceType) {
     if (monthIndex === 0 && gameState.currentTurn > 1) {
         gameState.currentYear++;
     }
-    
+
     // Generate new event for next turn
     gameState.currentEvent = await generateEvent();
-    
+
     // Clear selection for next turn (after everything is processed)
     gameState.selectedAllocation = null;
-    
+
     updateStatusBar();
-    
+
     // Check end conditions
     if (gameState.doomLevel >= 100) {
         gameState.gameOverReason = 'doom-100';
         showPage('end-game');
         return;
     }
-    
+
     if (gameState.playerAILevel >= 100 || gameState.opensourceAILevel >= 100) {
         gameState.gameOverReason = 'ai-singularity';
         showPage('end-game');
         return;
     }
-    
+
     // Refresh the page to show new turn
     showPage('main-game');
 }
@@ -302,7 +343,7 @@ function beginAlignmentProject() {
 
 function toggleAlignmentProject() {
     if (!gameState.alignmentProjectStarted) return;
-    
+
     gameState.currentAlignmentProject = gameState.currentAlignmentProject === "Interpretability" ? "Control" : "Interpretability";
     updateResearchDisplay();
 }
@@ -310,7 +351,7 @@ function toggleAlignmentProject() {
 function updateResearchDisplay() {
     const researchSection = document.getElementById('research-section');
     const alignmentProjectBtn = document.getElementById('alignment-project-btn');
-    
+
     if (gameState.alignmentProjectStarted) {
         researchSection.style.display = 'block';
         alignmentProjectBtn.textContent = `Switch to ${gameState.currentAlignmentProject === 'Interpretability' ? 'Control' : 'Interpretability'}`;
@@ -318,7 +359,7 @@ function updateResearchDisplay() {
         alignmentProjectBtn.disabled = false;
         alignmentProjectBtn.style.backgroundColor = '#007cba';
         alignmentProjectBtn.style.cursor = 'pointer';
-        
+
         // Add current project indicator above the button
         const currentProject = alignmentProjectBtn.parentNode.querySelector('.current-project');
         if (currentProject) {
@@ -338,7 +379,7 @@ function updateResearchDisplay() {
         alignmentProjectBtn.disabled = true;
         alignmentProjectBtn.style.backgroundColor = '#ccc';
         alignmentProjectBtn.style.cursor = 'default';
-        
+
         // Remove current project indicator
         const currentProject = alignmentProjectBtn.parentNode.querySelector('.current-project');
         if (currentProject) {
@@ -361,13 +402,13 @@ function calculateDaysToSingularity() {
     let currentCapability = gameState.aiCapability;
     let days = 0;
     const maxIterations = 10000; // Prevent infinite loops
-    
+
     while (currentCapability < gameState.singularityLevel && days < maxIterations) {
         const growthRate = calculateGrowthRate(currentCapability, gameState.hype, gameState.usMood);
         currentCapability += growthRate;
         days++;
     }
-    
+
     return days >= maxIterations ? "∞" : days;
 }
 
@@ -375,7 +416,7 @@ function updateForecastingDisplay() {
     if (gameState.evalsBuilt.forecasting) {
         const daysToSingularity = calculateDaysToSingularity();
         let forecastDiv = document.getElementById('forecasting-display');
-        
+
         if (!forecastDiv) {
             forecastDiv = document.createElement('div');
             forecastDiv.id = 'forecasting-display';
@@ -383,13 +424,13 @@ function updateForecastingDisplay() {
             forecastDiv.style.fontSize = '16px';
             forecastDiv.style.marginTop = '10px';
             forecastDiv.style.color = '#666';
-            
+
             const dateTicker = document.getElementById('date-ticker');
             if (dateTicker) {
                 dateTicker.appendChild(forecastDiv);
             }
         }
-        
+
         forecastDiv.innerHTML = `<div>Days to Singularity: ${daysToSingularity}</div>`;
     }
 }
@@ -409,17 +450,17 @@ function refreshEvalsDisplay() {
 function calculateResources() {
     // Formula from README: floor(sqrt(max(1, AL - OL)))
     let baseResources = Math.floor(Math.sqrt(Math.max(1, gameState.opensourceAILevel / 4, gameState.playerAILevel - gameState.opensourceAILevel)));
-    
+
     // Apply UN recognition multiplier
     if (gameState.resourceMultiplier) {
         baseResources = Math.floor(baseResources * gameState.resourceMultiplier);
     }
-    
+
     // Sanctions halve resources (rounded up)
     if (gameState.hasSanctions) {
         baseResources = Math.ceil(baseResources / 2);
     }
-    
+
     return baseResources;
 }
 
@@ -435,7 +476,7 @@ function generateActionLabels(resources) {
 
 function canAffordChoice(choice) {
     if (!choice.cost) return true;
-    
+
     if (choice.cost.productPoints && gameState.productPoints < choice.cost.productPoints) {
         return false;
     }
@@ -445,8 +486,34 @@ function canAffordChoice(choice) {
     if (choice.cost.money && gameState.money < choice.cost.money) {
         return false;
     }
-    
+
     return true;
+}
+
+function applyResourceAllocation(resourceType, corporateResources) {
+    switch(resourceType) {
+        case 'ai-rd':
+            gameState.playerAILevel += corporateResources;
+            gameState.doomLevel += corporateResources;
+            break;
+        case 'diplomacy':
+            gameState.diplomacyPoints += corporateResources;
+            break;
+        case 'product':
+            gameState.productPoints += corporateResources;
+            break;
+        case 'safety-rd':
+            gameState.safetyPoints += corporateResources;
+            // Each SP decreases XL by 3% (relative reduction)
+            const reductionFactor = 1 - (corporateResources * 0.03);
+            gameState.doomLevel = Math.floor(gameState.doomLevel * Math.max(0, reductionFactor));
+            break;
+        case 'revenue':
+            // Convert corporate resources to saved money
+            gameState.money += corporateResources;
+            break;
+    }
+    updateStatusBar();
 }
 
 function resetGameState() {
@@ -490,7 +557,7 @@ function calculateEndGameScore() {
     let playerGalaxies = 0;
     let humanityGalaxies = 0;
     let rogueGalaxies = 0;
-    
+
     if (gameState.gameOverReason === 'doom-100') {
         // Instant game over - all AIs are misaligned
         resultText = `${gameState.companyName} was reckless enough to let doom reach 100%. Humanity is immediately eaten by nanobots, which go on to colonize the stars.`;
@@ -499,22 +566,22 @@ function calculateEndGameScore() {
         humanityGalaxies = 0;
     } else if (gameState.gameOverReason === 'ai-singularity') {
         resultText = "The singularity has arrived. ";
-        
+
         narrow_race = Math.min(gameState.playerAILevel, gameState.opensourceAILevel) >= 90;
         if (gameState.playerAILevel >= 100) {
             resultText += narrow_race ? "You achieved ASI first. " : "You achieved ASI first, but open-source AI was close behind. ";
         } else {
             resultText += "Open-source AI achieved ASI first. ";
         }
-        
+
         // Calculate galaxy splits based on README formula
         const playerShare = Math.max(0, Math.min(100, gameState.playerAILevel - gameState.opensourceAILevel));
         const otherShare = 100 - playerShare;
-        
+
         // Roll for misalignment using doom level as probability
         const playerMisaligned = Math.random() * 100 < gameState.doomLevel;
         const otherMisaligned = Math.random() * 100 < gameState.doomLevel;
-        
+
         if (playerMisaligned) {
             rogueGalaxies += playerShare;
             resultText += `Your AI systems became misaligned (${gameState.doomLevel}% chance). `;
@@ -522,7 +589,7 @@ function calculateEndGameScore() {
             playerGalaxies = playerShare;
             resultText += `Your AI systems remained aligned. `;
         }
-        
+
         if (otherMisaligned) {
             rogueGalaxies += otherShare;
             resultText += `Other AI systems became misaligned. `;
@@ -531,17 +598,17 @@ function calculateEndGameScore() {
             resultText += `Other AI systems remained aligned. `;
         }
     }
-    
+
     // Calculate final score: 0x rogue + 10x humanity + 20x player
     const finalScore = (0 * rogueGalaxies) + (10 * humanityGalaxies) + (20 * playerGalaxies);
-    
+
     resultText += `<br><br><strong>Final Galaxy Distribution:</strong><br>`;
     resultText += `• Rogue AI: ${rogueGalaxies}%<br>`;
     resultText += `• Humanity at large: ${humanityGalaxies}%<br>`;
     resultText += `• Your company: ${playerGalaxies}%<br><br>`;
     resultText += `<strong>Final Score: ${finalScore}</strong><br>`;
     resultText += `(${rogueGalaxies}×0 + ${humanityGalaxies}×10 + ${playerGalaxies}×20)`;
-    
+
     return resultText;
 }
 
@@ -569,12 +636,12 @@ async function showPage(pageId) {
     } else {
         statusBar.style.display = 'none';
     }
-    
+
     // Start date ticker when reaching 2026 page
     if (pageId === '2026') {
         startDateTicker();
         updateResearchDisplay();
-        
+
         // Add date controls after a short delay to ensure ticker is displayed
         setTimeout(() => {
             const dateTicker = document.getElementById('date-ticker');
@@ -602,28 +669,28 @@ async function showPage(pageId) {
     } else {
         text = page.text;
     }
-    
+
     let title;
     if (typeof page.title === 'function') {
         title = page.title();
     } else {
         title = page.title;
     }
-    
+
     contentDiv.innerHTML = `<h2>${title}</h2><p>${text}</p>`;
 
     // Add actions panel if present
     if (page.showActions && page.actions) {
         const actionsPanel = document.createElement('div');
         actionsPanel.className = 'actions-panel';
-        
+
         // Add resource allocation header
         const corporateResources = calculateResources();
         const headerDiv = document.createElement('div');
         headerDiv.style.fontFamily = "'Courier New', Courier, monospace";
         headerDiv.style.fontWeight = 'bold';
         headerDiv.style.marginBottom = '10px';
-        
+
         // Show sanctions calculation if active
         if (gameState.hasSanctions) {
             const baseResources = Math.floor(Math.sqrt(Math.max(1, gameState.opensourceAILevel / 4, gameState.playerAILevel - gameState.opensourceAILevel)));
@@ -633,63 +700,53 @@ async function showPage(pageId) {
             headerDiv.textContent = `You have ${corporateResources} resources to allocate this turn:`;
         }
         actionsPanel.appendChild(headerDiv);
-        
-        // Create container for radio buttons
-        const radioContainer = document.createElement('div');
-        radioContainer.style.display = 'grid';
-        radioContainer.style.gridTemplateColumns = 'repeat(auto-fit, minmax(200px, 1fr))';
-        radioContainer.style.gap = '5px';
-        
-        // Set AI R&D as default selection if none exists
-        if (!gameState.selectedAllocation) {
-            gameState.selectedAllocation = page.actions[0];
-        }
-        
+
+        // Create container for action buttons
+        const buttonContainer = document.createElement('div');
+        buttonContainer.style.display = 'grid';
+        buttonContainer.style.gridTemplateColumns = 'repeat(auto-fit, minmax(200px, 1fr))';
+        buttonContainer.style.gap = '5px';
+
+        // No default selection - start with everything greyed out
+
         // Generate action labels with actual resource numbers
         const actionLabels = generateActionLabels(corporateResources);
-        
+
         actionLabels.forEach((actionLabel, index) => {
-            const label = document.createElement('label');
-            label.style.display = 'flex';
-            label.style.alignItems = 'center';
-            label.style.padding = '8px';
-            label.style.cursor = 'pointer';
-            label.style.fontFamily = "'Courier New', Courier, monospace";
-            label.style.fontSize = '14px';
-            
-            const radio = document.createElement('input');
-            radio.type = 'radio';
-            radio.name = 'allocation';
-            radio.value = page.actions[index]; // Use the action key, not the label
-            radio.style.marginRight = '10px';
-            radio.style.transform = 'scale(1.2)';
-            
-            // Check if this radio button should be selected
+            const button = document.createElement('button');
+            button.className = 'button';
+            button.textContent = actionLabel;
+            button.style.fontFamily = "'Courier New', Courier, monospace";
+            button.style.fontSize = '14px';
+            button.style.width = 'calc(100% - 10px)';
+            button.style.margin = '5px';
+
+            // Style based on selection state
             if (gameState.selectedAllocation === page.actions[index]) {
-                radio.checked = true;
+                button.style.backgroundColor = '#005a87';
+                button.style.border = '2px solid #66b3ff';
+            } else if (gameState.selectedAllocation) {
+                button.style.backgroundColor = '#666';
+                button.style.opacity = '0.6';
+                button.style.cursor = 'not-allowed';
             }
-            
-            radio.onchange = () => {
-                if (radio.checked) {
+
+            button.onclick = () => {
+                if (!gameState.selectedAllocation) {
                     gameState.selectedAllocation = page.actions[index];
-                    // Update UI to show selection
+                    applyResourceAllocation(page.actions[index], corporateResources);
                     showPage('main-game');
                 }
             };
-            
-            const text = document.createElement('span');
-            text.textContent = actionLabel;
-            
-            label.appendChild(radio);
-            label.appendChild(text);
-            radioContainer.appendChild(label);
+
+            buttonContainer.appendChild(button);
         });
-        
-        // Add the radio container to the actions panel
-        actionsPanel.appendChild(radioContainer);
-        
+
+        // Add the button container to the actions panel
+        actionsPanel.appendChild(buttonContainer);
+
         contentDiv.appendChild(actionsPanel);
-        
+
         // Add custom content after actions (like events)
         if (page.customContent) {
             const customDiv = document.createElement('div');
@@ -700,7 +757,7 @@ async function showPage(pageId) {
 
     // Set buttons
     buttonsDiv.innerHTML = '';
-    
+
     // Handle custom buttons for minigames
     if (page.customButtons && pageId === 'capability-evals-minigame') {
         const minigame = gameState.currentMinigame;
@@ -712,7 +769,7 @@ async function showPage(pageId) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [allOptions[i], allOptions[j]] = [allOptions[j], allOptions[i]];
             }
-            
+
             allOptions.forEach(correlation => {
                 const btn = document.createElement('button');
                 btn.className = 'button';
@@ -721,7 +778,7 @@ async function showPage(pageId) {
                 btn.onclick = () => submitCapabilityEvalsAnswer(correlation, btn);
                 buttonsDiv.appendChild(btn);
             });
-            
+
             // Add back button
             const backBtn = document.createElement('button');
             backBtn.className = 'button';
@@ -738,7 +795,7 @@ async function showPage(pageId) {
     } else if (page.customButtons && pageId === 'forecasting-evals-minigame') {
         // Forecasting minigame buttons
         const options = [50, 60, 70, 80];
-        
+
         options.forEach(percentage => {
             const btn = document.createElement('button');
             btn.className = 'button';
@@ -747,7 +804,7 @@ async function showPage(pageId) {
             btn.onclick = () => submitForecastingEvalsAnswer(percentage, btn);
             buttonsDiv.appendChild(btn);
         });
-        
+
         // Add back button
         const backBtn = document.createElement('button');
         backBtn.className = 'button';
@@ -765,20 +822,20 @@ async function showPage(pageId) {
         // Regular buttons
         if (page.buttons && page.buttons.length > 0) {
             page.buttons.forEach(button => {
-            const btn = document.createElement('button');
-            btn.className = 'button';
-            btn.textContent = button.text;
-            btn.onclick = async () => {
-                if (button.action === 'goto') {
-                    if (button.target === 'start' && gameState.currentPage === 'end-game') {
-                        // Reset game state when restarting from end screen
-                        resetGameState();
+                const btn = document.createElement('button');
+                btn.className = 'button';
+                btn.textContent = button.text;
+                btn.onclick = async () => {
+                    if (button.action === 'goto') {
+                        if (button.target === 'start' && gameState.currentPage === 'end-game') {
+                            // Reset game state when restarting from end screen
+                            resetGameState();
+                        }
+                        gameState.currentPage = button.target;
+                        showPage(button.target);
                     }
-                    gameState.currentPage = button.target;
-                    showPage(button.target);
-                }
-            };
-            buttonsDiv.appendChild(btn);
+                };
+                buttonsDiv.appendChild(btn);
             });
         }
     }
@@ -792,9 +849,9 @@ async function handleEventChoice(choiceIndex) {
         console.error('Invalid event choice');
         return;
     }
-    
+
     const choice = event.choices[choiceIndex];
-    
+
     // Track choice taken
     if (!gameState.choicesTaken[event.type]) {
         gameState.choicesTaken[event.type] = {};
@@ -803,12 +860,12 @@ async function handleEventChoice(choiceIndex) {
         gameState.choicesTaken[event.type][choice.action] = 0;
     }
     gameState.choicesTaken[event.type][choice.action]++;
-    
+
     // Track events that are accepted (for requirement checking)
     if (choice.action === 'accept' || choice.action === 'accept-sanctions') {
         gameState.dsaEventsAccepted.add(event.type);
     }
-    
+
     if (choice.action === 'accept' || choice.action === 'accept-sanctions') {
         // Apply costs and benefits
         if (choice.cost) {
@@ -822,26 +879,26 @@ async function handleEventChoice(choiceIndex) {
                 gameState.money -= choice.cost.money;
             }
         }
-        
+
         // Apply risks (random negative effects)
         if (choice.risk) {
             if (choice.risk.sanctions && Math.random() < choice.risk.sanctions) {
                 gameState.hasSanctions = true;
             }
         }
-        
+
         // Apply penalties (guaranteed negative effects)
         if (choice.penalty) {
             if (choice.penalty.doomLevel) {
                 gameState.doomLevel += choice.penalty.doomLevel;
             }
         }
-        
+
         // Special handling for sanctions removal
         if (event.type === 'sanctions' && choice.action === 'accept') {
             gameState.hasSanctions = false;
         }
-        
+
         if (choice.benefit) {
             if (choice.benefit.incomeBonus) {
                 // Add income bonus to game state (this would need to be tracked and applied each turn)
@@ -860,7 +917,7 @@ async function handleEventChoice(choiceIndex) {
                 gameState.hasUNRecognition = true;
             }
         }
-        
+
         // Special handling for DSA (immediate singularity)
         if (event.type === 'decisive-strategic-advantage' && choice.action === 'accept') {
             gameState.playerAILevel = 100;
@@ -870,7 +927,7 @@ async function handleEventChoice(choiceIndex) {
             return;
         }
     }
-    
+
     // Show result text instead of immediately finishing turn
     if (choice.result_text) {
         gameState.currentEvent.showResult = true;
@@ -888,6 +945,6 @@ window.finishTurn = finishTurn;
 window.handleEventChoice = handleEventChoice;
 
 // Initialize the game
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     showPage('start');
 });

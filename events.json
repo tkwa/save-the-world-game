@@ -76,9 +76,9 @@
       "weight": 4,
       "oneTime": true,
       "text_versions": [
-        "Your company has the opportunity to establish a major datacenter facility in the UAE, creating additional AI development capacity. This would generate 1 additional AI level per turn, but unauthorized construction risks US sanctions while diplomatic approval requires significant resources.",
-        "Your company has the opportunity to establish a major datacenter facility in Russia, creating additional AI development capacity. This would generate 1 additional AI level per turn, but unauthorized construction risks US sanctions while diplomatic approval requires significant resources.",
-        "Your company has the opportunity to establish a major datacenter facility in Malaysia, creating additional AI development capacity. This would generate 1 additional AI level per turn, but unauthorized construction risks US sanctions while diplomatic approval requires significant resources."
+        "Your company has the opportunity to establish a major datacenter facility in the UAE, creating additional AI development capacity. This would generate 1 additional AI level per turn, but unauthorized construction risks US sanctions.",
+        "Your company has the opportunity to establish a major datacenter facility in Russia, creating additional AI development capacity. This would generate 1 additional AI level per turn, but unauthorized construction risks US sanctions.",
+        "Your company has the opportunity to establish a major datacenter facility in Malaysia, creating additional AI development capacity. This would generate 1 additional AI level per turn, but unauthorized construction risks US sanctions."
       ],
       "choices": [
         {
