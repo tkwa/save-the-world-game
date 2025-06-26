@@ -32,7 +32,10 @@ const gameState = {
     currentMonth: "January",
     currentYear: 2026,
     money: 1, // Starting money
-    gameOverReason: null
+    gameOverReason: null,
+    currentEvent: null,
+    safetyIncidentCount: 0,
+    selectedAllocation: null
 };
 
 // Story content
@@ -53,6 +56,8 @@ const storyContent = {
             gameState.currentTurn = 1;
             gameState.currentMonth = "January";
             gameState.currentYear = 2026;
+            // Generate first event
+            gameState.currentEvent = generateEvent();
             return `You are now the CEO of ${gameState.companyName}. The race to AGI begins now.`;
         },
         showStatus: false,
@@ -66,7 +71,21 @@ const storyContent = {
         },
         text: function() {
             const corporateResources = calculateResources();
-            return `You are the CEO of ${gameState.companyName}. You have ${corporateResources} corporate resources to allocate this turn. Choose how to allocate your resources:`;
+            let text = `You are the CEO of ${gameState.companyName}. You have ${corporateResources} corporate resources to allocate this turn.`;
+            
+            text += `<br><br>Choose how to allocate your resources:`;
+            return text;
+        },
+        customContent: function() {
+            // Show current event after resource allocation
+            if (gameState.currentEvent) {
+                let eventHtml = `<div style="background-color: #fff3cd; border: 2px solid #ffeaa7; border-radius: 8px; padding: 15px; margin: 15px 0;">`;
+                eventHtml += `<strong>📰 Monthly Event:</strong><br>${gameState.currentEvent.text}`;
+                eventHtml += `<br><br><button class="button" onclick="finishTurn()" style="font-family: 'Courier New', Courier, monospace;">Continue to Next Turn</button>`;
+                eventHtml += `</div>`;
+                return eventHtml;
+            }
+            return '';
         },
         showStatus: true,
         showActions: true,
@@ -153,6 +172,69 @@ function updateStatusBar() {
 
 
 
+function generateEvent() {
+    // Calculate probability of safety incident based on doom level squared
+    const safetyIncidentChance = Math.pow(gameState.doomLevel, 2) / 100;
+    
+    if (Math.random() * 100 < safetyIncidentChance) {
+        // Safety incident occurs
+        gameState.safetyIncidentCount++;
+        const fine = gameState.safetyIncidentCount;
+        
+        const incidents = [
+            "A training run goes wrong and the AI starts optimizing for something unexpected, requiring emergency shutdown.",
+            "Researchers discover the model has been giving subtly misleading answers in safety evaluations.",
+            "An AI system exhibits concerning emergent behavior that wasn't anticipated during development.",
+            "A safety researcher raises concerns about potential deceptive alignment in the latest model.",
+            "The AI demonstrates unexpected capability gains that outpace safety measures.",
+            "Internal testing reveals the model can convincingly argue for harmful actions when prompted carefully.",
+            "A whistleblower leaks concerning internal safety discussions to the media."
+        ];
+        
+        const randomIncident = incidents[Math.floor(Math.random() * incidents.length)];
+        
+        return {
+            type: 'safety-incident',
+            text: `${randomIncident} The incident draws regulatory scrutiny and ${gameState.companyName} is fined $${fine}B. Your legal team recommends increased safety measures.`,
+            fine: fine
+        };
+    } else {
+        // Nothing event
+        const nothingEvents = [
+            "Development proceeds smoothly this month with steady progress across all teams.",
+            "A competitor announces a new model, but early benchmarks suggest it's not a major leap forward.",
+            "The AI safety community publishes new research papers that your team reviews for insights.",
+            "A tech conference generates buzz about AI progress, but no major announcements affect your position.",
+            "Your engineering team optimizes training infrastructure, leading to modest efficiency gains.",
+            "Industry analysts publish reports on AI progress, placing your company among the leading developers.",
+            "A university partnership provides access to new talent and research collaborations.",
+            "Your PR team successfully manages media coverage of your latest model release.",
+            "The board of directors expresses confidence in the company's strategic direction.",
+            "International governments continue discussions about AI regulation, but no new policies are announced."
+        ];
+        
+        const randomNothing = nothingEvents[Math.floor(Math.random() * nothingEvents.length)];
+        
+        return {
+            type: 'nothing',
+            text: randomNothing
+        };
+    }
+}
+
+function finishTurn() {
+    if (!gameState.selectedAllocation) {
+        alert('Please select a resource allocation first.');
+        return;
+    }
+    
+    // Apply the selected allocation
+    allocateResources(gameState.selectedAllocation);
+    
+    // Clear selection for next turn
+    gameState.selectedAllocation = null;
+}
+
 function allocateResources(resourceType) {
     // Calculate corporate resources for this turn (expires if not used)
     const corporateResources = calculateResources();
@@ -183,6 +265,11 @@ function allocateResources(resourceType) {
     // Increase open-source AI level
     gameState.opensourceAILevel += Math.floor(Math.sqrt(Math.max(1, gameState.opensourceAILevel / 8)));
     
+    // Apply event effects if there was a safety incident
+    if (gameState.currentEvent && gameState.currentEvent.type === 'safety-incident') {
+        gameState.money = Math.max(0, gameState.money - gameState.currentEvent.fine);
+    }
+    
     // Advance turn
     gameState.currentTurn++;
     const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -191,6 +278,9 @@ function allocateResources(resourceType) {
     if (monthIndex === 0 && gameState.currentTurn > 1) {
         gameState.currentYear++;
     }
+    
+    // Generate new event for next turn
+    gameState.currentEvent = generateEvent();
     
     updateStatusBar();
     
@@ -365,6 +455,9 @@ function resetGameState() {
     gameState.currentYear = 2026;
     gameState.money = 1;
     gameState.gameOverReason = null;
+    gameState.currentEvent = null;
+    gameState.safetyIncidentCount = 0;
+    gameState.selectedAllocation = null;
 }
 
 function calculateEndGameScore() {
@@ -488,23 +581,78 @@ async function showPage(pageId) {
         const actionsPanel = document.createElement('div');
         actionsPanel.className = 'actions-panel';
         
-        page.actions.forEach(action => {
-            const btn = document.createElement('button');
-            btn.className = 'button';
-            btn.textContent = action;
-            btn.style.display = 'block';
-            btn.style.margin = '10px 0';
-            btn.style.width = '100%';
-            btn.style.fontFamily = "'Courier New', Courier, monospace";
-            btn.onclick = () => {
-                allocateResources(action);
+        actionsPanel.style.display = 'grid';
+        actionsPanel.style.gridTemplateColumns = 'repeat(auto-fit, minmax(250px, 1fr))';
+        actionsPanel.style.gap = '10px';
+        actionsPanel.style.margin = '20px 0';
+        
+        page.actions.forEach((action, index) => {
+            const label = document.createElement('label');
+            label.style.display = 'flex';
+            label.style.alignItems = 'center';
+            label.style.padding = '15px';
+            label.style.border = '2px solid #007cba';
+            label.style.borderRadius = '8px';
+            label.style.cursor = 'pointer';
+            label.style.fontFamily = "'Courier New', Courier, monospace";
+            label.style.backgroundColor = '#f8f9fa';
+            label.style.transition = 'all 0.2s';
+            
+            const radio = document.createElement('input');
+            radio.type = 'radio';
+            radio.name = 'allocation';
+            radio.value = action;
+            radio.style.marginRight = '10px';
+            radio.style.transform = 'scale(1.2)';
+            
+            // Set AI R&D as default selection
+            if (!gameState.selectedAllocation && index === 0) {
+                gameState.selectedAllocation = action;
+            }
+            
+            if (gameState.selectedAllocation === action) {
+                radio.checked = true;
+                label.style.backgroundColor = '#e3f2fd';
+                label.style.borderColor = '#1976d2';
+            }
+            
+            radio.onchange = () => {
+                if (radio.checked) {
+                    gameState.selectedAllocation = action;
+                    // Update UI to show selection
+                    showPage('main-game');
+                }
             };
-            actionsPanel.appendChild(btn);
+            
+            label.onmouseover = () => {
+                if (!radio.checked) {
+                    label.style.backgroundColor = '#e8f4fd';
+                }
+            };
+            
+            label.onmouseout = () => {
+                if (!radio.checked) {
+                    label.style.backgroundColor = '#f8f9fa';
+                }
+            };
+            
+            const text = document.createElement('span');
+            text.textContent = action;
+            
+            label.appendChild(radio);
+            label.appendChild(text);
+            actionsPanel.appendChild(label);
         });
         
         
-        
         contentDiv.appendChild(actionsPanel);
+        
+        // Add custom content after actions (like events)
+        if (page.customContent) {
+            const customDiv = document.createElement('div');
+            customDiv.innerHTML = page.customContent();
+            contentDiv.appendChild(customDiv);
+        }
     }
 
     // Set buttons
@@ -593,6 +741,9 @@ async function showPage(pageId) {
     }
 }
 
+
+// Make functions globally accessible
+window.finishTurn = finishTurn;
 
 // Initialize the game
 document.addEventListener('DOMContentLoaded', function() {
