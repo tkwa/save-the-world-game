@@ -57,7 +57,7 @@ Plot ideas
   * Robotics -> nuclear weapons -> pure fusion weapons?
 
 ### Events
-* Sanctions: always occurs iff Sanctions status effect. Halves income, rounded up. Remove (-$3, -3 DP)
+* Sanctions: always occurs iff Sanctions status effect. Resources are halved rounded up. Remove (-$3, -3 DP)
 * Safety incident: Chance is equal to XL^2. Player is fined $k on the k'th occurence
 * Nothing-- flavor text only
 * Model release-- occurs every 3 turns; proceed (+$, can backfire with low safety level), or wait
@@ -75,7 +75,7 @@ Plot ideas
 DSA track: 
 Nation-states are more powerful than even the largest companies. An entity must meet four conditions to be classified as a state: sovereign territory, an economic base, military power, and international recognition. 
 * Nuclear weapons (requires Product breakthrough (robotics)): The US government normally tries extremely hard to prevent unauthorized actors from building nuclear weapons, but global crises mean that it no longer has the capacity. In its robotics business, [name] encounters the materials and manufacturing. Developing a nuclear device would give [name] true independence against needless regulation. Proceed (-2 PP, -2 DP, 50% chance of sanctions, +3 XL) / Decline
-* Seek UN Recognition (requires Overseas datacenter, income >= 6, Nuclear weapons): Forced choice, 1.5x monthly income, doubles monthly DP per $.
+* Seek UN Recognition (requires Overseas datacenter, resources >= 6, Nuclear weapons): Forced choice, 1.5x monthly resources, doubles monthly DP per resource.
 * Missile defense (requires UN Recognition): Nuclear-armed states like the US and Russia pose a serious problem for [name]'s security, as their missiles can threaten its datacenters from thousands of kilometers away. However, a combination of cyberweapons and interceptor drones can mitigate this risk.  Proceed (50% chance of sanctions, +5 XL) / Decline
 * Decisive strategic advantage (requires Missile defense, AL > OL + 20): [name]'s lead in both general AI and military technology could allow it to establish global hegemony. However, this will require giving its frontier model complete control over weapon systems. If the model is misaligned, there is no turning back. Proceed (Leads to end screen with AL immediately set to 100) / Not yet
 

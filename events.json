@@ -1,0 +1,99 @@
+{
+  "safetyIncidents": {
+    "type": "safety-incident",
+    "weight": 1,
+    "text_versions": [
+      "A training run goes wrong and the AI starts optimizing for something unexpected, requiring emergency shutdown.",
+      "Researchers discover the model has been giving subtly misleading answers in safety evaluations.",
+      "An AI system exhibits concerning emergent behavior that wasn't anticipated during development.",
+      "A safety researcher raises concerns about potential deceptive alignment in the latest model.",
+      "The AI demonstrates unexpected capability gains that outpace safety measures.",
+      "Internal testing reveals the model can convincingly argue for harmful actions when prompted carefully.",
+      "A whistleblower leaks concerning internal safety discussions to the media."
+    ]
+  },
+  "defaultEvents": [
+    {
+      "type": "nothing",
+      "weight": 3,
+      "text_versions": [
+        "Development proceeds smoothly this month with steady progress across all teams.",
+        "A competitor announces a new model, but early benchmarks suggest it's not a major leap forward.",
+        "The AI safety community publishes new research papers that your team reviews for insights.",
+        "A tech conference generates buzz about AI progress, but no major announcements affect your position.",
+        "Your engineering team optimizes training infrastructure, leading to modest efficiency gains.",
+        "Industry analysts publish reports on AI progress, placing your company among the leading developers.",
+        "A university partnership provides access to new talent and research collaborations.",
+        "Your PR team successfully manages media coverage of your latest model release.",
+        "The board of directors expresses confidence in the company's strategic direction.",
+        "International governments continue discussions about AI regulation, but no new policies are announced."
+      ]
+    },
+    {
+      "type": "product-breakthrough-medicine",
+      "weight": 1,
+      "text_versions": [
+        "Your AI research team makes a breakthrough in drug discovery, identifying promising compounds for treating rare diseases. However, developing this technology will require significant resources."
+      ],
+      "choices": [
+        {
+          "text": "Research (-4 Product Points, +$1B/turn)",
+          "action": "accept",
+          "cost": { "productPoints": 4 },
+          "benefit": { "incomeBonus": 1 },
+          "result_text": "Your team begins developing the drug discovery platform. The AI-powered system shows remarkable promise in identifying novel therapeutic compounds. Early partnerships with pharmaceutical companies generate significant revenue streams."
+        },
+        {
+          "text": "Decline",
+          "action": "decline",
+          "result_text": "You decide the resources are better allocated elsewhere. The research team redirects their efforts to core AI development, though some members express disappointment at the missed opportunity."
+        }
+      ]
+    },
+    {
+      "type": "product-breakthrough-robotics",
+      "weight": 1,
+      "text_versions": [
+        "Your team develops advanced robotic systems with potential military and civilian applications. The technology could generate substantial revenue but requires investment to commercialize."
+      ],
+      "choices": [
+        {
+          "text": "Research (-4 Product Points, +$1B/turn)",
+          "action": "accept",
+          "cost": { "productPoints": 4 },
+          "benefit": { "incomeBonus": 1 },
+          "result_text": "Your robotics division accelerates development of the new systems. The technology proves highly versatile, with applications ranging from manufacturing automation to specialized defense contracts. Revenue begins flowing in steadily."
+        },
+        {
+          "text": "Decline",
+          "action": "decline",
+          "result_text": "You choose to focus on core AI capabilities rather than diversifying into robotics. The team accepts the decision, though some engineers move to competitor companies to pursue robotics applications."
+        }
+      ]
+    },
+    {
+      "type": "nuclear-weapons",
+      "weight": 1,
+      "requires": ["product-breakthrough-robotics"],
+      "oneTime": true,
+      "text_versions": [
+        "The US government normally tries extremely hard to prevent unauthorized actors from building nuclear weapons, but global crises mean that it no longer has the capacity for enforcement. In its robotics business, your company has encountered the materials and manufacturing knowledge needed. Developing a nuclear device would give your company true independence against needless regulation."
+      ],
+      "choices": [
+        {
+          "text": "Proceed (-2 Product Points, -2 Diplomacy, 50% chance of sanctions, +3 Doom)",
+          "action": "accept",
+          "cost": { "productPoints": 2, "diplomacyPoints": 2 },
+          "risk": { "sanctions": 0.5 },
+          "penalty": { "doomLevel": 3 },
+          "result_text": "Your team begins the secretive nuclear weapons program. The project advances rapidly thanks to your robotics expertise and AI-assisted design. International intelligence agencies remain unaware for now, but the development fundamentally changes your company's position in global politics."
+        },
+        {
+          "text": "Decline",
+          "action": "decline",
+          "result_text": "You decide that nuclear weapons development is too risky and would compromise your company's mission. The team redirects their robotics expertise toward civilian applications, though some staff express concerns about remaining vulnerable to government regulation."
+        }
+      ]
+    }
+  ]
+}
