@@ -5,7 +5,8 @@ const gameState = {
     // AI Information
     playerAILevel: 10,
     doomLevel: 20,
-    opensourceAILevel: 2,
+    competitorAILevels: [2, 1, 1], // Top 3 competitors in descending order
+    competitorNames: [], // Will be set during game setup
 
     // Corporate Divisions
     diplomacyPoints: 0,
@@ -56,6 +57,15 @@ const storyContent = {
             // Randomly assign company
             const companies = ["OpenAI", "Anthropic", "Google", "Amazon", "Tencent", "xAI"];
             gameState.companyName = companies[Math.floor(Math.random() * companies.length)];
+            
+            // Assign competitor companies (excluding player's company)
+            const remainingCompanies = companies.filter(c => c !== gameState.companyName);
+            gameState.competitorNames = [];
+            for (let i = 0; i < 3; i++) {
+                const randomIndex = Math.floor(Math.random() * remainingCompanies.length);
+                gameState.competitorNames.push(remainingCompanies.splice(randomIndex, 1)[0]);
+            }
+            
             gameState.currentTurn = 1;
             gameState.currentMonth = "January";
             gameState.currentYear = 2026;
@@ -211,13 +221,73 @@ const storyContent = {
     },
 };
 
+function generateAICapabilitiesTooltip() {
+    // Create ranking array with all companies
+    const ranking = [
+        { name: gameState.companyName || 'Company', level: gameState.playerAILevel, isPlayer: true },
+        { name: gameState.competitorNames[0] || 'Competitor 1', level: gameState.competitorAILevels[0], isPlayer: false },
+        { name: gameState.competitorNames[1] || 'Competitor 2', level: gameState.competitorAILevels[1], isPlayer: false },
+        { name: gameState.competitorNames[2] || 'Competitor 3', level: gameState.competitorAILevels[2], isPlayer: false }
+    ];
+    
+    // Sort by level descending
+    ranking.sort((a, b) => b.level - a.level);
+    
+    // Generate ranking text
+    const rankingText = ranking.map((company, index) => {
+        const rank = index + 1;
+        const companyText = company.isPlayer ? `<strong>${company.name}</strong>` : company.name;
+        return `${rank}. ${companyText}: ${company.level}`;
+    }).join('<br>');
+    
+    return `AI capabilities level determines how much cognitive labor is available to companies each turn. <strong style="color: #ff6b6b;">ASI</strong> is achieved when one company reaches 1000 capabilities. The current ranking is:<br><br>${rankingText}`;
+}
+
+function getAIRisksByCapability(capabilityLevel) {
+    if (capabilityLevel < 16) {
+        return ["spam generation", "basic misinformation"];
+    } else if (capabilityLevel < 32) {
+        return ["cyberattacks", "mass disinformation campaigns"];
+    } else if (capabilityLevel < 64) {
+        return ["autonomous killer drones", "coordinated social media manipulation"];
+    } else if (capabilityLevel < 128) {
+        return ["economic market manipulation", "deepfake-assisted fraud"];
+    } else if (capabilityLevel < 256) {
+        return ["automated propaganda warfare", "AI-assisted political coups"];
+    } else if (capabilityLevel < 512) {
+        return ["bioweapons design", "totalitarian surveillance states"];
+    } else {
+        return ["world takeover when company-assisted", "complete human obsolescence"];
+    }
+}
+
+function generateRogueAIRiskTooltip() {
+    const riskPercent = gameState.doomLevel;
+    const monthlyIncidentChance = Math.pow(riskPercent / 100, 2) * 100;
+    const companyName = gameState.companyName || 'your company';
+    
+    // Get current capability frontier (highest AI level)
+    const capabilityFrontier = Math.max(gameState.playerAILevel, ...gameState.competitorAILevels);
+    const currentRisks = getAIRisksByCapability(capabilityFrontier);
+    
+    // Apply same color logic as status bar: red if >50%, amber if >15%, otherwise white
+    let riskColor = '#e0e0e0';
+    if (riskPercent > 50) {
+        riskColor = '#ff6b6b';
+    } else if (riskPercent > 15) {
+        riskColor = '#ffa726';
+    }
+    
+    return `Current AI systems are capable of harms like <strong>${currentRisks[0]}</strong> and <strong>${currentRisks[1]}</strong>, and <strong style="color: #ff6b6b;">ASI</strong> could threaten humanity as a whole. Currently the risk of <strong style="color: ${riskColor};">${riskPercent}%</strong> means:<br>- <strong style="color: ${riskColor};">${riskPercent}%</strong> chance of existential risk at game end<br>- ${riskPercent}%² = <strong style="color: ${riskColor};">${monthlyIncidentChance.toFixed(1)}%</strong> monthly chance of ${companyName} safety incident.`;
+}
+
 function updateStatusBar() {
     // AI Information
     const playerAIElement = document.getElementById('player-ai-level');
     playerAIElement.textContent = gameState.playerAILevel;
     playerAIElement.style.fontWeight = 'bold';
-    // Red if less than open source AI level
-    playerAIElement.style.color = gameState.playerAILevel < gameState.opensourceAILevel ? '#ff6b6b' : '#e0e0e0';
+    // Red if less than top competitor AI level
+    playerAIElement.style.color = gameState.playerAILevel < gameState.competitorAILevels[0] ? '#ff6b6b' : '#e0e0e0';
     
     const doomElement = document.getElementById('doom-level');
     doomElement.textContent = `${gameState.doomLevel}%`;
@@ -231,23 +301,48 @@ function updateStatusBar() {
         doomElement.style.color = '#e0e0e0';
     }
     
-    // Make "Rogue AI Risk" label red and bold if >75%
+    // Make "Rogue AI Risk" label red and bold if >75%, otherwise just bold
     const doomLabelElement = document.getElementById('doom-label');
     if (gameState.doomLevel > 75) {
         doomLabelElement.style.color = '#ff6b6b';
         doomLabelElement.style.fontWeight = 'bold';
     } else {
         doomLabelElement.style.color = '#e0e0e0';
-        doomLabelElement.style.fontWeight = 'normal';
+        doomLabelElement.style.fontWeight = 'bold';
     }
     
-    const opensourceElement = document.getElementById('opensource-ai-level');
-    opensourceElement.textContent = gameState.opensourceAILevel;
-    opensourceElement.style.fontWeight = 'bold';
-    opensourceElement.style.color = '#e0e0e0';
+    const competitor1Element = document.getElementById('competitor1-ai-level');
+    competitor1Element.textContent = gameState.competitorAILevels[0];
+    competitor1Element.style.fontWeight = 'bold';
+    competitor1Element.style.color = '#e0e0e0';
+    
+    const competitor2Element = document.getElementById('competitor2-ai-level');
+    competitor2Element.textContent = gameState.competitorAILevels[1];
+    competitor2Element.style.fontWeight = 'bold';
+    competitor2Element.style.color = '#e0e0e0';
+    
+    const competitor3Element = document.getElementById('competitor3-ai-level');
+    competitor3Element.textContent = gameState.competitorAILevels[2];
+    competitor3Element.style.fontWeight = 'bold';
+    competitor3Element.style.color = '#e0e0e0';
 
     // Company Divisions
     document.getElementById('company-name-header').textContent = gameState.companyName || 'Company';
+    
+    // Update company name in AI section
+    document.getElementById('company-name-ai').textContent = gameState.companyName || 'Company';
+    
+    // Update AI capabilities tooltip
+    const tooltipElement = document.getElementById('ai-capabilities-tooltip');
+    if (tooltipElement) {
+        tooltipElement.innerHTML = generateAICapabilitiesTooltip();
+    }
+    
+    // Update Rogue AI Risk tooltip
+    const riskTooltipElement = document.getElementById('rogue-ai-risk-tooltip');
+    if (riskTooltipElement) {
+        riskTooltipElement.innerHTML = generateRogueAIRiskTooltip();
+    }
     
     const moneyElement = document.getElementById('money');
     moneyElement.textContent = `$${gameState.money}B`;
@@ -302,8 +397,11 @@ async function finishTurn() {
 
 async function advanceTurn() {
 
-    // Increase open-source AI level
-    gameState.opensourceAILevel += Math.floor(Math.sqrt(Math.max(1, gameState.opensourceAILevel / 8)));
+    // Increase competitor AI levels
+    gameState.competitorAILevels = gameState.competitorAILevels.map(level => 
+        level + Math.floor(Math.sqrt(Math.max(1, level / 8))));
+    // Sort to maintain descending order
+    gameState.competitorAILevels.sort((a, b) => b - a);
 
     // Apply overseas datacenter bonus
     if (gameState.aiLevelPerTurn) {
@@ -348,7 +446,7 @@ async function advanceTurn() {
         return;
     }
 
-    if (gameState.playerAILevel >= 100 || gameState.opensourceAILevel >= 100) {
+    if (gameState.playerAILevel >= 1000 || gameState.competitorAILevels[0] >= 1000) {
         gameState.gameOverReason = 'ai-singularity';
         showPage('end-game');
         return;
@@ -484,7 +582,7 @@ function refreshEvalsDisplay() {
 
 function calculateResources() {
     // Formula from README: floor(sqrt(max(1, AL - OL)))
-    let baseResources = Math.floor(Math.sqrt(Math.max(1, gameState.opensourceAILevel / 4, gameState.playerAILevel - gameState.opensourceAILevel)));
+    let baseResources = Math.floor(Math.sqrt(Math.max(1, gameState.competitorAILevels[0] / 4, gameState.playerAILevel - gameState.competitorAILevels[0])));
 
     // Apply UN recognition multiplier
     if (gameState.resourceMultiplier) {
@@ -554,7 +652,8 @@ function applyResourceAllocation(resourceType, corporateResources) {
 function resetGameState() {
     gameState.playerAILevel = 10;
     gameState.doomLevel = 20;
-    gameState.opensourceAILevel = 2;
+    gameState.competitorAILevels = [2, 1, 1]; // Top 3 competitors in descending order
+    gameState.competitorNames = []; // Will be set during game setup
     gameState.diplomacyPoints = 0;
     gameState.productPoints = 0;
     gameState.safetyPoints = 0;
@@ -602,15 +701,15 @@ function calculateEndGameScore() {
     } else if (gameState.gameOverReason === 'ai-singularity' || gameState.gameOverReason === 'dsa-singularity') {
         resultText = "The singularity has arrived. ";
 
-        narrow_race = Math.min(gameState.playerAILevel, gameState.opensourceAILevel) >= 90;
+        narrow_race = Math.min(gameState.playerAILevel, gameState.competitorAILevels[0]) >= 900;
         if (gameState.playerAILevel >= 100) {
-            resultText += narrow_race ? "You achieved ASI first. " : "You achieved ASI first, but open-source AI was close behind. ";
+            resultText += narrow_race ? "You achieved ASI first. " : "You achieved ASI first, but competitor AI was close behind. ";
         } else {
-            resultText += "Open-source AI achieved ASI first. ";
+            resultText += "Competitor AI achieved ASI first. ";
         }
 
         // Calculate galaxy splits based on README formula
-        const playerShare = Math.max(0, Math.min(100, gameState.playerAILevel - gameState.opensourceAILevel));
+        const playerShare = Math.max(0, Math.min(100, gameState.playerAILevel - gameState.competitorAILevels[0]));
         const otherShare = 100 - playerShare;
 
         // Roll for misalignment using doom level as probability
@@ -727,7 +826,7 @@ async function showPage(pageId) {
 
         // Show sanctions calculation if active
         if (gameState.hasSanctions) {
-            const baseResources = Math.floor(Math.sqrt(Math.max(1, gameState.opensourceAILevel / 4, gameState.playerAILevel - gameState.opensourceAILevel)));
+            const baseResources = Math.floor(Math.sqrt(Math.max(1, gameState.competitorAILevels[0] / 4, gameState.playerAILevel - gameState.competitorAILevels[0])));
             const multipliedResources = gameState.resourceMultiplier ? Math.floor(baseResources * gameState.resourceMultiplier) : baseResources;
             headerDiv.textContent = `You have ${corporateResources} Resources (${multipliedResources} resources x 50% sanctions factor) to allocate this turn:`;
         } else {

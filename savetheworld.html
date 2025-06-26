@@ -83,6 +83,35 @@
         strong {
             color: #f0f0f0;
         }
+        .tooltip {
+            position: relative;
+            cursor: help;
+        }
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 400px;
+            background-color: #2d2d2d;
+            color: #e0e0e0;
+            text-align: left;
+            border-radius: 6px;
+            padding: 15px;
+            border: 1px solid #555;
+            position: absolute;
+            z-index: 1000;
+            top: 100%;
+            left: 50%;
+            margin-left: -200px;
+            margin-top: 10px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 14px;
+            line-height: 1.4;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
@@ -93,10 +122,17 @@
         <div id="status-bar" class="status-bar">
             <div class="status-columns">
                 <div class="status-column">
-                    <strong>AI Information</strong><br>
-                    Player AI Level: <span id="player-ai-level">10</span><br>
-                    Open-source AI: <span id="opensource-ai-level">2</span><br>
-                    <span id="doom-label">Rogue AI Risk</span>: <span id="doom-level">20%</span>
+                    <div class="tooltip" id="ai-capabilities-section">
+                        <strong>AI Capabilities</strong><br>
+                        <span id="company-name-ai">Company</span> AI: <span id="player-ai-level">10</span><br>
+                        Competitors: <span id="competitor1-ai-level">2</span>,<span id="competitor2-ai-level">1</span>,<span id="competitor3-ai-level">1</span>
+                        <span class="tooltiptext" id="ai-capabilities-tooltip"></span>
+                    </div>
+                    <br>
+                    <div class="tooltip" id="rogue-ai-risk-section">
+                        <strong><span id="doom-label">Rogue AI Risk</span></strong>: <span id="doom-level">20%</span>
+                        <span class="tooltiptext" id="rogue-ai-risk-tooltip"></span>
+                    </div>
                 </div>
                 <div class="status-column">
                     <strong><span id="company-name-header">Company</span> Resources</strong><br>
