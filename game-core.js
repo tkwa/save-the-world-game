@@ -682,7 +682,6 @@ async function showPage(pageId) {
     // Add actions panel if present
     if (page.showActions && page.actions) {
         const actionsPanel = document.createElement('div');
-        actionsPanel.className = 'actions-panel';
 
         // Add resource allocation header
         const corporateResources = calculateResources();
