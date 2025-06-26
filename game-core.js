@@ -51,7 +51,7 @@ const storyContent = {
         ]
     },
     "game-setup": {
-        title: "Starting Game",
+        title: "January 2026",
         text: async function() {
             // Randomly assign company
             const companies = ["OpenAI", "Anthropic", "Google", "Amazon", "Tencent", "xAI"];
@@ -61,7 +61,7 @@ const storyContent = {
             gameState.currentYear = 2026;
             // Generate first event
             gameState.currentEvent = await generateEvent();
-            return `You are now the CEO of ${gameState.companyName}. The race to AGI begins now.`;
+            return `The AI race has reached a critical juncture. As CEO of ${gameState.companyName}, you face an impossible dilemma: move too slowly on capabilities and competitors will achieve AGI first, leaving your company behind while their potentially misaligned systems reshape the world. Move too quickly and you risk building misaligned systems yourself that could destroy everything. Every month brings new choices between advancing your AI, strengthening safety measures, building products for revenue, or engaging in diplomacy. Success requires threading the needle between competitive survival and existential safety.`;
         },
         showStatus: false,
         buttons: [
@@ -70,7 +70,7 @@ const storyContent = {
     },
     "main-game": {
         title: function() {
-            return `Turn ${gameState.currentTurn || 1} (${gameState.currentMonth || 'January'} ${gameState.currentYear || 2026})`;
+            return `${gameState.currentMonth || 'January'} ${gameState.currentYear || 2026}`;
         },
         text: function() {
             if (gameState.currentTurn === 1) {
@@ -83,7 +83,6 @@ const storyContent = {
             // Show current event after resource allocation
             if (gameState.currentEvent) {
                 let eventHtml = `<div style="border-top: 2px solid #555; padding-top: 20px; margin-top: 20px;">`;
-                eventHtml += `<h3 style="color: #f0f0f0; margin-bottom: 15px;">📰 Monthly Event</h3>`;
                 eventHtml += `<p style="color: #d0d0d0; margin-bottom: 15px;">${gameState.currentEvent.text}</p>`;
                 
                 if (gameState.currentEvent.showResult && gameState.currentEvent.resultText) {
@@ -93,7 +92,12 @@ const storyContent = {
                 } else if (gameState.currentEvent.choices && gameState.currentEvent.choices.length > 0) {
                     // Event has choices - show them as buttons
                     gameState.currentEvent.choices.forEach((choice, index) => {
-                        eventHtml += `<button class="button" onclick="handleEventChoice(${index})" style="margin: 5px 5px 5px 0;">${choice.text}</button>`;
+                        const canAfford = canAffordChoice(choice);
+                        const buttonStyle = canAfford ? 
+                            `margin: 5px 5px 5px 0;` : 
+                            `margin: 5px 5px 5px 0; background-color: #666; cursor: not-allowed; opacity: 0.6;`;
+                        const onclick = canAfford ? `handleEventChoice(${index})` : '';
+                        eventHtml += `<button class="button" onclick="${onclick}" style="${buttonStyle}">${choice.text}</button>`;
                     });
                 } else {
                     // No choices - just next turn button
@@ -108,11 +112,11 @@ const storyContent = {
         showStatus: true,
         showActions: true,
         actions: [
-            "AI R&D (+AI Level, +Doom)", 
-            "Diplomacy R&D (+Diplomacy)",
-            "Product R&D (+Product)", 
-            "Safety R&D (+Safety, -Doom)",
-            "Save (+$)"
+            "ai-rd", 
+            "diplomacy",
+            "product", 
+            "safety-rd",
+            "revenue"
         ],
     },
     "end-game": {
@@ -194,14 +198,11 @@ function updateStatusBar() {
 async function finishTurn() {
     // Ensure there's always a default selection (AI R&D)
     if (!gameState.selectedAllocation) {
-        gameState.selectedAllocation = "AI R&D (+AI Level, +Doom)";
+        gameState.selectedAllocation = "ai-rd";
     }
     
     // Apply the selected allocation
     await allocateResources(gameState.selectedAllocation);
-    
-    // Clear selection for next turn
-    gameState.selectedAllocation = null;
 }
 
 async function allocateResources(resourceType) {
@@ -209,23 +210,23 @@ async function allocateResources(resourceType) {
     const corporateResources = calculateResources();
     
     switch(resourceType) {
-        case 'AI R&D (+AI Level, +Doom)':
+        case 'ai-rd':
             gameState.playerAILevel += corporateResources;
             gameState.doomLevel += corporateResources;
             break;
-        case 'Diplomacy R&D (+Diplomacy)':
+        case 'diplomacy':
             gameState.diplomacyPoints += corporateResources;
             break;
-        case 'Product R&D (+Product)':
+        case 'product':
             gameState.productPoints += corporateResources;
             break;
-        case 'Safety R&D (+Safety, -Doom)':
+        case 'safety-rd':
             gameState.safetyPoints += corporateResources;
             // Each SP decreases XL by 3% (relative reduction)
             const reductionFactor = 1 - (corporateResources * 0.03);
             gameState.doomLevel = Math.floor(gameState.doomLevel * Math.max(0, reductionFactor));
             break;
-        case 'Save (+$)':
+        case 'revenue':
             // Convert corporate resources to saved money
             gameState.money += corporateResources;
             break;
@@ -258,6 +259,9 @@ async function allocateResources(resourceType) {
     
     // Generate new event for next turn
     gameState.currentEvent = await generateEvent();
+    
+    // Clear selection for next turn (after everything is processed)
+    gameState.selectedAllocation = null;
     
     updateStatusBar();
     
@@ -417,6 +421,32 @@ function calculateResources() {
     }
     
     return baseResources;
+}
+
+function generateActionLabels(resources) {
+    return [
+        `AI R&D (+${resources} AI Level, +${resources} Risk)`,
+        `+${resources} Diplomacy`,
+        `+${resources} Product`,
+        `Safety R&D (+${resources} Safety, -${Math.floor(resources * 3)}% Risk)`,
+        `Revenue (+$${resources}B)`
+    ];
+}
+
+function canAffordChoice(choice) {
+    if (!choice.cost) return true;
+    
+    if (choice.cost.productPoints && gameState.productPoints < choice.cost.productPoints) {
+        return false;
+    }
+    if (choice.cost.diplomacyPoints && gameState.diplomacyPoints < choice.cost.diplomacyPoints) {
+        return false;
+    }
+    if (choice.cost.money && gameState.money < choice.cost.money) {
+        return false;
+    }
+    
+    return true;
 }
 
 function resetGameState() {
@@ -598,7 +628,7 @@ async function showPage(pageId) {
         if (gameState.hasSanctions) {
             const baseResources = Math.floor(Math.sqrt(Math.max(1, gameState.opensourceAILevel / 4, gameState.playerAILevel - gameState.opensourceAILevel)));
             const multipliedResources = gameState.resourceMultiplier ? Math.floor(baseResources * gameState.resourceMultiplier) : baseResources;
-            headerDiv.textContent = `You have ${corporateResources} resources (${multipliedResources} resources x 50% sanctions factor) to allocate this turn:`;
+            headerDiv.textContent = `You have ${corporateResources} Resources (${multipliedResources} resources x 50% sanctions factor) to allocate this turn:`;
         } else {
             headerDiv.textContent = `You have ${corporateResources} resources to allocate this turn:`;
         }
@@ -610,7 +640,15 @@ async function showPage(pageId) {
         radioContainer.style.gridTemplateColumns = 'repeat(auto-fit, minmax(200px, 1fr))';
         radioContainer.style.gap = '5px';
         
-        page.actions.forEach((action, index) => {
+        // Set AI R&D as default selection if none exists
+        if (!gameState.selectedAllocation) {
+            gameState.selectedAllocation = page.actions[0];
+        }
+        
+        // Generate action labels with actual resource numbers
+        const actionLabels = generateActionLabels(corporateResources);
+        
+        actionLabels.forEach((actionLabel, index) => {
             const label = document.createElement('label');
             label.style.display = 'flex';
             label.style.alignItems = 'center';
@@ -622,29 +660,25 @@ async function showPage(pageId) {
             const radio = document.createElement('input');
             radio.type = 'radio';
             radio.name = 'allocation';
-            radio.value = action;
+            radio.value = page.actions[index]; // Use the action key, not the label
             radio.style.marginRight = '10px';
             radio.style.transform = 'scale(1.2)';
             
-            // Set AI R&D as default selection
-            if (!gameState.selectedAllocation && index === 0) {
-                gameState.selectedAllocation = action;
-            }
-            
-            if (gameState.selectedAllocation === action) {
+            // Check if this radio button should be selected
+            if (gameState.selectedAllocation === page.actions[index]) {
                 radio.checked = true;
             }
             
             radio.onchange = () => {
                 if (radio.checked) {
-                    gameState.selectedAllocation = action;
+                    gameState.selectedAllocation = page.actions[index];
                     // Update UI to show selection
                     showPage('main-game');
                 }
             };
             
             const text = document.createElement('span');
-            text.textContent = action;
+            text.textContent = actionLabel;
             
             label.appendChild(radio);
             label.appendChild(text);
@@ -779,28 +813,13 @@ async function handleEventChoice(choiceIndex) {
         // Apply costs and benefits
         if (choice.cost) {
             if (choice.cost.productPoints) {
-                if (gameState.productPoints >= choice.cost.productPoints) {
-                    gameState.productPoints -= choice.cost.productPoints;
-                } else {
-                    alert(`Insufficient Product Points. Need ${choice.cost.productPoints}, have ${gameState.productPoints}.`);
-                    return;
-                }
+                gameState.productPoints -= choice.cost.productPoints;
             }
             if (choice.cost.diplomacyPoints) {
-                if (gameState.diplomacyPoints >= choice.cost.diplomacyPoints) {
-                    gameState.diplomacyPoints -= choice.cost.diplomacyPoints;
-                } else {
-                    alert(`Insufficient Diplomacy Points. Need ${choice.cost.diplomacyPoints}, have ${gameState.diplomacyPoints}.`);
-                    return;
-                }
+                gameState.diplomacyPoints -= choice.cost.diplomacyPoints;
             }
             if (choice.cost.money) {
-                if (gameState.money >= choice.cost.money) {
-                    gameState.money -= choice.cost.money;
-                } else {
-                    alert(`Insufficient Money. Need $${choice.cost.money}B, have $${gameState.money}B.`);
-                    return;
-                }
+                gameState.money -= choice.cost.money;
             }
         }
         
