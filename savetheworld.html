@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Save the World - AI Timeline Interactive Story</title>
+    <title>Critical Path - AI Strategy Game</title>
     <style>
         body {
             font-family: 'Courier New', Courier, monospace;
@@ -67,13 +67,6 @@
             padding: 20px;
             margin: 20px 0;
         }
-        .date-controls {
-            text-align: center;
-            margin: 10px 0;
-        }
-        .date-controls .button {
-            margin: 5px;
-        }
         h1 {
             color: #333;
             text-align: center;
@@ -82,38 +75,32 @@
 </head>
 <body>
     <div class="container">
-        <h1>Save the World</h1>
-        <p style="text-align: center; color: #666;">An Interactive AI Timeline Story</p>
+        <h1>Critical Path</h1>
+        <p style="text-align: center; color: #666;">AI Strategy Game</p>
         
         <div id="status-bar" class="status-bar">
             <div class="status-columns">
                 <div class="status-column">
-                    <strong>Geopolitics:</strong><br>
-                    Hype: <span id="hype">5</span>/10<br>
-                    US Lead: <span id="us-lead">60.0</span> days<br>
-                    US Mood: <span id="us-mood">Dovish</span>
+                    <strong>AI Information:</strong><br>
+                    Player AI Level: <span id="player-ai-level">10</span><br>
+                    Doom Level: <span id="doom-level">20</span><br>
+                    Open-source AI: <span id="opensource-ai-level">2</span>
                 </div>
                 <div class="status-column">
-                    <strong>AI Information:</strong><br>
-                    Capability: <span id="ai-capability">2.0x</span><br>
-                    Values: <span id="ai-values">Unknown</span><br>
-                    Corrigibility: <span id="ai-corrigibility">Unknown</span>
+                    <strong>Corporate Divisions:</strong><br>
+                    Diplomacy: <span id="diplomacy-points">0</span><br>
+                    Product: <span id="product-points">0</span><br>
+                    Safety: <span id="safety-points">0</span>
+                </div>
+                <div class="status-column">
+                    <strong>Status Effects:</strong><br>
+                    <span id="sanctions-status">No Sanctions</span><br>
+                    <span id="un-recognition-status">No UN Recognition</span>
                 </div>
             </div>
         </div>
         
-        <div id="date-ticker" style="text-align: center; font-size: 24px; font-weight: bold; margin: 20px 0; padding: 15px; background-color: #e8f4fd; border: 2px solid #007cba; border-radius: 8px; display: none;">
-            <div>Current Date:</div>
-            <div id="current-date">January 1, 2026</div>
-        </div>
         
-        <div id="research-section" style="text-align: center; font-size: 18px; margin: 20px 0; padding: 15px; background-color: #f9f9f9; border: 2px solid #333; border-radius: 8px; display: none;">
-            <div><strong>Research:</strong></div>
-            <div style="margin-top: 10px;">
-                <span style="display: inline-block; width: 140px; text-align: left;">Alignment Project:</span>
-                <button id="alignment-project-btn" class="button" style="min-width: 120px;">Not Started</button>
-            </div>
-        </div>
         
         <div id="story-content" class="story-content">
             <!-- Content will be loaded by JavaScript -->

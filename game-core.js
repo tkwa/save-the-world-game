@@ -2,19 +2,22 @@
 
 // Game state
 const gameState = {
-    hype: 5,
-    usLead: 60.0,
-    usMood: "Dovish",
-    aiCapability: 2.0,
-    aiValues: "Unknown",
-    aiCorrigibility: "Unknown",
-    firstTime2026: true,
+    // AI Information
+    playerAILevel: 10,
+    doomLevel: 20,
+    opensourceAILevel: 2,
+    
+    // Corporate Divisions
+    diplomacyPoints: 0,
+    productPoints: 0,
+    safetyPoints: 0,
+    
+    // Status Effects
+    hasSanctions: false,
+    hasUNRecognition: false,
+    
+    // Other game state
     currentPage: "start",
-    dateTickerStarted: false,
-    currentDate: new Date(2026, 0, 1), // January 1, 2026
-    dateInterval: null,
-    dateTickerPaused: false,
-    speedMultiplier: 1.0,
     alignmentLevel: Math.random(), // 0-1 float for alignment
     evalsBuilt: {
         capability: false,
@@ -22,66 +25,59 @@ const gameState = {
         alignment: false,
         forecasting: false
     },
-    singularityLevel: 10000,
-    alignmentProjectStarted: false,
-    currentAlignmentProject: "Interpretability",
-    capabilityEvalsCooldown: 0,
-    forecastingEvalsCooldown: 0,
     correlationDataset: null,
     currentMinigame: null,
-    coinFlipData: {
-        trueProbability: null,
-        heads: 0,
-        tails: 0,
-        total: 0,
-        active: false
-    }
+    companyName: null,
+    currentTurn: 1,
+    currentMonth: "January",
+    currentYear: 2026
 };
 
 // Story content
 const storyContent = {
     start: {
         title: "Welcome",
-        text: "Welcome to Save the World - An Interactive AI Timeline Story",
+        text: "Welcome to Critical Path - An AI Strategy Game",
         buttons: [
-            { text: "Begin", action: "goto", target: "2025" }
+            { text: "Begin", action: "goto", target: "game-setup" }
         ]
     },
-    "2025": {
-        title: "2025",
-        text: "The fast pace of AI progress continues. There is continued hype, massive infrastructure investments, and the release of unreliable AI agents. For the first time, these AI agents are providing significant value. But there's also continued skepticism from a large swath of academics, journalists, and policy makers that artificial general intelligence (AGI) could be built anytime soon.",
-        buttons: [
-            { text: "Continue", action: "goto", target: "2026" }
-        ]
-    },
-    "2026": {
-        title: "",
+    "game-setup": {
+        title: "Starting Game",
         text: function() {
-            let newsText = "";
-            if (gameState.firstTime2026) {
-                gameState.firstTime2026 = false;
-                newsText = "China knows they are falling behind in AI, in large part due to their lack of compute. In order to catch up to the US, all the new AI chips they manufacture or smuggle in from Taiwan go to a new mega-datacenter that we call their Centralized Development Zone (CDZ). The CDZ contains millions of GPUs, corresponding to 10% of the world's AI-relevant compute, similar to a single top US AI lab.";
-            } else {
-                newsText = "The situation continues to evolve. Choose your actions below:";
-            }
-            return `<div><strong>News:</strong></div><div style="margin-top: 10px;">${newsText}</div>`;
+            // Randomly assign company
+            const companies = ["OpenAI", "Anthropic", "Google", "Amazon", "Tencent", "xAI"];
+            gameState.companyName = companies[Math.floor(Math.random() * companies.length)];
+            gameState.currentTurn = 1;
+            gameState.currentMonth = "January";
+            gameState.currentYear = 2026;
+            return `You are now the CEO of ${gameState.companyName}. The race to AGI begins now.`;
         },
+        showStatus: false,
+        buttons: [
+            { text: "Begin", action: "goto", target: "main-game" }
+        ]
+    },
+    "main-game": {
+        title: function() {
+            const turnTitle = `Turn ${gameState.currentTurn || 1} (${gameState.currentMonth || 'January'} ${gameState.currentYear || 2026})`;
+            return gameState.companyName ? `${gameState.companyName} - ${turnTitle}` : "Critical Path";
+        },
+        text: "You are leading a top AI lab. Choose how to allocate your resources this turn:",
         showStatus: true,
         showActions: true,
         actions: [
-            "Increase hype",
-            "Decrease hype",
-            "Make US Hawkish",
-            "Make US Dovish"
+            "AI R&D (increase AI Level)", 
+            "Diplomacy R&D (increase Diplomacy)",
+            "Product R&D (increase Product)", 
+            "Safety R&D (increase Safety, decrease Doom)",
+            "Skip Turn"
         ],
         evals: [
             "Capability Evals",
             "Corrigibility Evals",
             "Alignment Evals",
             "Forecasting"
-        ],
-        safetyResearch: [
-            "Begin Alignment Project"
         ]
     },
     "2027": {
@@ -89,7 +85,7 @@ const storyContent = {
         text: "The year 2027 has arrived. The world continues to grapple with the rapid advancement of AI technology and its implications for society, governance, and the future of humanity.",
         showStatus: true,
         buttons: [
-            { text: "Continue", action: "goto", target: "2028" }
+            { text: "Continue", action: "goto", target: "main-game" }
         ]
     },
     "china-gameover": {
@@ -171,6 +167,21 @@ const storyContent = {
             { text: "Restart", action: "goto", target: "start" }
         ]
     },
+    "end-game": {
+        title: "Game Over",
+        text: function() {
+            if (gameState.playerAILevel >= 100) {
+                return "You have achieved AGI! The future of humanity is now determined by your AI systems.";
+            } else if (gameState.opensourceAILevel >= 100) {
+                return "Open-source AI has reached AGI first. The future is uncertain as multiple uncontrolled AI systems compete for dominance.";
+            }
+            return "Game over.";
+        },
+        showStatus: true,
+        buttons: [
+            { text: "Restart", action: "goto", target: "start" }
+        ]
+    },
     "capability-evals-minigame": {
         title: "Capability Evals",
         text: function() {
@@ -233,73 +244,19 @@ const storyContent = {
 };
 
 function updateStatusBar() {
-    const hypeElement = document.getElementById('hype');
-    hypeElement.textContent = gameState.hype;
+    // AI Information
+    document.getElementById('player-ai-level').textContent = gameState.playerAILevel;
+    document.getElementById('doom-level').textContent = gameState.doomLevel;
+    document.getElementById('opensource-ai-level').textContent = gameState.opensourceAILevel;
     
-    // Color code hype value
-    if (gameState.hype >= 8) {
-        hypeElement.style.color = 'red';
-    } else if (gameState.hype >= 5) {
-        hypeElement.style.color = 'orange';
-    } else {
-        hypeElement.style.color = 'black';
-    }
+    // Corporate Divisions
+    document.getElementById('diplomacy-points').textContent = gameState.diplomacyPoints;
+    document.getElementById('product-points').textContent = gameState.productPoints;
+    document.getElementById('safety-points').textContent = gameState.safetyPoints;
     
-    // Color code US Lead
-    const usLeadElement = document.getElementById('us-lead');
-    usLeadElement.textContent = gameState.usLead.toFixed(1);
-    if (gameState.usLead < 10) {
-        usLeadElement.style.color = 'red';
-    } else if (gameState.usLead < 30) {
-        usLeadElement.style.color = 'orange';
-    } else {
-        usLeadElement.style.color = 'black';
-    }
-    
-    document.getElementById('us-mood').textContent = gameState.usMood;
-    
-    // Color code AI Capability
-    const aiCapabilityElement = document.getElementById('ai-capability');
-    if (gameState.evalsBuilt.capability) {
-        aiCapabilityElement.textContent = formatSignificantFigures(gameState.aiCapability, 4) + 'x';
-    } else {
-        aiCapabilityElement.textContent = getCapabilityRange(gameState.aiCapability);
-    }
-    
-    if (gameState.aiCapability > 10) {
-        aiCapabilityElement.style.color = 'red';
-    } else if (gameState.aiCapability > 4) {
-        aiCapabilityElement.style.color = 'orange';
-    } else {
-        aiCapabilityElement.style.color = 'black';
-    }
-    
-    // Color code AI Values
-    const aiValuesElement = document.getElementById('ai-values');
-    if (gameState.evalsBuilt.alignment) {
-        aiValuesElement.textContent = getAlignmentText(gameState.alignmentLevel);
-        aiValuesElement.style.color = 'black';
-    } else {
-        aiValuesElement.textContent = 'Unknown';
-        aiValuesElement.style.color = 'orange';
-    }
-    
-    // Color code AI Corrigibility
-    const aiCorrigibilityElement = document.getElementById('ai-corrigibility');
-    if (gameState.evalsBuilt.corrigibility) {
-        // Reveal corrigibility based on alignment level
-        if (gameState.alignmentLevel > 0.6) {
-            aiCorrigibilityElement.textContent = 'High';
-        } else if (gameState.alignmentLevel > 0.3) {
-            aiCorrigibilityElement.textContent = 'Medium';
-        } else {
-            aiCorrigibilityElement.textContent = 'Low';
-        }
-        aiCorrigibilityElement.style.color = 'black';
-    } else {
-        aiCorrigibilityElement.textContent = 'Unknown';
-        aiCorrigibilityElement.style.color = 'orange';
-    }
+    // Status Effects
+    document.getElementById('sanctions-status').textContent = gameState.hasSanctions ? 'Sanctions Active' : 'No Sanctions';
+    document.getElementById('un-recognition-status').textContent = gameState.hasUNRecognition ? 'UN Recognition' : 'No UN Recognition';
 }
 
 function adjustHype(amount) {
@@ -310,6 +267,50 @@ function adjustHype(amount) {
 function setUSMood(mood) {
     gameState.usMood = mood;
     updateStatusBar();
+}
+
+function allocateResources(resourceType) {
+    switch(resourceType) {
+        case 'AI R&D (increase AI Level)':
+            gameState.playerAILevel += 5;
+            break;
+        case 'Diplomacy R&D (increase Diplomacy)':
+            gameState.diplomacyPoints += 3;
+            break;
+        case 'Product R&D (increase Product)':
+            gameState.productPoints += 3;
+            break;
+        case 'Safety R&D (increase Safety, decrease Doom)':
+            gameState.safetyPoints += 3;
+            gameState.doomLevel = Math.max(0, gameState.doomLevel - 3);
+            break;
+        case 'Skip Turn':
+            // Do nothing
+            break;
+    }
+    
+    // Increase open-source AI level
+    gameState.opensourceAILevel += Math.floor(Math.sqrt(Math.max(1, gameState.opensourceAILevel / 8)));
+    
+    // Advance turn
+    gameState.currentTurn++;
+    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const monthIndex = (gameState.currentTurn - 1) % 12;
+    gameState.currentMonth = months[monthIndex];
+    if (monthIndex === 0 && gameState.currentTurn > 1) {
+        gameState.currentYear++;
+    }
+    
+    updateStatusBar();
+    
+    // Check end conditions
+    if (gameState.playerAILevel >= 100 || gameState.opensourceAILevel >= 100) {
+        showPage('end-game');
+        return;
+    }
+    
+    // Refresh the page to show new turn
+    showPage('main-game');
 }
 
 function buildEvals(evalType) {
@@ -602,7 +603,15 @@ async function showPage(pageId) {
     } else {
         text = page.text;
     }
-    contentDiv.innerHTML = `<h2>${page.title}</h2><p>${text}</p>`;
+    
+    let title;
+    if (typeof page.title === 'function') {
+        title = page.title();
+    } else {
+        title = page.title;
+    }
+    
+    contentDiv.innerHTML = `<h2>${title}</h2><p>${text}</p>`;
 
     // Add actions panel if present
     if (page.showActions && page.actions) {
@@ -616,15 +625,7 @@ async function showPage(pageId) {
             const li = document.createElement('li');
             li.textContent = action;
             li.onclick = () => {
-                if (action === 'Increase hype') {
-                    adjustHype(1);
-                } else if (action === 'Decrease hype') {
-                    adjustHype(-1);
-                } else if (action === 'Make US Hawkish') {
-                    setUSMood('Hawkish');
-                } else if (action === 'Make US Dovish') {
-                    setUSMood('Dovish');
-                }
+                allocateResources(action);
             };
             actionsList.appendChild(li);
         });
