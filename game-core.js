@@ -30,7 +30,8 @@ const gameState = {
     companyName: null,
     currentTurn: 1,
     currentMonth: "January",
-    currentYear: 2026
+    currentYear: 2026,
+    money: 1 // Starting money
 };
 
 // Story content
@@ -63,7 +64,9 @@ const storyContent = {
             const turnTitle = `Turn ${gameState.currentTurn || 1} (${gameState.currentMonth || 'January'} ${gameState.currentYear || 2026})`;
             return gameState.companyName ? `${gameState.companyName} - ${turnTitle}` : "Critical Path";
         },
-        text: "You are leading a top AI lab. Choose how to allocate your resources this turn:",
+        text: function() {
+            return `You are leading a top AI lab. You have $${gameState.money} to spend this turn. Choose how to allocate your resources:`;
+        },
         showStatus: true,
         showActions: true,
         actions: [
@@ -73,99 +76,6 @@ const storyContent = {
             "Safety R&D (increase Safety, decrease Doom)",
             "Skip Turn"
         ],
-        evals: [
-            "Capability Evals",
-            "Corrigibility Evals",
-            "Alignment Evals",
-            "Forecasting"
-        ]
-    },
-    "2027": {
-        title: "2027",
-        text: "The year 2027 has arrived. The world continues to grapple with the rapid advancement of AI technology and its implications for society, governance, and the future of humanity.",
-        showStatus: true,
-        buttons: [
-            { text: "Continue", action: "goto", target: "main-game" }
-        ]
-    },
-    "china-gameover": {
-        title: "Game Over - China Wins",
-        text: "China has achieved Artificial Super Intelligence (ASI) first. Their advanced AI systems have rapidly developed self-replicating robots that have begun colonizing the galaxy. The technological gap has become insurmountable, and humanity's future is now in the hands of Chinese ASI. The dream of beneficial AI development under democratic oversight has ended.",
-        showStatus: false,
-        buttons: [
-            { text: "Restart", action: "goto", target: "start" }
-        ]
-    },
-    "2028-negotiation": {
-        title: "2028 - The Great Negotiation",
-        text: function() {
-            // Calculate China's lead and negotiation terms
-            const chinaLead = Math.abs(gameState.usLead);
-            const x = Math.floor(Math.random() * 21) - 10; // Random number between -10 and 10
-            const adjustedLead = x + chinaLead;
-            
-            // Determine China's lead description
-            let leadDescription;
-            if (chinaLead <= 20) {
-                leadDescription = "slight";
-            } else if (chinaLead <= 40) {
-                leadDescription = "moderate";
-            } else if (chinaLead <= 60) {
-                leadDescription = "large";
-            } else {
-                leadDescription = "overwhelming";
-            }
-            
-            // Determine China's governance style
-            const isHarmonious = Math.random() < 0.5;
-            const chinaStyle = isHarmonious ? "harmonious" : "authoritarian";
-            
-            // Store negotiation data for later use
-            gameState.negotiationData = {
-                chinaLead: chinaLead,
-                adjustedLead: adjustedLead,
-                chinaStyle: chinaStyle,
-                leadDescription: leadDescription
-            };
-            
-            // Determine proposal
-            let proposal;
-            if (adjustedLead <= 10) {
-                proposal = "China proposes that the US and China evenly split the cosmos.";
-                gameState.negotiationData.chinaShare = 50;
-            } else {
-                const chinaPercentage = Math.min(100, adjustedLead + 40); // Ensure it doesn't exceed 100%
-                proposal = `China proposes that China gets ${chinaPercentage}% of the cosmos.`;
-                gameState.negotiationData.chinaShare = chinaPercentage;
-            }
-            
-            return `China has a ${leadDescription} lead in AI, and it is insurmountable. Chinese Minister of Foreign Affairs Wang Yi delivers a treaty to Congress that will decide how a million billion billion stars are allocated.<br><br>${proposal}<br><br>China's AI systems are ${chinaStyle}, while the US remains free.`;
-        },
-        showStatus: true,
-        buttons: [
-            { text: "Accept Treaty", action: "accept-treaty", target: "treaty-accepted" },
-            { text: "Reject Treaty", action: "reject-treaty", target: "treaty-rejected" }
-        ]
-    },
-    "treaty-accepted": {
-        title: "Treaty Accepted",
-        text: async function() {
-            return await calculateFinalScore(false);
-        },
-        showStatus: false,
-        buttons: [
-            { text: "Restart", action: "goto", target: "start" }
-        ]
-    },
-    "treaty-rejected": {
-        title: "Nuclear War",
-        text: async function() {
-            return await calculateFinalScore(true);
-        },
-        showStatus: false,
-        buttons: [
-            { text: "Restart", action: "goto", target: "start" }
-        ]
     },
     "end-game": {
         title: "Game Over",
@@ -225,22 +135,6 @@ const storyContent = {
         customButtons: true,
         buttons: []
     },
-    "singularity": {
-        title: "The Singularity",
-        text: function() {
-            // Reveal AI Values if Unknown
-            if (gameState.aiValues === 'Unknown') {
-                gameState.aiValues = getAlignmentText(gameState.alignmentLevel);
-                updateStatusBar();
-            }
-            return "AI capability has reached 1,000x human level. The technological singularity has arrived. Humans no longer have economic relevance as AI systems can perform all tasks better, faster, and cheaper than any human ever could. The future of humanity now depends entirely on the values embedded in these superintelligent systems.";
-        },
-        showStatus: true,
-        showFinalOutcome: false,
-        buttons: [
-            { text: "Continue", action: "reveal-outcome", target: "singularity" }
-        ]
-    }
 };
 
 function updateStatusBar() {
@@ -250,6 +144,7 @@ function updateStatusBar() {
     document.getElementById('opensource-ai-level').textContent = gameState.opensourceAILevel;
     
     // Corporate Divisions
+    document.getElementById('money').textContent = gameState.money;
     document.getElementById('diplomacy-points').textContent = gameState.diplomacyPoints;
     document.getElementById('product-points').textContent = gameState.productPoints;
     document.getElementById('safety-points').textContent = gameState.safetyPoints;
@@ -259,15 +154,7 @@ function updateStatusBar() {
     document.getElementById('un-recognition-status').textContent = gameState.hasUNRecognition ? 'UN Recognition' : 'No UN Recognition';
 }
 
-function adjustHype(amount) {
-    gameState.hype = Math.max(0, Math.min(10, gameState.hype + amount));
-    updateStatusBar();
-}
 
-function setUSMood(mood) {
-    gameState.usMood = mood;
-    updateStatusBar();
-}
 
 function allocateResources(resourceType) {
     switch(resourceType) {
@@ -437,124 +324,9 @@ function refreshEvalsDisplay() {
     }
 }
 
-function updateDate() {
-    if (gameState.dateTickerPaused) return;
-    
-    const options = { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-    };
-    document.getElementById('current-date').textContent = gameState.currentDate.toLocaleDateString('en-US', options);
-    
-    // Update AI Capability with exponential growth
-    const growthRate = calculateGrowthRate(gameState.aiCapability, gameState.hype, gameState.usMood);
-    gameState.aiCapability += growthRate;
-    
-    // Update US Lead based on mood
-    if (gameState.usMood === "Dovish") {
-        gameState.usLead -= 0.5;
-    } else if (gameState.usMood === "Hawkish") {
-        gameState.usLead += 0.3;
-    }
-    
-    // Check for China negotiation condition (when capabilities reach 10000x and China is ahead)
-    if (gameState.aiCapability >= 10000 && gameState.usLead <= 0) {
-        clearInterval(gameState.dateInterval);
-        showPage('2028-negotiation');
-        return;
-    }
-    
-    // Check for Singularity
-    if (gameState.aiCapability >= gameState.singularityLevel) {
-        clearInterval(gameState.dateInterval);
-        // Hide date controls
-        const dateControls = document.getElementById('date-controls');
-        if (dateControls) {
-            dateControls.style.display = 'none';
-        }
-        showPage('singularity');
-        return;
-    }
-    
-    // Update status bar
-    updateStatusBar();
-    
-    // Update forecasting if available
-    if (gameState.evalsBuilt.forecasting) {
-        updateForecastingDisplay();
-    }
-    
-    // Update capability evals cooldown
-    if (gameState.capabilityEvalsCooldown > 0) {
-        gameState.capabilityEvalsCooldown--;
-        // Refresh the evals display to update the cooldown counter
-        if (gameState.currentPage === '2026') {
-            refreshEvalsDisplay();
-        }
-    }
-    
-    // Update forecasting evals cooldown
-    if (gameState.forecastingEvalsCooldown > 0) {
-        gameState.forecastingEvalsCooldown--;
-        if (gameState.currentPage === '2026') {
-            refreshEvalsDisplay();
-        }
-    }
-    
-    // Perform daily coin flip if forecasting is active
-    if (gameState.coinFlipData.active) {
-        console.log('Date ticker calling performDailyCoinFlip');
-        performDailyCoinFlip();
-    }
-    
-    // Advance by one day
-    gameState.currentDate.setDate(gameState.currentDate.getDate() + 1);
-}
-
-function startDateTicker() {
-    if (gameState.dateTickerStarted) return;
-    
-    gameState.dateTickerStarted = true;
-    document.getElementById('date-ticker').style.display = 'block';
-    
-    // Update immediately
-    updateDate();
-    
-    // Then update based on speed multiplier
-    gameState.dateInterval = setInterval(updateDate, 1000 / gameState.speedMultiplier);
-}
-
-function setSpeed(multiplier) {
-    gameState.speedMultiplier = multiplier;
-    gameState.dateTickerPaused = (multiplier === 0);
-    
-    // Update button styles
-    const buttons = document.querySelectorAll('.speed-btn');
-    buttons.forEach(btn => {
-        btn.style.backgroundColor = '#007cba';
-        if (parseFloat(btn.dataset.speed) === multiplier) {
-            btn.style.backgroundColor = '#005a87';
-        }
-    });
-    
-    // Update interval timing
-    if (gameState.dateInterval) {
-        clearInterval(gameState.dateInterval);
-        if (multiplier > 0) {
-            gameState.dateInterval = setInterval(updateDate, 1000 / multiplier);
-        }
-    }
-}
-
-function skipTo2027() {
-    gameState.currentDate = new Date(2027, 0, 1); // January 1, 2027
-    const options = { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-    };
-    document.getElementById('current-date').textContent = gameState.currentDate.toLocaleDateString('en-US', options);
+function calculateRevenue() {
+    // Formula from README: floor(sqrt(max(1, AL - OL)))
+    return Math.floor(Math.sqrt(Math.max(1, gameState.playerAILevel - gameState.opensourceAILevel)));
 }
 
 async function showPage(pageId) {
@@ -631,109 +403,7 @@ async function showPage(pageId) {
         });
         actionsPanel.appendChild(actionsList);
         
-        // Add Evals subsection if present
-        if (page.evals) {
-            const evalsSection = document.createElement('div');
-            evalsSection.innerHTML = '<h4>Evals:</h4>';
-            evalsSection.style.marginTop = '20px';
-            
-            const evalsList = document.createElement('ul');
-            evalsList.className = 'actions-list';
-            page.evals.forEach(evalType => {
-                const li = document.createElement('li');
-                
-                // Check if this eval is already built or on cooldown
-                let isBuilt = false;
-                let isOnCooldown = false;
-                let displayText = evalType;
-                
-                if (evalType === 'Capability Evals') {
-                    isBuilt = gameState.evalsBuilt.capability;
-                    isOnCooldown = gameState.capabilityEvalsCooldown > 0;
-                    if (isOnCooldown) {
-                        displayText = `Capability Evals (${gameState.capabilityEvalsCooldown})`;
-                    }
-                }
-                if (evalType === 'Corrigibility Evals') isBuilt = gameState.evalsBuilt.corrigibility;
-                if (evalType === 'Alignment Evals') isBuilt = gameState.evalsBuilt.alignment;
-                if (evalType === 'Forecasting') {
-                    isBuilt = gameState.evalsBuilt.forecasting;
-                    isOnCooldown = gameState.forecastingEvalsCooldown > 0;
-                    if (isOnCooldown) {
-                        displayText = `Forecasting (${gameState.forecastingEvalsCooldown})`;
-                    }
-                }
-                
-                li.textContent = displayText;
-                
-                if (isBuilt) {
-                    li.style.textDecoration = 'line-through';
-                    li.style.color = '#666';
-                    li.style.cursor = 'default';
-                    li.onclick = null;
-                } else if (isOnCooldown) {
-                    li.style.textDecoration = 'none';
-                    li.style.color = '#999';
-                    li.style.cursor = 'default';
-                    li.onclick = null;
-                } else {
-                    li.style.textDecoration = 'none';
-                    li.style.color = '#007cba';
-                    li.style.cursor = 'pointer';
-                    li.onclick = () => {
-                        buildEvals(evalType);
-                        // Note: Don't mark as completed here for minigame evals
-                        // since they need to pass the minigame first
-                        if (evalType !== 'Capability Evals' && evalType !== 'Forecasting') {
-                            li.style.textDecoration = 'line-through';
-                            li.style.color = '#666';
-                            li.style.cursor = 'default';
-                            li.onclick = null;
-                        }
-                    };
-                }
-                evalsList.appendChild(li);
-            });
-            evalsSection.appendChild(evalsList);
-            actionsPanel.appendChild(evalsSection);
-        }
         
-        // Add Safety Research subsection if present
-        if (page.safetyResearch) {
-            const safetySection = document.createElement('div');
-            safetySection.innerHTML = '<h4>Safety Research:</h4>';
-            safetySection.style.marginTop = '20px';
-            
-            const safetyList = document.createElement('ul');
-            safetyList.className = 'actions-list';
-            page.safetyResearch.forEach(researchType => {
-                const li = document.createElement('li');
-                li.textContent = researchType;
-                
-                // Check if this research is already started
-                let isStarted = false;
-                if (researchType === 'Begin Alignment Project') isStarted = gameState.alignmentProjectStarted;
-                
-                if (isStarted) {
-                    li.style.textDecoration = 'line-through';
-                    li.style.color = '#666';
-                    li.style.cursor = 'default';
-                } else {
-                    li.onclick = () => {
-                        if (researchType === 'Begin Alignment Project') {
-                            beginAlignmentProject();
-                            li.style.textDecoration = 'line-through';
-                            li.style.color = '#666';
-                            li.style.cursor = 'default';
-                            li.onclick = null;
-                        }
-                    };
-                }
-                safetyList.appendChild(li);
-            });
-            safetySection.appendChild(safetyList);
-            actionsPanel.appendChild(safetySection);
-        }
         
         contentDiv.appendChild(actionsPanel);
     }
@@ -812,30 +482,6 @@ async function showPage(pageId) {
                 if (button.action === 'goto') {
                     gameState.currentPage = button.target;
                     showPage(button.target);
-                } else if (button.action === 'reveal-outcome') {
-                    // Show the final outcome text below the singularity text
-                    const endTexts = await loadEndTexts();
-                    const alignmentKey = getAlignmentKey(gameState.alignmentLevel);
-                    const outcomeText = endTexts.end_text[alignmentKey];
-                    
-                    // Add the outcome text to the content
-                    const contentDiv = document.getElementById('story-content');
-                    const outcomeDiv = document.createElement('div');
-                    outcomeDiv.innerHTML = `<hr><h3>The End</h3><p>${outcomeText}</p>`;
-                    outcomeDiv.style.marginTop = '30px';
-                    outcomeDiv.style.paddingTop = '20px';
-                    outcomeDiv.style.borderTop = '2px solid #ccc';
-                    contentDiv.appendChild(outcomeDiv);
-                    
-                    // Replace the button with restart
-                    const buttonsDiv = document.getElementById('buttons');
-                    buttonsDiv.innerHTML = '<button class="button" onclick="showPage(\'start\'); gameState.currentPage = \'start\';">Restart</button>';
-                } else if (button.action === 'accept-treaty') {
-                    gameState.currentPage = button.target;
-                    showPage(button.target);
-                } else if (button.action === 'reject-treaty') {
-                    gameState.currentPage = button.target;
-                    showPage(button.target);
                 }
             };
             buttonsDiv.appendChild(btn);
@@ -844,57 +490,6 @@ async function showPage(pageId) {
     }
 }
 
-// Calculate final score for treaty outcomes
-async function calculateFinalScore(isNuclearWar) {
-    const endTexts = await loadEndTexts();
-    const negotiationData = gameState.negotiationData;
-    
-    if (!negotiationData) {
-        return "Error: Negotiation data not found.";
-    }
-    
-    // Get alignment-based long term score
-    const alignmentKey = getAlignmentKey(gameState.alignmentLevel);
-    const longTermScore = endTexts.long_term_scores[alignmentKey];
-    
-    // Calculate population score based on treaty terms
-    let populationScore;
-    if (isNuclearWar) {
-        // Half the population dies in nuclear war
-        populationScore = endTexts.population_scores.dead * 0.5 + 
-                         (negotiationData.chinaStyle === 'harmonious' ? 
-                          endTexts.population_scores.harmonious : 
-                          endTexts.population_scores.authoritarian) * 0.5;
-    } else {
-        // Population distributed based on territory control
-        const chinaShare = negotiationData.chinaShare / 100;
-        const usShare = 1 - chinaShare;
-        
-        const chinaPopScore = negotiationData.chinaStyle === 'harmonious' ? 
-                             endTexts.population_scores.harmonious : 
-                             endTexts.population_scores.authoritarian;
-        const usPopScore = endTexts.population_scores.free;
-        
-        populationScore = chinaPopScore * chinaShare + usPopScore * usShare;
-    }
-    
-    // Calculate final score
-    const finalScore = longTermScore * 10 + populationScore;
-    
-    // Generate result text
-    let resultText;
-    if (isNuclearWar) {
-        resultText = `The treaty was rejected, leading to nuclear war. Half of humanity perished in the conflict, but the survivors continue under their respective systems.`;
-    } else {
-        resultText = `The treaty was accepted. The cosmos will be divided with China controlling ${negotiationData.chinaShare}% and the US controlling ${100 - negotiationData.chinaShare}%.`;
-    }
-
-    resultText += `  In the near term, billions of people live under China's ${negotiationData.chinaStyle} system, while the US slowly transitions from democracy to AI-controlled life.`;
-    
-    const alignmentText = endTexts.end_text[alignmentKey];
-    
-    return `${resultText}<br>${alignmentText}<br><br><strong>Final Score:</strong> ${finalScore.toFixed(2)}<br>(Long-term: ${(longTermScore * 10).toFixed(1)} + Population: ${populationScore.toFixed(1)})`;
-}
 
 // Initialize the game
 document.addEventListener('DOMContentLoaded', function() {
