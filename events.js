@@ -26,7 +26,15 @@ async function generateEvent() {
     
     // Sanctions event has 100% probability if sanctions are active
     if (gameState.hasSanctions) {
-        const event = generateSanctionsEvent();
+        const sanctionsEvent = events.specialEvents.sanctions;
+        const randomText = sanctionsEvent.text_versions[Math.floor(Math.random() * sanctionsEvent.text_versions.length)];
+        
+        const event = {
+            type: sanctionsEvent.type,
+            text: randomText,
+            choices: sanctionsEvent.choices,
+            customHandler: 'handleSanctionsChoice'
+        };
         trackEventSeen(event);
         return event;
     }
@@ -42,6 +50,11 @@ async function generateEvent() {
     } else {
         // Filter events based on requirements and get available pool
         const availableEvents = getAvailableEvents(events.defaultEvents);
+        
+        // Debug: Log available event types to console
+        console.log('Available event types in pool:', availableEvents.map(e => e.type));
+        console.log('Completed one-time events:', Array.from(gameState.dsaEventsAccepted));
+        
         const event = selectWeightedEvent(availableEvents);
         trackEventSeen(event);
         return event;
@@ -85,31 +98,11 @@ function getAvailableEvents(allEvents) {
     });
 }
 
-// Generate a sanctions event
-function generateSanctionsEvent() {
-    return {
-        type: 'sanctions',
-        text: `International sanctions are severely impacting your operations. Your resources are halved, and diplomatic relations are strained. Your legal team proposes spending significant resources to lobby for sanctions relief.`,
-        choices: [
-            {
-                text: "Remove sanctions (-$3B, -3 Diplomacy)",
-                action: "accept",
-                cost: { money: 3, diplomacyPoints: 3 },
-                result_text: "Your extensive lobbying campaign succeeds. International pressure is lifted through back-channel negotiations and strategic concessions. Your company can now operate freely again, though the political cost was significant."
-            },
-            {
-                text: "Accept sanctions",
-                action: "decline", 
-                result_text: "You decide to weather the sanctions rather than spend precious resources on lobbying. Operations remain constrained, but you preserve your diplomatic capital for future challenges."
-            }
-        ]
-    };
-}
 
 // Generate a safety incident event
 function generateSafetyIncident(events) {
     gameState.safetyIncidentCount++;
-    const fine = gameState.safetyIncidentCount;
+    const fine = Math.floor(gameState.safetyIncidentCount ** 1.5);
     
     const safetyEvent = events.safetyIncidents;
     const randomText = safetyEvent.text_versions[Math.floor(Math.random() * safetyEvent.text_versions.length)];
@@ -156,4 +149,233 @@ function applyEventEffects(event) {
     if (event && event.type === 'safety-incident') {
         gameState.money = Math.max(0, gameState.money - event.fine);
     }
+}
+
+// Populate debug dropdown with all available event types
+function populateDebugDropdown() {
+    const dropdown = document.getElementById('debugEventDropdown');
+    if (!dropdown) return;
+    
+    // Clear existing options except the first one
+    dropdown.innerHTML = '<option value="">Debug: Force Event</option>';
+    
+    // Add special events
+    dropdown.innerHTML += '<option value="sanctions">Sanctions</option>';
+    dropdown.innerHTML += '<option value="safety-incident">Safety Incident</option>';
+    
+    // Add default events from JSON
+    loadEventData().then(events => {
+        events.defaultEvents.forEach(event => {
+            dropdown.innerHTML += `<option value="${event.type}">${event.type}</option>`;
+        });
+    });
+}
+
+// Helper function to apply choice effects (costs, benefits, penalties, risks)
+function applyChoiceEffects(choice) {
+    if (choice.action === 'accept' || choice.action === 'accept-sanctions') {
+        // Apply costs
+        if (choice.cost) {
+            if (choice.cost.productPoints) gameState.productPoints -= choice.cost.productPoints;
+            if (choice.cost.diplomacyPoints) gameState.diplomacyPoints -= choice.cost.diplomacyPoints;
+            if (choice.cost.money) gameState.money -= choice.cost.money;
+        }
+        
+        // Apply benefits
+        if (choice.benefit) {
+            if (choice.benefit.incomeBonus) {
+                gameState.incomeBonus = (gameState.incomeBonus || 0) + choice.benefit.incomeBonus;
+            }
+            if (choice.benefit.aiLevelPerTurn) {
+                gameState.aiLevelPerTurn = (gameState.aiLevelPerTurn || 0) + choice.benefit.aiLevelPerTurn;
+            }
+            if (choice.benefit.resourceMultiplier) {
+                gameState.resourceMultiplier = choice.benefit.resourceMultiplier;
+            }
+            if (choice.benefit.unRecognition) {
+                gameState.hasUNRecognition = true;
+            }
+        }
+        
+        // Apply penalties (guaranteed negative effects)
+        if (choice.penalty) {
+            if (choice.penalty.doomLevel) {
+                gameState.doomLevel += choice.penalty.doomLevel;
+            }
+        }
+        
+        // Apply risks (probability-based negative effects)
+        if (choice.risk) {
+            if (choice.risk.sanctions && Math.random() < choice.risk.sanctions) {
+                gameState.hasSanctions = true;
+                return true; // Return true if sanctions were triggered
+            }
+        }
+    }
+    return false; // Return false if no sanctions were triggered
+}
+
+// Custom event handlers for events with risk/success-failure mechanics
+
+function handleOverseasDatacenterChoice(choice) {
+    if (choice.action === 'accept-sanctions') {
+        // Apply standard effects and check if sanctions were triggered
+        const sanctionsTriggered = applyChoiceEffects(choice);
+        
+        let resultText;
+        if (sanctionsTriggered) {
+            resultText = "You proceed with unauthorized datacenter construction, bypassing government approval processes. The facility comes online successfully, but intelligence agencies discover the operation. The US government responds with comprehensive economic sanctions against your company.";
+        } else {
+            resultText = "You proceed with unauthorized datacenter construction, bypassing government approval processes. The facility comes online successfully, and your covert operations remain undetected. You've gained substantial computational capacity without triggering sanctions.";
+        }
+        
+        gameState.currentEvent.showResult = true;
+        gameState.currentEvent.resultText = resultText;
+    } else {
+        // Handle other choices normally
+        applyChoiceEffects(choice);
+        if (choice.result_text) {
+            gameState.currentEvent.showResult = true;
+            gameState.currentEvent.resultText = choice.result_text;
+        }
+    }
+    
+    updateStatusBar();
+    showPage('main-game');
+}
+
+function handleNuclearWeaponsChoice(choice) {
+    if (choice.action === 'accept') {
+        // Apply standard effects and check if sanctions were triggered
+        const sanctionsTriggered = applyChoiceEffects(choice);
+        
+        let resultText;
+        if (sanctionsTriggered) {
+            resultText = "Your team begins the secretive nuclear weapons program. The project advances rapidly thanks to your robotics expertise and AI-assisted design. However, intelligence agencies detect the program through satellite imagery and financial tracking. International sanctions are immediately imposed.";
+        } else {
+            resultText = "Your team begins the secretive nuclear weapons program. The project advances rapidly thanks to your robotics expertise and AI-assisted design. Intelligence agencies remain unaware of the program, and your company's position in global politics fundamentally changes without immediate retaliation.";
+        }
+        
+        gameState.currentEvent.showResult = true;
+        gameState.currentEvent.resultText = resultText;
+    } else {
+        applyChoiceEffects(choice);
+        if (choice.result_text) {
+            gameState.currentEvent.showResult = true;
+            gameState.currentEvent.resultText = choice.result_text;
+        }
+    }
+    
+    updateStatusBar();
+    showPage('main-game');
+}
+
+function handleMissileDefenseChoice(choice) {
+    if (choice.action === 'accept') {
+        // Apply standard effects and check if sanctions were triggered
+        const sanctionsTriggered = applyChoiceEffects(choice);
+        
+        let resultText;
+        if (sanctionsTriggered) {
+            resultText = "Your missile defense system comes online successfully. Advanced AI-controlled interceptors and cyber warfare capabilities now protect your facilities from conventional military threats. However, the deployment is detected by multiple intelligence agencies, triggering immediate international sanctions and significantly escalating global tensions.";
+        } else {
+            resultText = "Your missile defense system comes online successfully. Advanced AI-controlled interceptors and cyber warfare capabilities now protect your facilities from conventional military threats. The deployment remains largely undetected, though global tensions increase significantly due to the technology's existence.";
+        }
+        
+        gameState.currentEvent.showResult = true;
+        gameState.currentEvent.resultText = resultText;
+    } else {
+        applyChoiceEffects(choice);
+        if (choice.result_text) {
+            gameState.currentEvent.showResult = true;
+            gameState.currentEvent.resultText = choice.result_text;
+        }
+    }
+    
+    updateStatusBar();
+    showPage('main-game');
+}
+
+function handleSanctionsChoice(choice) {
+    applyChoiceEffects(choice);
+    
+    // Special handling for sanctions removal
+    if (choice.action === 'accept') {
+        gameState.hasSanctions = false;
+    }
+    
+    if (choice.result_text) {
+        gameState.currentEvent.showResult = true;
+        gameState.currentEvent.resultText = choice.result_text;
+    }
+    
+    updateStatusBar();
+    showPage('main-game');
+}
+
+function handleStandardChoice(choice) {
+    applyChoiceEffects(choice);
+    
+    if (choice.result_text) {
+        gameState.currentEvent.showResult = true;
+        gameState.currentEvent.resultText = choice.result_text;
+    }
+}
+
+// Force generate a specific event type (for debugging)
+async function forceEvent(eventType) {
+    if (!eventType) return;
+    
+    const events = await loadEventData();
+    let event = null;
+    
+    // Handle special events
+    if (eventType === 'sanctions') {
+        const sanctionsEvent = events.specialEvents.sanctions;
+        const randomText = sanctionsEvent.text_versions[Math.floor(Math.random() * sanctionsEvent.text_versions.length)];
+        
+        event = {
+            type: sanctionsEvent.type,
+            text: randomText,
+            choices: sanctionsEvent.choices,
+            customHandler: 'handleSanctionsChoice'
+        };
+    } else if (eventType === 'safety-incident') {
+        event = generateSafetyIncident(events);
+    } else {
+        // Handle default events
+        const eventTemplate = events.defaultEvents.find(e => e.type === eventType);
+        if (eventTemplate && getAvailableEvents([eventTemplate]).length > 0) {
+            const randomText = eventTemplate.text_versions[Math.floor(Math.random() * eventTemplate.text_versions.length)];
+            
+            event = {
+                type: eventTemplate.type,
+                text: randomText,
+                choices: eventTemplate.choices || null,
+                customHandler: eventTemplate.customHandler || null
+            };
+        }
+    }
+    
+    if (event) {
+        gameState.currentEvent = event;
+        trackEventSeen(event);
+        updateStatusBar();
+        showPage('main-game');
+    }
+    
+    // Reset dropdown
+    const dropdown = document.getElementById('debugEventDropdown');
+    if (dropdown) dropdown.value = '';
+}
+
+// Give debug resources (for testing)
+function giveResources() {
+    gameState.money += 1000;
+    gameState.productPoints += 1000;
+    gameState.diplomacyPoints += 1000;
+    gameState.safetyPoints += 1000;
+    
+    updateStatusBar();
+    showPage('main-game');
 }

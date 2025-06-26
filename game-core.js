@@ -113,6 +113,35 @@ const storyContent = {
                 }
 
                 eventHtml += `</div>`;
+                
+                // Add debug controls in bottom right
+                eventHtml += `
+                    <div style="position: fixed; bottom: 10px; right: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 5px;">
+                        <select id="debugEventDropdown" onchange="forceEvent(this.value)" style="
+                            background-color: #333; 
+                            color: #fff; 
+                            border: 1px solid #555; 
+                            padding: 5px; 
+                            font-size: 12px;
+                            opacity: 0.7;
+                        ">
+                            <option value="">Debug: Force Event</option>
+                        </select>
+                        <button onclick="giveResources()" style="
+                            background-color: #333; 
+                            color: #fff; 
+                            border: 1px solid #555; 
+                            padding: 5px 10px; 
+                            font-size: 12px;
+                            opacity: 0.7;
+                            cursor: pointer;
+                        ">+1000 Resources</button>
+                    </div>
+                `;
+                
+                // Populate dropdown after rendering
+                setTimeout(populateDebugDropdown, 100);
+                
                 return eventHtml;
             }
             return '';
@@ -298,6 +327,12 @@ async function advanceTurn() {
         gameState.currentYear++;
     }
 
+    // Clear any result state from previous choice
+    if (gameState.currentEvent) {
+        gameState.currentEvent.showResult = false;
+        gameState.currentEvent.resultText = null;
+    }
+    
     // Generate new event for next turn
     gameState.currentEvent = await generateEvent();
 
@@ -564,7 +599,7 @@ function calculateEndGameScore() {
         rogueGalaxies = 100;
         playerGalaxies = 0;
         humanityGalaxies = 0;
-    } else if (gameState.gameOverReason === 'ai-singularity') {
+    } else if (gameState.gameOverReason === 'ai-singularity' || gameState.gameOverReason === 'dsa-singularity') {
         resultText = "The singularity has arrived. ";
 
         narrow_race = Math.min(gameState.playerAILevel, gameState.opensourceAILevel) >= 90;
@@ -865,66 +900,27 @@ async function handleEventChoice(choiceIndex) {
         gameState.dsaEventsAccepted.add(event.type);
     }
 
-    if (choice.action === 'accept' || choice.action === 'accept-sanctions') {
-        // Apply costs and benefits
-        if (choice.cost) {
-            if (choice.cost.productPoints) {
-                gameState.productPoints -= choice.cost.productPoints;
-            }
-            if (choice.cost.diplomacyPoints) {
-                gameState.diplomacyPoints -= choice.cost.diplomacyPoints;
-            }
-            if (choice.cost.money) {
-                gameState.money -= choice.cost.money;
-            }
-        }
+    // Handle custom event handlers
+    if (event.customHandler) {
+        window[event.customHandler](choice, event);
+        return;
+    }
 
-        // Apply risks (random negative effects)
-        if (choice.risk) {
-            if (choice.risk.sanctions && Math.random() < choice.risk.sanctions) {
-                gameState.hasSanctions = true;
-            }
-        }
-
-        // Apply penalties (guaranteed negative effects)
-        if (choice.penalty) {
-            if (choice.penalty.doomLevel) {
-                gameState.doomLevel += choice.penalty.doomLevel;
-            }
-        }
-
-        // Special handling for sanctions removal
-        if (event.type === 'sanctions' && choice.action === 'accept') {
-            gameState.hasSanctions = false;
-        }
-
-        if (choice.benefit) {
-            if (choice.benefit.incomeBonus) {
-                // Add income bonus to game state (this would need to be tracked and applied each turn)
-                gameState.incomeBonus = (gameState.incomeBonus || 0) + choice.benefit.incomeBonus;
-            }
-            if (choice.benefit.aiLevelPerTurn) {
-                // Add AI level per turn bonus (overseas datacenter)
-                gameState.aiLevelPerTurn = (gameState.aiLevelPerTurn || 0) + choice.benefit.aiLevelPerTurn;
-            }
-            if (choice.benefit.resourceMultiplier) {
-                // Set resource multiplier (UN recognition)
-                gameState.resourceMultiplier = choice.benefit.resourceMultiplier;
-            }
-            if (choice.benefit.unRecognition) {
-                // Grant UN recognition status
-                gameState.hasUNRecognition = true;
-            }
-        }
-
-        // Special handling for DSA (immediate singularity)
-        if (event.type === 'decisive-strategic-advantage' && choice.action === 'accept') {
-            gameState.playerAILevel = 100;
-            gameState.gameOverReason = 'dsa-singularity';
-            updateStatusBar();
-            showPage('end-game');
-            return;
-        }
+    // Apply standard choice effects using helper function
+    applyChoiceEffects(choice);
+    
+    // Special handling for sanctions removal
+    if (event.type === 'sanctions' && choice.action === 'accept') {
+        gameState.hasSanctions = false;
+    }
+    
+    // Special handling for DSA (immediate singularity)
+    if (event.type === 'decisive-strategic-advantage' && choice.action === 'accept') {
+        gameState.playerAILevel = 100;
+        gameState.gameOverReason = 'dsa-singularity';
+        updateStatusBar();
+        showPage('end-game');
+        return;
     }
 
     // Show result text instead of immediately finishing turn
@@ -942,6 +938,9 @@ async function handleEventChoice(choiceIndex) {
 // Make functions globally accessible
 window.finishTurn = finishTurn;
 window.handleEventChoice = handleEventChoice;
+window.forceEvent = forceEvent;
+window.populateDebugDropdown = populateDebugDropdown;
+window.giveResources = giveResources;
 
 // Initialize the game
 document.addEventListener('DOMContentLoaded', function () {

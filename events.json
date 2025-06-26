@@ -1,4 +1,25 @@
 {
+  "specialEvents": {
+    "sanctions": {
+      "type": "sanctions",
+      "text_versions": [
+        "International sanctions are severely impacting your operations. Your resources are halved, and diplomatic relations are strained. Your legal team proposes spending significant resources to lobby for sanctions relief."
+      ],
+      "choices": [
+        {
+          "text": "Remove sanctions (-$3B, -3 Diplomacy)",
+          "action": "accept",
+          "cost": { "money": 3, "diplomacyPoints": 3 },
+          "result_text": "Your extensive lobbying campaign succeeds. International pressure is lifted through back-channel negotiations and strategic concessions. Your company can now operate freely again, though the political cost was significant."
+        },
+        {
+          "text": "Accept sanctions",
+          "action": "decline", 
+          "result_text": "You decide to weather the sanctions rather than spend precious resources on lobbying. Operations remain constrained, but you preserve your diplomatic capital for future challenges."
+        }
+      ]
+    }
+  },
   "safetyIncidents": {
     "type": "safety-incident",
     "weight": 1,
@@ -32,6 +53,7 @@
     {
       "type": "product-breakthrough-medicine",
       "weight": 1,
+      "oneTime": true,
       "text_versions": [
         "Your AI research team makes a breakthrough in drug discovery, identifying promising compounds for treating rare diseases. However, developing this technology will require significant resources."
       ],
@@ -53,6 +75,7 @@
     {
       "type": "product-breakthrough-robotics",
       "weight": 1,
+      "oneTime": true,
       "text_versions": [
         "Your team develops advanced robotic systems with potential military and civilian applications. The technology could generate substantial revenue but requires investment to commercialize."
       ],
@@ -75,10 +98,11 @@
       "type": "overseas-datacenter",
       "weight": 4,
       "oneTime": true,
+      "customHandler": "handleOverseasDatacenterChoice",
       "text_versions": [
-        "Your company has the opportunity to establish a major datacenter facility in the UAE, creating additional AI development capacity. This would generate 1 additional AI level per turn, but unauthorized construction risks US sanctions.",
-        "Your company has the opportunity to establish a major datacenter facility in Russia, creating additional AI development capacity. This would generate 1 additional AI level per turn, but unauthorized construction risks US sanctions.",
-        "Your company has the opportunity to establish a major datacenter facility in Malaysia, creating additional AI development capacity. This would generate 1 additional AI level per turn, but unauthorized construction risks US sanctions."
+        "Your company has the opportunity to establish a 2GW datacenter in the UAE. This would generate 1 additional AI level per turn, but unauthorized construction risks US sanctions.",
+        "Your company has the opportunity to establish a 2GW datacenter in Russia. This would generate 1 additional AI level per turn, but unauthorized construction risks US sanctions.",
+        "Your company has the opportunity to establish a 2GW datacenter in Malaysia. This would generate 1 additional AI level per turn, but unauthorized construction risks US sanctions."
       ],
       "choices": [
         {
@@ -89,12 +113,11 @@
           "result_text": "Your overseas datacenter construction proceeds smoothly through official diplomatic channels. Government approvals are secured, and the facility comes online quickly, providing substantial additional computational capacity for your AI research programs."
         },
         {
-          "text": "Accept sanctions (-$3B, triggers sanctions)",
+          "text": "Accept sanctions (-$3B, 85% chance of sanctions)",
           "action": "accept-sanctions",
           "cost": { "money": 3 },
-          "risk": { "sanctions": 1.0 },
-          "benefit": { "aiLevelPerTurn": 1 },
-          "result_text": "You proceed with unauthorized datacenter construction, bypassing government approval processes. While the facility is successfully established, the US government responds with comprehensive economic sanctions against your company."
+          "risk": { "sanctions": 0.85 },
+          "benefit": { "aiLevelPerTurn": 1 }
         },
         {
           "text": "Decline",
@@ -108,6 +131,7 @@
       "weight": 4,
       "requires": ["product-breakthrough-robotics"],
       "oneTime": true,
+      "customHandler": "handleNuclearWeaponsChoice",
       "text_versions": [
         "The US government normally tries extremely hard to prevent unauthorized actors from building nuclear weapons, but global crises mean that it no longer has the capacity for enforcement. In its robotics business, your company has encountered the materials and manufacturing knowledge needed. Developing a nuclear device would give your company true independence against needless regulation."
       ],
@@ -117,8 +141,7 @@
           "action": "accept",
           "cost": { "productPoints": 2, "diplomacyPoints": 2 },
           "risk": { "sanctions": 0.5 },
-          "penalty": { "doomLevel": 3 },
-          "result_text": "Your team begins the secretive nuclear weapons program. The project advances rapidly thanks to your robotics expertise and AI-assisted design. International intelligence agencies remain unaware for now, but the development fundamentally changes your company's position in global politics."
+          "penalty": { "doomLevel": 3 }
         },
         {
           "text": "Decline",
@@ -137,7 +160,7 @@
       ],
       "choices": [
         {
-          "text": "Seek UN Recognition (Forced choice)",
+          "text": "Seek UN Recognition",
           "action": "accept",
           "benefit": { "resourceMultiplier": 1.5, "unRecognition": true },
           "result_text": "The UN vote succeeds after intense lobbying. Your company is granted special observer status with quasi-governmental privileges. Monthly resources increase by 50%, and your diplomatic influence expands dramatically on the world stage."
@@ -149,6 +172,7 @@
       "weight": 4,
       "requires": ["seek-un-recognition"],
       "oneTime": true,
+      "customHandler": "handleMissileDefenseChoice",
       "text_versions": [
         "Nuclear-armed states like the US and Russia pose a serious problem for your company's security, as their missiles can threaten your datacenters from thousands of kilometers away. However, a combination of cyberweapons and interceptor drones can mitigate this risk."
       ],
@@ -157,8 +181,7 @@
           "text": "Proceed (50% chance of sanctions, +5 Doom)",
           "action": "accept",
           "risk": { "sanctions": 0.5 },
-          "penalty": { "doomLevel": 5 },
-          "result_text": "Your missile defense system comes online successfully. Advanced AI-controlled interceptors and cyber warfare capabilities now protect your facilities from conventional military threats. However, this escalation increases global tensions significantly."
+          "penalty": { "doomLevel": 5 }
         },
         {
           "text": "Decline",
