@@ -31,7 +31,8 @@ const gameState = {
     currentTurn: 1,
     currentMonth: "January",
     currentYear: 2026,
-    money: 1 // Starting money
+    money: 1, // Starting money
+    gameOverReason: null
 };
 
 // Story content
@@ -61,31 +62,26 @@ const storyContent = {
     },
     "main-game": {
         title: function() {
-            const turnTitle = `Turn ${gameState.currentTurn || 1} (${gameState.currentMonth || 'January'} ${gameState.currentYear || 2026})`;
-            return gameState.companyName ? `${gameState.companyName} - ${turnTitle}` : "Critical Path";
+            return `Turn ${gameState.currentTurn || 1} (${gameState.currentMonth || 'January'} ${gameState.currentYear || 2026})`;
         },
         text: function() {
-            return `You are leading a top AI lab. You have $${gameState.money} to spend this turn. Choose how to allocate your resources:`;
+            const corporateResources = calculateResources();
+            return `You are the CEO of ${gameState.companyName}. You have ${corporateResources} corporate resources to allocate this turn. Choose how to allocate your resources:`;
         },
         showStatus: true,
         showActions: true,
         actions: [
-            "AI R&D (increase AI Level)", 
-            "Diplomacy R&D (increase Diplomacy)",
-            "Product R&D (increase Product)", 
-            "Safety R&D (increase Safety, decrease Doom)",
+            "AI R&D (↑ AI Level, ↑ Doom)", 
+            "Diplomacy R&D (↑ Diplomacy)",
+            "Product R&D (↑ Product)", 
+            "Safety R&D (↑ Safety, ↓ Doom)",
             "Skip Turn"
         ],
     },
     "end-game": {
         title: "Game Over",
         text: function() {
-            if (gameState.playerAILevel >= 100) {
-                return "You have achieved AGI! The future of humanity is now determined by your AI systems.";
-            } else if (gameState.opensourceAILevel >= 100) {
-                return "Open-source AI has reached AGI first. The future is uncertain as multiple uncontrolled AI systems compete for dominance.";
-            }
-            return "Game over.";
+            return calculateEndGameScore();
         },
         showStatus: true,
         buttons: [
@@ -143,7 +139,8 @@ function updateStatusBar() {
     document.getElementById('doom-level').textContent = gameState.doomLevel;
     document.getElementById('opensource-ai-level').textContent = gameState.opensourceAILevel;
     
-    // Corporate Divisions
+    // Company Divisions
+    document.getElementById('company-name-header').textContent = gameState.companyName || 'Company';
     document.getElementById('money').textContent = gameState.money;
     document.getElementById('diplomacy-points').textContent = gameState.diplomacyPoints;
     document.getElementById('product-points').textContent = gameState.productPoints;
@@ -157,22 +154,29 @@ function updateStatusBar() {
 
 
 function allocateResources(resourceType) {
+    // Calculate corporate resources for this turn (expires if not used)
+    const corporateResources = calculateResources();
+    
     switch(resourceType) {
-        case 'AI R&D (increase AI Level)':
-            gameState.playerAILevel += 5;
+        case 'AI R&D (↑ AI Level, ↑ Doom)':
+            gameState.playerAILevel += corporateResources;
+            gameState.doomLevel += corporateResources;
             break;
-        case 'Diplomacy R&D (increase Diplomacy)':
-            gameState.diplomacyPoints += 3;
+        case 'Diplomacy R&D (↑ Diplomacy)':
+            gameState.diplomacyPoints += corporateResources;
             break;
-        case 'Product R&D (increase Product)':
-            gameState.productPoints += 3;
+        case 'Product R&D (↑ Product)':
+            gameState.productPoints += corporateResources;
             break;
-        case 'Safety R&D (increase Safety, decrease Doom)':
-            gameState.safetyPoints += 3;
-            gameState.doomLevel = Math.max(0, gameState.doomLevel - 3);
+        case 'Safety R&D (↑ Safety, ↓ Doom)':
+            gameState.safetyPoints += corporateResources;
+            // Each SP decreases XL by 3% (relative reduction)
+            const reductionFactor = 1 - (corporateResources * 0.03);
+            gameState.doomLevel = Math.floor(gameState.doomLevel * Math.max(0, reductionFactor));
             break;
         case 'Skip Turn':
-            // Do nothing
+            // Convert corporate resources to saved money
+            gameState.money += corporateResources;
             break;
     }
     
@@ -191,7 +195,14 @@ function allocateResources(resourceType) {
     updateStatusBar();
     
     // Check end conditions
+    if (gameState.doomLevel >= 100) {
+        gameState.gameOverReason = 'doom-100';
+        showPage('end-game');
+        return;
+    }
+    
     if (gameState.playerAILevel >= 100 || gameState.opensourceAILevel >= 100) {
+        gameState.gameOverReason = 'ai-singularity';
         showPage('end-game');
         return;
     }
@@ -324,9 +335,96 @@ function refreshEvalsDisplay() {
     }
 }
 
-function calculateRevenue() {
+function calculateResources() {
     // Formula from README: floor(sqrt(max(1, AL - OL)))
-    return Math.floor(Math.sqrt(Math.max(1, gameState.playerAILevel - gameState.opensourceAILevel)));
+    return Math.floor(Math.sqrt(Math.max(1, gameState.opensourceAILevel / 4, gameState.playerAILevel - gameState.opensourceAILevel)));
+}
+
+function resetGameState() {
+    gameState.playerAILevel = 10;
+    gameState.doomLevel = 20;
+    gameState.opensourceAILevel = 2;
+    gameState.diplomacyPoints = 0;
+    gameState.productPoints = 0;
+    gameState.safetyPoints = 0;
+    gameState.hasSanctions = false;
+    gameState.hasUNRecognition = false;
+    gameState.currentPage = "start";
+    gameState.alignmentLevel = Math.random();
+    gameState.evalsBuilt = {
+        capability: false,
+        corrigibility: false,
+        alignment: false,
+        forecasting: false
+    };
+    gameState.correlationDataset = null;
+    gameState.currentMinigame = null;
+    gameState.companyName = null;
+    gameState.currentTurn = 1;
+    gameState.currentMonth = "January";
+    gameState.currentYear = 2026;
+    gameState.money = 1;
+    gameState.gameOverReason = null;
+}
+
+function calculateEndGameScore() {
+    let resultText = "";
+    let playerGalaxies = 0;
+    let humanityGalaxies = 0;
+    let rogueGalaxies = 0;
+    
+    if (gameState.gameOverReason === 'doom-100') {
+        // Instant game over - all AIs are misaligned
+        resultText = `${gameState.companyName} was reckless enough to let doom reach 100%. Humanity is immediately eaten by nanobots, which go on to colonize the stars.`;
+        rogueGalaxies = 100;
+        playerGalaxies = 0;
+        humanityGalaxies = 0;
+    } else if (gameState.gameOverReason === 'ai-singularity') {
+        resultText = "The singularity has arrived. ";
+        
+        narrow_race = Math.min(gameState.playerAILevel, gameState.opensourceAILevel) >= 90;
+        if (gameState.playerAILevel >= 100) {
+            resultText += narrow_race ? "You achieved ASI first. " : "You achieved ASI first, but open-source AI was close behind. ";
+        } else {
+            resultText += "Open-source AI achieved ASI first. ";
+        }
+        
+        // Calculate galaxy splits based on README formula
+        const playerShare = Math.max(0, Math.min(100, gameState.playerAILevel - gameState.opensourceAILevel));
+        const otherShare = 100 - playerShare;
+        
+        // Roll for misalignment using doom level as probability
+        const playerMisaligned = Math.random() * 100 < gameState.doomLevel;
+        const otherMisaligned = Math.random() * 100 < gameState.doomLevel;
+        
+        if (playerMisaligned) {
+            rogueGalaxies += playerShare;
+            resultText += `Your AI systems became misaligned (${gameState.doomLevel}% chance). `;
+        } else {
+            playerGalaxies = playerShare;
+            resultText += `Your AI systems remained aligned. `;
+        }
+        
+        if (otherMisaligned) {
+            rogueGalaxies += otherShare;
+            resultText += `Other AI systems became misaligned. `;
+        } else {
+            humanityGalaxies = otherShare;
+            resultText += `Other AI systems remained aligned. `;
+        }
+    }
+    
+    // Calculate final score: 0x rogue + 10x humanity + 20x player
+    const finalScore = (0 * rogueGalaxies) + (10 * humanityGalaxies) + (20 * playerGalaxies);
+    
+    resultText += `<br><br><strong>Final Galaxy Distribution:</strong><br>`;
+    resultText += `• Rogue AI: ${rogueGalaxies}%<br>`;
+    resultText += `• Humanity at large: ${humanityGalaxies}%<br>`;
+    resultText += `• Your company: ${playerGalaxies}%<br><br>`;
+    resultText += `<strong>Final Score: ${finalScore}</strong><br>`;
+    resultText += `(${rogueGalaxies}×0 + ${humanityGalaxies}×10 + ${playerGalaxies}×20)`;
+    
+    return resultText;
 }
 
 async function showPage(pageId) {
@@ -389,19 +487,20 @@ async function showPage(pageId) {
     if (page.showActions && page.actions) {
         const actionsPanel = document.createElement('div');
         actionsPanel.className = 'actions-panel';
-        actionsPanel.innerHTML = '<h3>Available Actions:</h3>';
         
-        const actionsList = document.createElement('ul');
-        actionsList.className = 'actions-list';
         page.actions.forEach(action => {
-            const li = document.createElement('li');
-            li.textContent = action;
-            li.onclick = () => {
+            const btn = document.createElement('button');
+            btn.className = 'button';
+            btn.textContent = action;
+            btn.style.display = 'block';
+            btn.style.margin = '10px 0';
+            btn.style.width = '100%';
+            btn.style.fontFamily = "'Courier New', Courier, monospace";
+            btn.onclick = () => {
                 allocateResources(action);
             };
-            actionsList.appendChild(li);
+            actionsPanel.appendChild(btn);
         });
-        actionsPanel.appendChild(actionsList);
         
         
         
@@ -480,6 +579,10 @@ async function showPage(pageId) {
             btn.textContent = button.text;
             btn.onclick = async () => {
                 if (button.action === 'goto') {
+                    if (button.target === 'start' && gameState.currentPage === 'end-game') {
+                        // Reset game state when restarting from end screen
+                        resetGameState();
+                    }
                     gameState.currentPage = button.target;
                     showPage(button.target);
                 }

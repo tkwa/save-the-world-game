@@ -37,7 +37,7 @@ Status bar: 3 columns. All values are ints.
 * AI Information
     * Player AI Level (AL)-- 10 - 100, starts at 10.
     * Doom Level (XL)-- 0 - 100, starts at 20, increases with XL
-        * Instant game over if doom > capabilities + 100
+        * Instant game over if doom >= 100; in this case all AIs are misaligned
         * Otherwise doom happens with Doom Level % at game over
     * Open-source AI level (OL)-- 2 - 100
         * Player must always stay ahead of this. It increases by floor(sqrt(max(1, OL / 8))).
