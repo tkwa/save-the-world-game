@@ -1,30 +1,45 @@
 # Claude Code Session Summary: Critical Path Game Development
 
 ## Overview
-This session involved extensive development of "Critical Path," a turn-based AI strategy game where players act as CEOs of AI companies navigating the race to AGI while balancing safety concerns. The game evolved significantly from initial concept to a fully-featured dark-themed strategy experience.
+This session involved extensive development of "Critical Path," a turn-based AI strategy game where players act as CEOs of AI companies navigating the race to AGI while balancing safety concerns. The game evolved from initial concept to a fully-featured dark-themed strategy experience with comprehensive systems overhaul.
 
 ## Major System Implementations
 
-### Event System Architecture
-- **Modular Event Framework**: Created `events.js` and `events.json` for extensible event management
-- **Weighted Random Selection**: Implemented probability-based event generation with customizable weights
-- **Multi-stage Dialogues**: Events now support initial text → player choice → result text → turn advancement
-- **Event Counter System**: Tracks events seen and choices taken for requirement checking
-- **Requirements System**: Events only appear when prerequisites are met (e.g., Nuclear Weapons requires robotics breakthrough)
+### AI Capabilities Status Bar Redesign
+- **Competitor System**: Changed from single open-source AI level to list of 3 top competitors (8, 6, 4 starting levels)
+- **Company Names**: Random assignment of player company and 3 competitors from pool (OpenAI, Anthropic, Google, Amazon, Tencent, xAI)
+- **Geometric Distribution**: Competitors increase using continuous exponential distribution with inverse CDF sampling
+- **Visual Formatting**: Competitor levels displayed as comma-separated list without spaces
 
-### Complete DSA (Decisive Strategic Advantage) Track
-Implemented the full progression path for corporate-to-nation-state transformation:
-1. **Overseas Datacenter** (UAE/Russia/Malaysia variants) - Provides +1 AI level per turn
-2. **Nuclear Weapons** (requires robotics) - Unlocks true independence from regulation  
-3. **UN Recognition** (requires datacenter + nuclear weapons + resources ≥6) - 1.5x resource multiplier
-4. **Missile Defense** (requires UN recognition) - Protection from state-level threats
-5. **Decisive Strategic Advantage** (requires missile defense) - Immediate singularity victory
+### Resource/AI Capability System Rebalancing
+- **Power Law Scaling**: Implemented X^0.8 formulas for diminishing returns on resource allocation
+- **Infrastructure Integration**: Datacenters provide 20% AI labor boost stacking additively
+- **Sanctions Mechanics**: Only affect base compute, not datacenter bonuses (overseas datacenters protected)
+- **Resource Calculation**: `baseCompute = playerAILevel; if (sanctions) baseCompute /= 2; totalResources = baseCompute * (1 + datacenterBoost)`
 
-### Sanctions and Economic Systems
-- **Sanctions Mechanics**: 100% probability sanctions event when sanctions are active, halves resources
-- **Resource Calculation**: Dynamic formula incorporating UN recognition multipliers and sanctions penalties
-- **Income Bonus System**: Product breakthroughs provide permanent +$1B per turn revenue streams
-- **Cost Validation**: Event choices validate resource costs before execution
+### Infrastructure Tracking System
+- **Three Infrastructure Types**: Datacenters (🏢), Power Plants (⚡), Biotech Labs (🧪)
+- **Visual Indicators**: Multiple icons shown with proper spacing using `Array().fill().join(' ')` method
+- **Tooltips**: Detailed explanations for each infrastructure type's benefits
+- **Requirements**: Only Synthetic Biology requires biotech labs (not medicine breakthroughs)
+
+### Technology Tree Expansion
+- **Alignment Technologies**: Monitoring (👁️), Control (🎛️), Alignment (🧭), Interpretability (🔬)
+- **Military Technologies**: Cyber Warfare (🔓), Bioweapons (☣️), Killer Drones (🦟), Nuclear Weapons (☢️)
+- **Civilian Technologies**: Arranged in three columns with proper spacing and tooltips
+- **Column Layout**: Civilian | Alignment | Military with 15px gaps between columns
+
+### Event System Architecture  
+- **Complete DSA Track**: Overseas Datacenter → Nuclear Weapons → UN Recognition → Missile Defense → Decisive Strategic Advantage
+- **Risk Mechanics**: Probabilistic sanctions system (85% chance for unauthorized datacenter construction)
+- **Event Requirements**: Prerequisites system ensuring logical progression through technology tree
+- **Custom Handlers**: Specialized functions for events with complex risk/reward mechanics
+
+### Game Balance and Display
+- **Resource Rounding**: All resource displays (funds, diplomacy, product, safety) show rounded whole numbers
+- **Safety R&D Display**: Shows absolute risk decreases instead of relative percentages
+- **Funds Display**: Rounds down to whole billions for cleaner presentation
+- **Competitor AI Levels**: Round to whole numbers for clarity
 
 ### User Interface Overhaul
 - **Dark Theme Implementation**: Complete visual redesign with professional dark color scheme
@@ -107,23 +122,42 @@ Implemented the full progression path for corporate-to-nation-state transformati
 
 ## Technical Challenges Resolved
 
-### String Replacement Issues
-- **Root Cause**: File modifications during development caused exact string matches to fail
-- **Solution**: Targeted, incremental changes using smaller string sections and systematic approach
+### Infrastructure Display Issues
+- **Problem**: Emoji spacing using `&thinsp;` and string manipulation caused "character not found" icons
+- **Solution**: Replaced with `Array().fill().join(' ')` method using regular spaces for proper emoji rendering
 
-### Button State Synchronization
-- **Problem**: Visual selection not matching actual game state after event handling
-- **Resolution**: Proper selection clearing timing and default fallback logic
+### Geometric Distribution Implementation
+- **Issue**: Initially used discrete geometric distribution instead of continuous exponential
+- **Fix**: Implemented proper continuous distribution using inverse CDF sampling: `x = -ln(U) / λ`
 
-### Event Flow Logic
-- **Challenge**: Balancing immediate resource application with turn-based event resolution
-- **Implementation**: Two-phase system (allocation → events → turn advancement)
+### Technology Requirements
+- **Confusion**: Medicine vs Synthetic Biology biotech lab requirements
+- **Clarification**: Only Synthetic Biology requires biotech labs, medicine is standalone drug discovery
 
-## Final Architecture
-The game now operates as a sophisticated turn-based strategy experience with:
-- **Turn Structure**: Resource allocation → Event presentation → Player choice → Result display → Turn advancement
-- **Visual Hierarchy**: Dark theme with color-coded status indicators and contextual button states
-- **Strategic Depth**: Multiple victory paths through different event chains and resource management approaches
-- **Extensibility**: JSON-driven event system allowing easy addition of new content
+### Event Button Text Updates
+- **Change**: Updated "Accept sanctions" to "Risk sanctions" for clearer player understanding
+- **Context**: Better communicates the probabilistic nature of sanctions in overseas datacenter construction
 
-The codebase is well-organized with clear separation of concerns, comprehensive error handling, and a polished user interface that provides immediate feedback for all player actions.
+## Current Game State Summary
+The game now features a comprehensive AI strategy simulation with:
+
+### Core Systems
+- **Balanced Resource Economy**: Power law scaling with infrastructure bonuses and sanctions mechanics
+- **Dynamic Competitor AI**: Exponential growth using proper continuous distribution 
+- **Three-Column Technology Tree**: Civilian, Alignment, and Military technologies with tooltips
+- **Infrastructure Tracking**: Visual indicators for datacenters, power plants, and biotech labs
+- **Probabilistic Event System**: Risk-based sanctions and complex multi-stage events
+
+### Visual Design
+- **Professional Dark Theme**: Consistent monospace typography with color-coded status indicators
+- **Comprehensive Tooltips**: Detailed explanations for all game mechanics and technologies
+- **Clean Status Bar**: AI capabilities, resources, infrastructure, and technology progression
+- **Rounded Displays**: All numbers show as clean whole values for better readability
+
+### File Architecture
+- `game-core.js`: Main game logic with resource calculations and status bar updates
+- `events.js`: Event system with custom handlers for complex mechanics  
+- `events.json`: Event definitions with probabilistic choices and requirements
+- `savetheworld.html`: UI layout with tooltip system and dark theme styling
+
+The game provides a realistic simulation of AI company strategy with meaningful tradeoffs between growth, safety, and geopolitical considerations.

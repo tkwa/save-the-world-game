@@ -100,9 +100,9 @@
       "oneTime": true,
       "customHandler": "handleOverseasDatacenterChoice",
       "text_versions": [
-        "Your company has the opportunity to establish a 2GW datacenter in the UAE. This would generate 1 additional AI level per turn, but unauthorized construction risks US sanctions.",
-        "Your company has the opportunity to establish a 2GW datacenter in Russia. This would generate 1 additional AI level per turn, but unauthorized construction risks US sanctions.",
-        "Your company has the opportunity to establish a 2GW datacenter in Malaysia. This would generate 1 additional AI level per turn, but unauthorized construction risks US sanctions."
+        "Your company has the opportunity to establish a 1GW datacenter in the UAE. This would increase your compute by 20%, but unauthorized construction risks US sanctions.",
+        "Your company has the opportunity to establish a 1GW datacenter in Russia. This would increase your compute by 20%, but unauthorized construction risks US sanctions.",
+        "Your company has the opportunity to establish a 1GW datacenter in Malaysia. This would increase your compute by 20%, but unauthorized construction risks US sanctions."
       ],
       "choices": [
         {
@@ -113,7 +113,7 @@
           "result_text": "Your overseas datacenter construction proceeds smoothly through official diplomatic channels. Government approvals are secured, and the facility comes online quickly, providing substantial additional computational capacity for your AI research programs."
         },
         {
-          "text": "Accept sanctions (-$3B, 85% chance of sanctions)",
+          "text": "Risk sanctions (-$3B, 85% chance of sanctions)",
           "action": "accept-sanctions",
           "cost": { "money": 3 },
           "risk": { "sanctions": 0.85 },
