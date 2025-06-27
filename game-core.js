@@ -1,5 +1,7 @@
 // Core game logic for the AI Timeline Game
 
+VERSION = "v0.1.0"
+
 // Game constants
 const GAME_CONSTANTS = {
     // Initial values
@@ -8,7 +10,7 @@ const GAME_CONSTANTS = {
     INITIAL_COMPETITOR_AI_LEVELS: [8, 6, 4],
     INITIAL_TURN: 1,
     INITIAL_YEAR: 2026,
-    INITIAL_MONEY: 1,
+    INITIAL_MONEY: 10,
     MAX_COMPETITORS: 3,
     
     // AI capability risk thresholds

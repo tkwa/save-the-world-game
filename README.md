@@ -5,6 +5,12 @@ Done:
 - Capability evals minigame
 - Forecasting minigame
 
+TODO:
+- Corrigibility evals minigame
+- Alignment evals minigame
+- Alignment minigames
+- Events
+
 # Critical Path: a turn-based game
 
 1 month per turn, game takes place over the course of 2026-2027, around 25 turns.
@@ -89,14 +95,6 @@ Other AIs: (100 - (AL - OL)) / 100
 If an AI is misaligned its galaxies go in the rogue AI category rather than player / humanity at large.
 
 Finally the score is computed as above, and the end screen is displayed.
-
-# Other ideas
-
-TODO:
-- Corrigibility evals minigame
-- Alignment evals minigame
-- Alignment minigames
-- Events
 
 ### Brainstorming
 

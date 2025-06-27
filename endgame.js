@@ -91,13 +91,13 @@ function getPhase2Text() {
     text += `Based on the safety research conducted and the recklessness of the AI race, humanity's best guess is that `;
     text += `there's a <strong style="color: ${getRiskColor(doomPercent)};">${doomPercent}%</strong> chance that any given ASI system is misaligned and poses an existential threat.<br><br>`;
     
-    text += "You want humanity to flourish and avoid extinction. But, ";
-    text += `you'd much prefer that <strong>${gameState.companyName}</strong> controls the future rather than leaving it to other organizations.`;
+    text += "You want humanity to flourish and avoid extinction. But ";
+    text += `you'd also prefer that <strong>${gameState.companyName}</strong> controls the future rather than leaving it to other organizations.`;
     
     return text;
 }
 
-function getPhase3Text() {
+function getPhase3BaseText() {
     const doomPercent = Math.round(gameState.doomLevel);
     
     // Roll for alignment (using same logic as calculateEndGameScore)
@@ -121,25 +121,60 @@ function getPhase3Text() {
     const expectedHumanityGalaxies = competitorRawShare * (1 - doomPercent / 100);
     const expectedRogueGalaxies = 100 - expectedPlayerGalaxies - expectedHumanityGalaxies;
     
-    let text = "Lesser AIs run thousands of simulations to determine the <em>average</em> fate of the cosmic endowment:<br>";
+    // Calculate expected score
+    const expectedScore = expectedPlayerGalaxies * GAME_CONSTANTS.GALAXY_MULTIPLIERS.PLAYER + 
+                         expectedHumanityGalaxies * GAME_CONSTANTS.GALAXY_MULTIPLIERS.HUMANITY;
     
-    // Expected values in 3 columns
-    text += `<div style="display: flex; justify-content: space-between; width: 60%; margin: 15px auto;">`;
-    text += `<div style="text-align: center;">`;
-    text += `<div style="color: #ffa726; margin-bottom: 5px;">${gameState.companyName}</div>`;
-    text += `<div>${Math.round(expectedPlayerGalaxies)}%</div>`;
+    // Determine net assessments based on baselines
+    // Baseline: 25% ownership for shareholders, 80% survival (100% - 20% baseline risk) for humanity
+    const baselineOwnership = 25;
+    const baselineHumanitySurvival = 80; // 100% - 20% baseline risk
+    
+    const actualHumanitySurvival = expectedPlayerGalaxies + expectedHumanityGalaxies;
+    
+    // Within 5 percentage points = neutral
+    const shareholderAssessment = 
+        expectedPlayerGalaxies > baselineOwnership + 5 ? "positive" :
+        expectedPlayerGalaxies < baselineOwnership - 5 ? "negative" : "neutral";
+    
+    const humanityAssessment = 
+        actualHumanitySurvival > baselineHumanitySurvival + 5 ? "positive" :
+        actualHumanitySurvival < baselineHumanitySurvival - 5 ? "negative" : "neutral";
+    
+    let text = `Lesser AIs run thousands of simulations to determine the average fate of the cosmic endowment. They determine that ${gameState.companyName}'s actions were <strong>net ${shareholderAssessment}</strong> for its shareholders and <strong>net ${humanityAssessment}</strong> for humanity.<br><br>`;
+    
+    // Create tooltip content with expected table and score breakdown
+    const tooltipContent = `Expected % of universe<br><br>` +
+        `<div style="display: flex; justify-content: space-between; width: 100%;">` +
+        `<div style="text-align: center;">` +
+        `<div style="color: #ffa726; margin-bottom: 5px;">${gameState.companyName}</div>` +
+        `<div>${Math.round(expectedPlayerGalaxies)}% × 20</div>` +
+        `</div>` +
+        `<div style="text-align: center;">` +
+        `<div style="color: #66bb6a; margin-bottom: 5px;">Other humanity</div>` +
+        `<div>${Math.round(expectedHumanityGalaxies)}% × 10</div>` +
+        `</div>` +
+        `<div style="text-align: center;">` +
+        `<div style="color: #ff6b6b; margin-bottom: 5px;">Rogue AI</div>` +
+        `<div>${Math.round(expectedRogueGalaxies)}% × 0</div>` +
+        `</div>` +
+        `</div>`;
+    
+    // Show score with tooltip
+    text += `<div style="text-align: center; margin: 15px auto;">`;
+    text += `<div class="tooltip" style="display: inline-block;">`;
+    text += `<strong style="font-size: 18px; color: #ffa726;">Score: ${Math.round(expectedScore)}</strong>`;
+    text += `<span class="tooltiptext" style="width: 300px; margin-left: -150px;">${tooltipContent}</span>`;
     text += `</div>`;
-    text += `<div style="text-align: center;">`;
-    text += `<div style="color: #66bb6a; margin-bottom: 5px;">Other humanity</div>`;
-    text += `<div>${Math.round(expectedHumanityGalaxies)}%</div>`;
-    text += `</div>`;
-    text += `<div style="text-align: center;">`;
-    text += `<div style="color: #ff6b6b; margin-bottom: 5px;">Rogue AI</div>`;
-    text += `<div>${Math.round(expectedRogueGalaxies)}%</div>`;
-    text += `</div>`;
-    text += `</div>`;
+    text += `</div><br>`;
     
     text += "But in the real world, systems are either benign or malicious-- it can be all or nothing.<br><br>";
+    
+    return text;
+}
+
+function getPhase3Text() {
+    let text = getPhase3BaseText();
     
     // Add placeholder for the moment of truth text (to be revealed after 3.5 seconds)
     text += `<div id="moment-of-truth-reveal" style="opacity: 0; transition: opacity 0.8s ease-in;"></div>`;
@@ -148,48 +183,7 @@ function getPhase3Text() {
 }
 
 function getPhase3TextWithMomentOfTruth() {
-    const doomPercent = Math.round(gameState.doomLevel);
-    
-    // Roll for alignment (using same logic as calculateEndGameScore)
-    if (!gameState.alignmentRolls) {
-        gameState.alignmentRolls = {
-            player: Math.random() * 100 >= doomPercent,
-            competitors: Math.random() * 100 >= doomPercent
-        };
-    }
-    
-    // Calculate expected values using x^2 proportional allocation
-    const playerCapabilitySquared = gameState.playerAILevel ** 2;
-    const competitorCapabilitiesSquared = gameState.competitorAILevels.map(level => level ** 2);
-    const totalCapabilitySquared = playerCapabilitySquared + competitorCapabilitiesSquared.reduce((sum, cap) => sum + cap, 0);
-    
-    const playerRawShare = (playerCapabilitySquared / totalCapabilitySquared) * 100;
-    const competitorRawShare = (competitorCapabilitiesSquared.reduce((sum, cap) => sum + cap, 0) / totalCapabilitySquared) * 100;
-    
-    // Expected values accounting for alignment probability
-    const expectedPlayerGalaxies = playerRawShare * (1 - doomPercent / 100);
-    const expectedHumanityGalaxies = competitorRawShare * (1 - doomPercent / 100);
-    const expectedRogueGalaxies = 100 - expectedPlayerGalaxies - expectedHumanityGalaxies;
-    
-    let text = "Lesser AIs run thousands of simulations to determine the <em>average</em> fate of the cosmic endowment:<br>";
-    
-    // Expected values in 3 columns
-    text += `<div style="display: flex; justify-content: space-between; width: 60%; margin: 15px auto;">`;
-    text += `<div style="text-align: center;">`;
-    text += `<div style="color: #ffa726; margin-bottom: 5px;">${gameState.companyName}</div>`;
-    text += `<div>${Math.round(expectedPlayerGalaxies)}%</div>`;
-    text += `</div>`;
-    text += `<div style="text-align: center;">`;
-    text += `<div style="color: #66bb6a; margin-bottom: 5px;">Other humanity</div>`;
-    text += `<div>${Math.round(expectedHumanityGalaxies)}%</div>`;
-    text += `</div>`;
-    text += `<div style="text-align: center;">`;
-    text += `<div style="color: #ff6b6b; margin-bottom: 5px;">Rogue AI</div>`;
-    text += `<div>${Math.round(expectedRogueGalaxies)}%</div>`;
-    text += `</div>`;
-    text += `</div>`;
-    
-    text += "But in the real world, systems are either benign or malicious-- it can be all or nothing.<br><br>";
+    let text = getPhase3BaseText();
     
     // Show the moment of truth text (already revealed in phase 4)
     text += 'The moment of truth arrives. As the ASI systems activate and begin to optimize the world according to their learned objectives...';
@@ -346,43 +340,31 @@ function startAlignmentReveal() {
         fadeIn(element, headerHTML);
     }, 4500);
     
-    // Reveal actual values after 6 seconds
+    // Reveal actual values one by one starting at 6 seconds
     setTimeout(() => {
         const { playerGalaxies, humanityGalaxies, rogueGalaxies } = gameState.galaxyDistribution;
         
-        // Fill in the values in the existing placeholders
+        // Reveal player percentage first
         document.getElementById('player-value-placeholder').innerHTML = `${Math.round(playerGalaxies)}%`;
-        document.getElementById('humanity-value-placeholder').innerHTML = `${Math.round(humanityGalaxies)}%`;
-        document.getElementById('rogue-value-placeholder').innerHTML = `${Math.round(rogueGalaxies)}%`;
         
-        // Clear the results reveal div since values are now in the header
-        const element = document.getElementById('actual-results-reveal');
-        fadeIn(element, '<br>');
+        // Reveal humanity percentage after 0.5 seconds
+        setTimeout(() => {
+            document.getElementById('humanity-value-placeholder').innerHTML = `${Math.round(humanityGalaxies)}%`;
+            
+            // Reveal rogue AI percentage after another 0.5 seconds
+            setTimeout(() => {
+                document.getElementById('rogue-value-placeholder').innerHTML = `${Math.round(rogueGalaxies)}%`;
+            }, 500);
+        }, 500);
     }, 6000);
     
-    // Reveal score and restart button after 8 seconds
+    // Reveal restart button after 8.5 seconds (0.5s after last percentage)
     setTimeout(() => {
-        const doomPercent = gameState.doomLevel / 100;
-        
-        // Use x^2 proportional allocation for score calculation too
-        const playerCapabilitySquared = gameState.playerAILevel ** 2;
-        const competitorCapabilitiesSquared = gameState.competitorAILevels.map(level => level ** 2);
-        const totalCapabilitySquared = playerCapabilitySquared + competitorCapabilitiesSquared.reduce((sum, cap) => sum + cap, 0);
-        
-        const playerRawShare = (playerCapabilitySquared / totalCapabilitySquared) * 100;
-        const competitorRawShare = (competitorCapabilitiesSquared.reduce((sum, cap) => sum + cap, 0) / totalCapabilitySquared) * 100;
-        
-        const expectedPlayerGalaxies = playerRawShare * (1 - doomPercent);
-        const expectedHumanityGalaxies = competitorRawShare * (1 - doomPercent);
-        const expectedScore = expectedPlayerGalaxies * GAME_CONSTANTS.GALAXY_MULTIPLIERS.PLAYER + 
-                             expectedHumanityGalaxies * GAME_CONSTANTS.GALAXY_MULTIPLIERS.HUMANITY;
-        
-        let scoreHTML = `<br><strong style="color: #ffa726; font-size: 18px;">Score: ${Math.round(expectedScore)}</strong><br><br>`;
-        scoreHTML += `<button class="button" onclick="resetGameState(); showPage('start');">Restart</button>`;
+        let restartHTML = `<br><button class="button" onclick="resetGameState(); showPage('start');">Restart</button>`;
         
         const element = document.getElementById('score-reveal');
-        fadeIn(element, scoreHTML);
-    }, 8000);
+        fadeIn(element, restartHTML);
+    }, 8500);
 }
 
 
