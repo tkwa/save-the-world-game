@@ -114,6 +114,32 @@ function generateSafetyIncident(events) {
     };
 }
 
+// Helper function to substitute variables in event text
+function substituteEventVariables(text, eventType) {
+    let substitutedText = text;
+    
+    // Handle country substitution for both overseas-datacenter and nuclear-weapons events
+    if (text.includes('$country')) {
+        let country;
+        
+        if (eventType === 'overseas-datacenter') {
+            // Pick a random country for the datacenter event and store it
+            const countries = GAME_CONSTANTS.DATACENTER_COUNTRIES;
+            country = countries[Math.floor(Math.random() * countries.length)];
+            gameState.datacenterCountry = country;
+        } else if (eventType === 'nuclear-weapons' && gameState.datacenterCountry) {
+            // Use the previously stored datacenter country for nuclear weapons
+            country = gameState.datacenterCountry;
+        }
+        
+        if (country) {
+            substitutedText = substitutedText.replace(/\$country/g, country);
+        }
+    }
+    
+    return substitutedText;
+}
+
 // Select a random event from an array using weighted probabilities
 function selectWeightedEvent(eventArray) {
     const totalWeight = eventArray.reduce((sum, event) => sum + (event.weight || 1), 0);
@@ -123,7 +149,10 @@ function selectWeightedEvent(eventArray) {
         randomValue -= (event.weight || 1);
         if (randomValue <= 0) {
             // Select random text from text_versions
-            const randomText = event.text_versions[Math.floor(Math.random() * event.text_versions.length)];
+            let randomText = event.text_versions[Math.floor(Math.random() * event.text_versions.length)];
+            
+            // Apply variable substitution
+            randomText = substituteEventVariables(randomText, event.type);
             
             return {
                 type: event.type,
@@ -135,7 +164,10 @@ function selectWeightedEvent(eventArray) {
     
     // Fallback to last event if something goes wrong
     const fallbackEvent = eventArray[eventArray.length - 1];
-    const randomText = fallbackEvent.text_versions[Math.floor(Math.random() * fallbackEvent.text_versions.length)];
+    let randomText = fallbackEvent.text_versions[Math.floor(Math.random() * fallbackEvent.text_versions.length)];
+    
+    // Apply variable substitution to fallback
+    randomText = substituteEventVariables(randomText, fallbackEvent.type);
     
     return {
         type: fallbackEvent.type,
@@ -346,7 +378,10 @@ async function forceEvent(eventType) {
         // Handle default events
         const eventTemplate = events.defaultEvents.find(e => e.type === eventType);
         if (eventTemplate && getAvailableEvents([eventTemplate]).length > 0) {
-            const randomText = eventTemplate.text_versions[Math.floor(Math.random() * eventTemplate.text_versions.length)];
+            let randomText = eventTemplate.text_versions[Math.floor(Math.random() * eventTemplate.text_versions.length)];
+            
+            // Apply variable substitution
+            randomText = substituteEventVariables(randomText, eventTemplate.type);
             
             event = {
                 type: eventTemplate.type,

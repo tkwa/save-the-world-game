@@ -73,7 +73,17 @@ const GAME_CONSTANTS = {
     },
     
     // Minigame
-    FORECASTING_OPTIONS: [50, 60, 70, 80]
+    FORECASTING_OPTIONS: [50, 60, 70, 80],
+    
+    // Event variables
+    DATACENTER_COUNTRIES: ['Brazil', 'Indonesia', 'Turkey'],
+    
+    // Country flag mappings
+    COUNTRY_FLAGS: {
+        'Brazil': '🇧🇷',
+        'Indonesia': '🇮🇩', 
+        'Turkey': '🇹🇷'
+    }
 };
 
 // Game state
@@ -97,6 +107,7 @@ const gameState = {
     datacenterCount: 0,
     powerplantCount: 0,
     biotechLabCount: 0,
+    datacenterCountry: null, // Stores the country where datacenter was built
 
     // Technologies
     technologies: {
@@ -139,6 +150,8 @@ const gameState = {
     currentYear: GAME_CONSTANTS.INITIAL_YEAR,
     money: GAME_CONSTANTS.INITIAL_MONEY, // Starting money
     gameOverReason: null,
+    endGameResult: null, // Stores calculated end game score to avoid re-rolling
+    endGamePhase: 1, // Current phase of end game display (1-5)
     currentEvent: null,
     safetyIncidentCount: 0,
     selectedAllocation: null,
@@ -160,7 +173,7 @@ const storyContent = {
         title: "January 2026",
         text: async function () {
             // Randomly assign company
-            const companies = ["OpenAI", "Anthropic", "Google", "Amazon", "Tencent", "xAI"];
+            const companies = ["OpenAI", "Anthropic", "Google", "DeepSeek", "Tencent", "xAI"];
             gameState.companyName = companies[Math.floor(Math.random() * companies.length)];
             
             // Assign competitor companies (excluding player's company)
@@ -203,7 +216,7 @@ const storyContent = {
                 if (gameState.currentEvent.showResult && gameState.currentEvent.resultText) {
                     // Showing result of choice - just display result and next turn button
                     eventHtml += `<p style="color: #d0d0d0; margin-bottom: 15px;">${gameState.currentEvent.resultText}</p>`;
-                    eventHtml += `<button class="button" onclick="finishTurn()">Next Turn</button>`;
+                    eventHtml += `<button class="button" onclick="finishTurn()">Next Turn <strong>⏎</strong></button>`;
                 } else if (gameState.currentEvent.choices && gameState.currentEvent.choices.length > 0) {
                     // Event has choices - show them as buttons
                     gameState.currentEvent.choices.forEach((choice, index) => {
@@ -224,38 +237,10 @@ const storyContent = {
                         `` :
                         `background-color: #666; cursor: not-allowed; opacity: 0.6;`;
                     const onclick = allocationMade ? `finishTurn()` : '';
-                    eventHtml += `<button class="button" onclick="${onclick}" style="${buttonStyle}">Next Turn</button>`;
+                    eventHtml += `<button class="button" onclick="${onclick}" style="${buttonStyle}">Next Turn <strong>⏎</strong></button>`;
                 }
 
                 eventHtml += `</div>`;
-                
-                // Add debug controls in bottom right
-                eventHtml += `
-                    <div style="position: fixed; bottom: 10px; right: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 5px;">
-                        <select id="debugEventDropdown" onchange="forceEvent(this.value)" style="
-                            background-color: #333; 
-                            color: #fff; 
-                            border: 1px solid #555; 
-                            padding: 5px; 
-                            font-size: 12px;
-                            opacity: 0.7;
-                        ">
-                            <option value="">Debug: Force Event</option>
-                        </select>
-                        <button onclick="giveResources()" style="
-                            background-color: #333; 
-                            color: #fff; 
-                            border: 1px solid #555; 
-                            padding: 5px 10px; 
-                            font-size: 12px;
-                            opacity: 0.7;
-                            cursor: pointer;
-                        ">+1000 Resources</button>
-                    </div>
-                `;
-                
-                // Populate dropdown after rendering
-                setTimeout(populateDebugDropdown, 100);
                 
                 return eventHtml;
             }
@@ -272,14 +257,14 @@ const storyContent = {
         ],
     },
     "end-game": {
-        title: "Game Over",
+        title: "The Singularity",
         text: function () {
-            return calculateEndGameScore();
+            return getEndGamePhaseText();
         },
         showStatus: true,
-        buttons: [
-            { text: "Restart", action: "goto", target: "start" }
-        ]
+        buttons: function() {
+            return getEndGamePhaseButtons();
+        }
     },
     "capability-evals-minigame": {
         title: "Capability Evals",
@@ -326,6 +311,43 @@ const storyContent = {
     },
 };
 
+function getAISystemVersion(companyName, capabilityLevel) {
+    // Determine capability band based on AI_RISK_THRESHOLDS
+    let band = 0;
+    if (capabilityLevel >= GAME_CONSTANTS.AI_RISK_THRESHOLDS.LEVEL_6) band = 6;
+    else if (capabilityLevel >= GAME_CONSTANTS.AI_RISK_THRESHOLDS.LEVEL_5) band = 5;
+    else if (capabilityLevel >= GAME_CONSTANTS.AI_RISK_THRESHOLDS.LEVEL_4) band = 4;
+    else if (capabilityLevel >= GAME_CONSTANTS.AI_RISK_THRESHOLDS.LEVEL_3) band = 3;
+    else if (capabilityLevel >= GAME_CONSTANTS.AI_RISK_THRESHOLDS.LEVEL_2) band = 2;
+    else if (capabilityLevel >= GAME_CONSTANTS.AI_RISK_THRESHOLDS.LEVEL_1) band = 1;
+    
+    switch (companyName) {
+        case 'Anthropic':
+            // Starts at Claude 5 Opus, increments 2 per level
+            return `Claude ${5 + (band * 2)} Opus`;
+        case 'Google':
+            // Starts at Gemini 3.0 Pro, increments 1.5 per level
+            return `Gemini ${(3.0 + (band * 1.5)).toFixed(1)} Pro`;
+        case 'OpenAI':
+            // o5, o7, then AGT-9, AGT-10, AGT-12, AGT-14
+            if (band === 0) return 'o5';
+            else if (band === 1) return 'o7';
+            else return `AGT-${9 + ((band - 2) * 2)}`;
+        case 'DeepSeek':
+            // Deepseek R3, increments 2 per level
+            return `Deepseek R${3 + (band * 2)}`;
+        case 'xAI':
+            // Starts at Grok 5, increments 2 per level
+            return `Grok ${5 + (band * 2)}`;
+        case 'Tencent':
+            // Make something up
+            if (band === 0) return `Hunyuan ${3 + band}.0`;
+            else return `HunyuanAgent ${3 + band}.0`;
+        default:
+            return 'AI System';
+    }
+}
+
 function generateAICapabilitiesTooltip() {
     // Create ranking array with all companies
     const ranking = [
@@ -342,7 +364,8 @@ function generateAICapabilitiesTooltip() {
     const rankingText = ranking.map((company, index) => {
         const rank = index + 1;
         const companyText = company.isPlayer ? `<strong>${company.name}</strong>` : company.name;
-        return `${rank}. ${companyText}: ${company.level}x`;
+        const systemVersion = getAISystemVersion(company.name, company.level);
+        return `${rank}. ${companyText}: ${company.level}x (${systemVersion})`;
     }).join('<br>');
     
     return `AI capabilities level determines how much cognitive labor is available to companies each turn. <strong style="color: #ff6b6b;">ASI</strong> is achieved when one company reaches 1000x capabilities. The current ranking is:<br><br>${rankingText}`;
@@ -534,6 +557,24 @@ function updateInfrastructure() {
         const plural = gameState.biotechLabCount > 1 ? 's' : '';
         biotechLabTooltip.innerHTML = `${gameState.biotechLabCount} biotech lab${plural} used for synthetic biology.`;
     }
+
+    // Country flag (shown only when datacenter is built)
+    const countryFlagElement = document.getElementById('country-flag-icon');
+    const countryFlagTooltip = document.getElementById('country-flag-tooltip');
+    if (gameState.datacenterCountry && gameState.datacenterCount > 0) {
+        const flag = GAME_CONSTANTS.COUNTRY_FLAGS[gameState.datacenterCountry];
+        if (flag) {
+            countryFlagElement.textContent = flag;
+            if (countryFlagTooltip) {
+                countryFlagTooltip.innerHTML = `Economic Cooperation with <strong>${gameState.datacenterCountry}</strong>`;
+            }
+        }
+    } else {
+        countryFlagElement.textContent = '';
+        if (countryFlagTooltip) {
+            countryFlagTooltip.innerHTML = '';
+        }
+    }
 }
 
 // Risk color utility function
@@ -674,6 +715,7 @@ async function advanceTurn() {
 
     if (gameState.playerAILevel >= GAME_CONSTANTS.ASI_THRESHOLD || gameState.competitorAILevels[0] >= GAME_CONSTANTS.ASI_THRESHOLD) {
         gameState.gameOverReason = 'ai-singularity';
+        scaleAILevelsForEndGame();
         showPage('end-game');
         return;
     }
@@ -828,14 +870,14 @@ function calculateResources() {
 }
 
 function calculateResourceGains(resources) {
-    // AI R&D: X^0.8 / 5
-    const aiGain = Math.pow(resources, GAME_CONSTANTS.RESOURCE_FORMULAS.AI_GAIN_EXPONENT) / GAME_CONSTANTS.RESOURCE_FORMULAS.AI_GAIN_DIVISOR;
+    // AI R&D: X/10, costs money proportional to sqrt(current AI level)
+    const aiGain = resources / 10;
+    const aiCost = Math.sqrt(gameState.playerAILevel);
     
-    // Safety R&D: X^0.8 / 5 safety points, with diminishing returns risk reduction
-    const safetyGain = Math.pow(resources, GAME_CONSTANTS.RESOURCE_FORMULAS.SAFETY_GAIN_EXPONENT) / GAME_CONSTANTS.RESOURCE_FORMULAS.SAFETY_GAIN_DIVISOR;
-    const currentSafety = gameState.safetyPoints;
-    const newSafety = currentSafety + safetyGain;
-    const riskReduction = resources / GAME_CONSTANTS.RESOURCE_FORMULAS.RISK_REDUCTION_DIVISOR * Math.pow(newSafety, GAME_CONSTANTS.RESOURCE_FORMULAS.SAFETY_DIMINISHING_RETURNS_EXPONENT);
+    // Safety R&D: X/10, costs half as much as AI R&D
+    const safetyGain = resources / 10;
+    const safetyCost = Math.sqrt(gameState.playerAILevel) / 2;
+    const riskReduction = resources / GAME_CONSTANTS.RESOURCE_FORMULAS.RISK_REDUCTION_DIVISOR;
     
     // Diplomacy: X/10
     const diplomacyGain = resources / GAME_CONSTANTS.RESOURCE_FORMULAS.DIPLOMACY_GAIN_DIVISOR;
@@ -852,7 +894,9 @@ function calculateResourceGains(resources) {
     
     return {
         ai: aiGain,
+        aiCost: aiCost,
         safety: safetyGain,
+        safetyCost: safetyCost,
         riskReduction: riskReduction,
         diplomacy: diplomacyGain,
         product: productGain,
@@ -864,11 +908,11 @@ function generateActionLabels(resources) {
     const gains = calculateResourceGains(resources);
     
     return [
-        `AI R&D (+${Math.round(gains.ai * 10) / 10} AI Level, +${Math.round(gains.ai * 10) / 10} Risk)`,
-        `Diplomacy (+${Math.round(gains.diplomacy * 10) / 10})`,
-        `Product (+${Math.round(gains.product * 10) / 10})`,
-        `Safety R&D (+${Math.round(gains.safety * 10) / 10} Safety, -${Math.round(gains.riskReduction * 10) / 10}% Risk)`,
-        `Revenue (+$${Math.round(gains.revenue * 10) / 10}B)`
+        `<strong>A</strong>I R&D<br>(+${Math.round(gains.ai * 10) / 10} AI, +${Math.round(gains.ai * 10) / 10}% Risk, -$${Math.round(gains.aiCost * 10) / 10}B)`,
+        `<strong>D</strong>iplomacy (+${Math.round(gains.diplomacy * 10) / 10})`,
+        `<strong>P</strong>roduct (+${Math.round(gains.product * 10) / 10})`,
+        `<strong>S</strong>afety R&D<br>(+${Math.round(gains.safety * 10) / 10} Safety, -${Math.round(gains.riskReduction * 10) / 10}% Risk, -$${Math.round(gains.safetyCost * 10) / 10}B)`,
+        `<strong>R</strong>evenue (+$${Math.round(gains.revenue * 10) / 10}B)`
     ];
 }
 
@@ -895,6 +939,7 @@ function applyResourceAllocation(resourceType, corporateResources) {
         case 'ai-rd':
             gameState.playerAILevel += gains.ai;
             gameState.doomLevel += gains.ai;
+            gameState.money = Math.max(0, gameState.money - gains.aiCost);
             break;
         case 'diplomacy':
             gameState.diplomacyPoints += gains.diplomacy;
@@ -906,6 +951,7 @@ function applyResourceAllocation(resourceType, corporateResources) {
             gameState.safetyPoints += gains.safety;
             const reductionFactor = 1 - (gains.riskReduction / 100);
             gameState.doomLevel = gameState.doomLevel * Math.max(0, reductionFactor);
+            gameState.money = Math.max(0, gameState.money - gains.safetyCost);
             break;
         case 'revenue':
             gameState.money += gains.revenue;
@@ -927,6 +973,7 @@ function resetGameState() {
     gameState.datacenterCount = 0;
     gameState.powerplantCount = 0;
     gameState.biotechLabCount = 0;
+    gameState.datacenterCountry = null;
     gameState.technologies = {
         // General technologies
         robotaxi: true, // Starts enabled
@@ -965,6 +1012,7 @@ function resetGameState() {
     gameState.currentYear = GAME_CONSTANTS.INITIAL_YEAR;
     gameState.money = GAME_CONSTANTS.INITIAL_MONEY;
     gameState.gameOverReason = null;
+    gameState.endGameResult = null;
     gameState.currentEvent = null;
     gameState.safetyIncidentCount = 0;
     gameState.selectedAllocation = null;
@@ -974,67 +1022,11 @@ function resetGameState() {
     gameState.eventsSeen = {};
     gameState.choicesTaken = {};
     gameState.dsaEventsAccepted = new Set();
+    gameState.endGamePhase = 1;
+    gameState.alignmentRolls = null;
+    gameState.galaxyDistribution = null;
 }
 
-function calculateEndGameScore() {
-    let resultText = "";
-    let playerGalaxies = 0;
-    let humanityGalaxies = 0;
-    let rogueGalaxies = 0;
-
-    if (gameState.gameOverReason === 'doom-100') {
-        // Instant game over - all AIs are misaligned
-        resultText = `${gameState.companyName} was reckless enough to let doom reach 100%. Humanity is immediately eaten by nanobots, which go on to colonize the stars.`;
-        rogueGalaxies = 100;
-        playerGalaxies = 0;
-        humanityGalaxies = 0;
-    } else if (gameState.gameOverReason === 'ai-singularity' || gameState.gameOverReason === 'dsa-singularity') {
-        resultText = "The singularity has arrived. ";
-
-        narrow_race = Math.min(gameState.playerAILevel, gameState.competitorAILevels[0]) >= 900;
-        if (gameState.playerAILevel >= 100) {
-            resultText += narrow_race ? "You achieved ASI first. " : "You achieved ASI first, but competitor AI was close behind. ";
-        } else {
-            resultText += "Competitor AI achieved ASI first. ";
-        }
-
-        // Calculate galaxy splits based on README formula
-        const playerShare = Math.max(0, Math.min(100, gameState.playerAILevel - gameState.competitorAILevels[0]));
-        const otherShare = 100 - playerShare;
-
-        // Roll for misalignment using doom level as probability
-        const playerMisaligned = Math.random() * 100 < gameState.doomLevel;
-        const otherMisaligned = Math.random() * 100 < gameState.doomLevel;
-
-        if (playerMisaligned) {
-            rogueGalaxies += playerShare;
-            resultText += `Your AI systems became misaligned (${gameState.doomLevel}% chance). `;
-        } else {
-            playerGalaxies = playerShare;
-            resultText += `Your AI systems remained aligned. `;
-        }
-
-        if (otherMisaligned) {
-            rogueGalaxies += otherShare;
-            resultText += `Other AI systems became misaligned. `;
-        } else {
-            humanityGalaxies = otherShare;
-            resultText += `Other AI systems remained aligned. `;
-        }
-    }
-
-    // Calculate final score: 0x rogue + 10x humanity + 20x player
-    const finalScore = (0 * rogueGalaxies) + (10 * humanityGalaxies) + (20 * playerGalaxies);
-
-    resultText += `<br><br><strong>Final Galaxy Distribution:</strong><br>`;
-    resultText += `• Rogue AI: ${rogueGalaxies}%<br>`;
-    resultText += `• Humanity at large: ${humanityGalaxies}%<br>`;
-    resultText += `• Your company: ${playerGalaxies}%<br><br>`;
-    resultText += `<strong>Final Score: ${finalScore}</strong><br>`;
-    resultText += `(${rogueGalaxies}×0 + ${humanityGalaxies}×10 + ${playerGalaxies}×20)`;
-
-    return resultText;
-}
 
 async function showPage(pageId) {
     const page = storyContent[pageId];
@@ -1116,9 +1108,9 @@ async function showPage(pageId) {
 
         // Show sanctions calculation if active
         if (gameState.hasSanctions) {
-            headerDiv.textContent = `Allocate your AI labor for this month (${corporateResources} available, base compute cut 50% by sanctions):`;
+            headerDiv.innerHTML = `Allocate ${corporateResources} million AI labor-hours to <strong>one</strong> sector for this month (base compute cut 50% by sanctions):`;
         } else {
-            headerDiv.textContent = `Allocate your AI labor for this month (${corporateResources} available):`;
+            headerDiv.innerHTML = `Allocate ${corporateResources} million AI labor-hours to <strong>one</strong> sector for this month:`;
         }
         actionsPanel.appendChild(headerDiv);
 
@@ -1136,13 +1128,23 @@ async function showPage(pageId) {
         actionLabels.forEach((actionLabel, index) => {
             const button = document.createElement('button');
             button.className = 'button';
-            button.textContent = actionLabel;
+            button.innerHTML = actionLabel;
             button.style.fontFamily = "'Courier New', Courier, monospace";
             button.style.fontSize = '14px';
             button.style.width = 'calc(100% - 10px)';
             button.style.margin = '5px';
 
-            // Style based on selection state
+            // Check if player can afford this action
+            const gains = calculateResourceGains(corporateResources);
+            let canAfford = true;
+            
+            if (page.actions[index] === 'ai-rd' && gameState.money < gains.aiCost) {
+                canAfford = false;
+            } else if (page.actions[index] === 'safety-rd' && gameState.money < gains.safetyCost) {
+                canAfford = false;
+            }
+
+            // Style based on selection state and affordability
             if (gameState.selectedAllocation === page.actions[index]) {
                 button.style.backgroundColor = '#005a87';
                 button.style.border = '2px solid #66b3ff';
@@ -1150,10 +1152,15 @@ async function showPage(pageId) {
                 button.style.backgroundColor = '#666';
                 button.style.opacity = '0.6';
                 button.style.cursor = 'not-allowed';
+            } else if (!canAfford) {
+                button.style.backgroundColor = '#666';
+                button.style.opacity = '0.6';
+                button.style.cursor = 'not-allowed';
+                button.disabled = true;
             }
 
             button.onclick = () => {
-                if (!gameState.selectedAllocation) {
+                if (!gameState.selectedAllocation && canAfford) {
                     gameState.selectedAllocation = page.actions[index];
                     applyResourceAllocation(page.actions[index], corporateResources);
                     showPage('main-game');
@@ -1241,8 +1248,12 @@ async function showPage(pageId) {
         buttonsDiv.appendChild(backBtn);
     } else {
         // Regular buttons
-        if (page.buttons && page.buttons.length > 0) {
-            page.buttons.forEach(button => {
+        let buttons = page.buttons;
+        if (typeof buttons === 'function') {
+            buttons = buttons();
+        }
+        if (buttons && buttons.length > 0) {
+            buttons.forEach(button => {
                 const btn = document.createElement('button');
                 btn.className = 'button';
                 btn.textContent = button.text;
@@ -1254,12 +1265,112 @@ async function showPage(pageId) {
                         }
                         gameState.currentPage = button.target;
                         showPage(button.target);
+                    } else if (button.action === 'continue') {
+                        // Advance to next phase in end game
+                        gameState.endGamePhase++;
+                        showPage('end-game');
                     }
                 };
                 buttonsDiv.appendChild(btn);
             });
         }
     }
+    
+    // Add debug controls (always visible in bottom right)
+    addDebugControls();
+}
+
+function addDebugControls() {
+    // Remove existing debug controls to avoid duplicates
+    const existingDebug = document.getElementById('debug-controls');
+    if (existingDebug) {
+        existingDebug.remove();
+    }
+    
+    // Create debug controls container
+    const debugControls = document.createElement('div');
+    debugControls.id = 'debug-controls';
+    debugControls.style.cssText = `
+        position: fixed; 
+        bottom: 10px; 
+        right: 10px; 
+        z-index: 1000; 
+        display: flex; 
+        flex-direction: column; 
+        gap: 5px;
+    `;
+    
+    // Debug event dropdown
+    const dropdown = document.createElement('select');
+    dropdown.id = 'debugEventDropdown';
+    dropdown.onchange = function() { forceEvent(this.value); };
+    dropdown.style.cssText = `
+        background-color: #333; 
+        color: #fff; 
+        border: 1px solid #555; 
+        padding: 5px; 
+        font-size: 12px;
+        opacity: 0.7;
+    `;
+    dropdown.innerHTML = '<option value="">Debug: Force Event</option>';
+    debugControls.appendChild(dropdown);
+    
+    // +1000 Resources button
+    const resourcesBtn = document.createElement('button');
+    resourcesBtn.textContent = '+1000 Resources';
+    resourcesBtn.onclick = giveResources;
+    resourcesBtn.style.cssText = `
+        background-color: #333; 
+        color: #fff; 
+        border: 1px solid #555; 
+        padding: 5px 10px; 
+        font-size: 12px;
+        opacity: 0.7;
+        cursor: pointer;
+    `;
+    debugControls.appendChild(resourcesBtn);
+    
+    // Main Game button
+    const mainGameBtn = document.createElement('button');
+    mainGameBtn.textContent = 'Main Game';
+    mainGameBtn.onclick = () => showPage('main-game');
+    mainGameBtn.style.cssText = `
+        background-color: #333; 
+        color: #fff; 
+        border: 1px solid #555; 
+        padding: 5px 10px; 
+        font-size: 12px;
+        opacity: 0.7;
+        cursor: pointer;
+    `;
+    debugControls.appendChild(mainGameBtn);
+    
+    // End Screen button
+    const endScreenBtn = document.createElement('button');
+    endScreenBtn.textContent = 'End Screen';
+    endScreenBtn.onclick = () => {
+        gameState.gameOverReason = 'ai-singularity';
+        gameState.endGamePhase = 1;
+        scaleAILevelsForEndGame();
+        gameState.endGameResult = calculateEndGameScore();
+        showPage('end-game');
+    };
+    endScreenBtn.style.cssText = `
+        background-color: #333; 
+        color: #fff; 
+        border: 1px solid #555; 
+        padding: 5px 10px; 
+        font-size: 12px;
+        opacity: 0.7;
+        cursor: pointer;
+    `;
+    debugControls.appendChild(endScreenBtn);
+    
+    // Add to page
+    document.body.appendChild(debugControls);
+    
+    // Populate dropdown after a short delay
+    setTimeout(populateDebugDropdown, 100);
 }
 
 
@@ -1319,8 +1430,9 @@ async function handleEventChoice(choiceIndex) {
     
     // Special handling for DSA (immediate singularity)
     if (event.type === 'decisive-strategic-advantage' && choice.action === 'accept') {
-        gameState.playerAILevel = 100;
+        gameState.playerAILevel = GAME_CONSTANTS.ASI_THRESHOLD;
         gameState.gameOverReason = 'dsa-singularity';
+        scaleAILevelsForEndGame();
         updateStatusBar();
         showPage('end-game');
         return;
@@ -1344,6 +1456,73 @@ window.handleEventChoice = handleEventChoice;
 window.forceEvent = forceEvent;
 window.populateDebugDropdown = populateDebugDropdown;
 window.giveResources = giveResources;
+
+// Keyboard controls
+document.addEventListener('keydown', function(event) {
+    // Ignore if user is typing in an input field
+    if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+        return;
+    }
+    
+    const key = event.key.toLowerCase();
+    
+    // Handle Enter key for Continue/Next Turn buttons
+    if (key === 'enter') {
+        event.preventDefault();
+        
+        // Look for Continue button (endgame)
+        const continueBtn = Array.from(document.querySelectorAll('button')).find(btn => 
+            btn.textContent.includes('Continue')
+        );
+        if (continueBtn && !continueBtn.disabled) {
+            continueBtn.click();
+            return;
+        }
+        
+        // Look for Next Turn button
+        const nextTurnBtn = Array.from(document.querySelectorAll('button')).find(btn => 
+            btn.textContent.includes('Next Turn')
+        );
+        if (nextTurnBtn && !nextTurnBtn.disabled) {
+            nextTurnBtn.click();
+            return;
+        }
+    }
+    
+    // Handle labor allocation hotkeys (only on main-game page with actions)
+    if (gameState.currentPage === 'main-game' && !gameState.selectedAllocation) {
+        const actionMap = {
+            'a': 0, // AI R&D
+            'd': 1, // Diplomacy
+            'p': 2, // Product
+            's': 3, // Safety R&D
+            'r': 4  // Revenue
+        };
+        
+        if (actionMap.hasOwnProperty(key)) {
+            event.preventDefault();
+            
+            // Find the corresponding action button
+            const buttons = document.querySelectorAll('.button');
+            let actionButtons = [];
+            
+            // Filter to find action allocation buttons (they have specific text patterns)
+            buttons.forEach(btn => {
+                const text = btn.textContent;
+                if (text.includes('AI R&D') || text.includes('Diplomacy') || 
+                    text.includes('Product') || text.includes('Safety R&D') || 
+                    text.includes('Revenue')) {
+                    actionButtons.push(btn);
+                }
+            });
+            
+            const buttonIndex = actionMap[key];
+            if (actionButtons[buttonIndex] && !actionButtons[buttonIndex].disabled) {
+                actionButtons[buttonIndex].click();
+            }
+        }
+    }
+});
 
 // Initialize the game
 document.addEventListener('DOMContentLoaded', function () {

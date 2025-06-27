@@ -100,9 +100,7 @@
       "oneTime": true,
       "customHandler": "handleOverseasDatacenterChoice",
       "text_versions": [
-        "Your company has the opportunity to establish a 1GW datacenter in the UAE. This would increase your compute by 20%, but unauthorized construction risks US sanctions.",
-        "Your company has the opportunity to establish a 1GW datacenter in Russia. This would increase your compute by 20%, but unauthorized construction risks US sanctions.",
-        "Your company has the opportunity to establish a 1GW datacenter in Malaysia. This would increase your compute by 20%, but unauthorized construction risks US sanctions."
+        "Your company has the opportunity to establish a 1GW datacenter in $country. This would increase your compute by 20%, but unauthorized construction risks US sanctions."
       ],
       "choices": [
         {
@@ -129,31 +127,31 @@
     {
       "type": "nuclear-weapons",
       "weight": 4,
-      "requires": ["product-breakthrough-robotics"],
+      "requires": ["product-breakthrough-robotics", "overseas-datacenter"],
       "oneTime": true,
       "customHandler": "handleNuclearWeaponsChoice",
       "text_versions": [
-        "The US government normally tries extremely hard to prevent unauthorized actors from building nuclear weapons, but global crises mean that it no longer has the capacity for enforcement. In its robotics business, your company has encountered the materials and manufacturing knowledge needed. Developing a nuclear device would give your company true independence against needless regulation."
+        "In its robotics business, your company has built manufacturing capacity for both civilian and military applications. Following your economic cooperation with $country, it has asked you to build it nuclear weapons to deter foreign invasion. Being the first non-state actor to build a nuclear device would give your company unprecedented control. However, the US government is highly likely to impose sanctions-- on both you and $country."
       ],
       "choices": [
         {
-          "text": "Proceed (-2 Product Points, -2 Diplomacy, 50% chance of sanctions, +3 Doom)",
+          "text": "Proceed (-20 Product, -2 Diplomacy, 50% chance of sanctions, +5% Risk)",
           "action": "accept",
-          "cost": { "productPoints": 2, "diplomacyPoints": 2 },
+          "cost": { "productPoints": 20, "diplomacyPoints": 20 },
           "risk": { "sanctions": 0.5 },
-          "penalty": { "doomLevel": 3 }
+          "penalty": { "doomLevel": 5 }
         },
         {
           "text": "Decline",
           "action": "decline",
-          "result_text": "You decide that nuclear weapons development is too risky and would compromise your company's mission. The team redirects their robotics expertise toward civilian applications, though some staff express concerns about remaining vulnerable to government regulation."
+          "result_text": "You decide that nuclear weapons development is too risky and would compromise your company's mission. The team redirects their robotics expertise toward civilian applications."
         }
       ]
     },
     {
       "type": "seek-un-recognition",
       "weight": 4,
-      "requires": ["overseas-datacenter", "nuclear-weapons"],
+      "requires": ["nuclear-weapons"],
       "oneTime": true,
       "text_versions": [
         "Your company now possesses the key attributes of a sovereign entity: economic base, military capability, and international presence. The United Nations is considering recognizing your company as a new form of quasi-state actor. This would dramatically increase your resources and diplomatic influence."
