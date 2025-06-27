@@ -139,12 +139,110 @@
                     Funds: <span id="money">$1B</span><br>
                     Diplomacy: <span id="diplomacy-points">0</span><br>
                     Product: <span id="product-points">0</span><br>
-                    Safety: <span id="safety-points">0</span>
+                    Safety: <span id="safety-points">0</span><br>
+                    <div class="tooltip">
+                        <span id="datacenter-icon"></span>
+                        <span class="tooltiptext" id="datacenter-tooltip"></span>
+                    </div> <div class="tooltip">
+                        <span id="powerplant-icon"></span>
+                        <span class="tooltiptext" id="powerplant-tooltip"></span>
+                    </div> <div class="tooltip">
+                        <span id="biotech-lab-icon"></span>
+                        <span class="tooltiptext" id="biotech-lab-tooltip"></span>
+                    </div>
                 </div>
                 <div class="status-column">
                     <strong>Status Effects</strong><br>
-                    <span id="sanctions-status">No Sanctions</span><br>
+                    <div class="tooltip">
+                        <span id="sanctions-status"></span>
+                        <span class="tooltiptext" id="sanctions-tooltip"></span>
+                    </div><br>
                     <span id="un-recognition-status">No UN Recognition</span>
+                </div>
+                <div class="status-column" style="flex: 0 0 140px;">
+                    <strong>Tech</strong><br>
+                    <div style="display: flex; align-items: flex-start;">
+                        <div style="display: flex; font-size: 20px; line-height: 1.1; gap: 2px;">
+                            <div style="display: flex; flex-direction: column;">
+                                <div class="tooltip">
+                                    <span id="robotaxi-tech">🚗</span>
+                                    <span class="tooltiptext">Robotaxi: Autonomous vehicles for transportation</span>
+                                </div>
+                                <div class="tooltip">
+                                    <span id="ai-novelist-tech">📚</span>
+                                    <span class="tooltiptext">AI Novelist: NYT Bestsellers written entirely by AI</span>
+                                </div>
+                                <div class="tooltip">
+                                    <span id="cancer-cure-tech">🧬</span>
+                                    <span class="tooltiptext">Cancer Cure: Complete elimination of cancer through AI-designed treatments</span>
+                                </div>
+                            </div>
+                            <div style="display: flex; flex-direction: column;">
+                                <div class="tooltip">
+                                    <span id="medicine-tech">💊</span>
+                                    <span class="tooltiptext">Medicine: Advanced drug discovery and biotech capabilities</span>
+                                </div>
+                                <div class="tooltip">
+                                    <span id="brain-uploading-tech">🧠</span>
+                                    <span class="tooltiptext">Brain Uploading: Digital consciousness transfer technology</span>
+                                </div>
+                            </div>
+                            <div style="display: flex; flex-direction: column;">
+                                <div class="tooltip">
+                                    <span id="robotics-tech">🤖</span>
+                                    <span class="tooltiptext">Robotics: Autonomous systems and advanced manufacturing</span>
+                                </div>
+                                <div class="tooltip">
+                                    <span id="humanoid-robots-tech">🦾</span>
+                                    <span class="tooltiptext">Humanoid Robots: Human-like robots for general purpose tasks</span>
+                                </div>
+                                <div class="tooltip">
+                                    <span id="synthetic-biology-tech">🧪</span>
+                                    <span class="tooltiptext">Synthetic Biology: Engineered organisms for medicine or warfare</span>
+                                </div>
+                                <div class="tooltip">
+                                    <span id="information-war-tech">🌐</span>
+                                    <span class="tooltiptext">Information War: Large-scale propaganda and narrative control</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; font-size: 20px; line-height: 1.1; margin-left: 15px;">
+                            <div class="tooltip">
+                                <span id="ai-monitoring-tech">👁️</span>
+                                <span class="tooltiptext">AI Monitoring: Real-time oversight and behavior tracking systems</span>
+                            </div>
+                            <div class="tooltip">
+                                <span id="ai-control-tech">🎛️</span>
+                                <span class="tooltiptext">AI Control: Direct intervention and shutdown capabilities</span>
+                            </div>
+                            <div class="tooltip">
+                                <span id="ai-alignment-tech">🧭</span>
+                                <span class="tooltiptext">AI Alignment: Value learning and goal specification systems</span>
+                            </div>
+                            <div class="tooltip">
+                                <span id="ai-interpretability-tech">🔬</span>
+                                <span class="tooltiptext">AI Interpretability: Understanding internal AI decision-making</span>
+                            </div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; font-size: 20px; line-height: 1.1; margin-left: 15px;">
+                            <div class="tooltip">
+                                <span id="cyber-warfare-tech">🔓</span>
+                                <span class="tooltiptext">Cyber Warfare: Offensive digital capabilities and system intrusion</span>
+                            </div>
+                            <div class="tooltip">
+                                <span id="bioweapons-tech">☣️</span>
+                                <span class="tooltiptext">Bioweapons: Engineered pathogens for warfare</span>
+                            </div>
+                            <div class="tooltip">
+                                <span id="killer-drones-tech">🦟</span>
+                                <span class="tooltiptext">Killer Drones: Autonomous lethal weapons systems</span>
+                            </div>
+                            <div class="tooltip">
+                                <span id="nukes-tech">☢️</span>
+                                <span class="tooltiptext">Nuclear Weapons: AI companies develop their own nuclear devices</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

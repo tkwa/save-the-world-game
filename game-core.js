@@ -4,8 +4,8 @@
 const gameState = {
     // AI Information
     playerAILevel: 10,
-    doomLevel: 20,
-    competitorAILevels: [2, 1, 1], // Top 3 competitors in descending order
+    doomLevel: 20.0,
+    competitorAILevels: [8, 6, 4], // Top 3 competitors in descending order
     competitorNames: [], // Will be set during game setup
 
     // Corporate Divisions
@@ -16,6 +16,35 @@ const gameState = {
     // Status Effects
     hasSanctions: false,
     hasUNRecognition: false,
+    
+    // Infrastructure
+    datacenterCount: 0,
+    powerplantCount: 0,
+    biotechLabCount: 0,
+
+    // Technologies
+    technologies: {
+        // General technologies
+        robotaxi: true, // Starts enabled
+        aiNovelist: false,
+        cancerCure: false,
+        medicine: false,
+        brainUploading: false,
+        robotics: false,
+        humanoidRobots: false,
+        syntheticBiology: false, // Dual-use technology
+        informationWar: false, // Dangerous but not military
+        // Alignment technologies
+        aiMonitoring: false,
+        aiControl: false,
+        aiAlignment: false,
+        aiInterpretability: false,
+        // Military technologies
+        cyberWarfare: true, // Starts enabled
+        bioweapons: false,
+        killerDrones: false,
+        nukes: false
+    },
 
     // Other game state
     currentPage: "start",
@@ -224,10 +253,10 @@ const storyContent = {
 function generateAICapabilitiesTooltip() {
     // Create ranking array with all companies
     const ranking = [
-        { name: gameState.companyName || 'Company', level: gameState.playerAILevel, isPlayer: true },
-        { name: gameState.competitorNames[0] || 'Competitor 1', level: gameState.competitorAILevels[0], isPlayer: false },
-        { name: gameState.competitorNames[1] || 'Competitor 2', level: gameState.competitorAILevels[1], isPlayer: false },
-        { name: gameState.competitorNames[2] || 'Competitor 3', level: gameState.competitorAILevels[2], isPlayer: false }
+        { name: gameState.companyName || 'Company', level: Math.round(gameState.playerAILevel), isPlayer: true },
+        { name: gameState.competitorNames[0] || 'Competitor 1', level: Math.round(gameState.competitorAILevels[0]), isPlayer: false },
+        { name: gameState.competitorNames[1] || 'Competitor 2', level: Math.round(gameState.competitorAILevels[1]), isPlayer: false },
+        { name: gameState.competitorNames[2] || 'Competitor 3', level: Math.round(gameState.competitorAILevels[2]), isPlayer: false }
     ];
     
     // Sort by level descending
@@ -237,10 +266,10 @@ function generateAICapabilitiesTooltip() {
     const rankingText = ranking.map((company, index) => {
         const rank = index + 1;
         const companyText = company.isPlayer ? `<strong>${company.name}</strong>` : company.name;
-        return `${rank}. ${companyText}: ${company.level}`;
+        return `${rank}. ${companyText}: ${company.level}x`;
     }).join('<br>');
     
-    return `AI capabilities level determines how much cognitive labor is available to companies each turn. <strong style="color: #ff6b6b;">ASI</strong> is achieved when one company reaches 1000 capabilities. The current ranking is:<br><br>${rankingText}`;
+    return `AI capabilities level determines how much cognitive labor is available to companies each turn. <strong style="color: #ff6b6b;">ASI</strong> is achieved when one company reaches 1000x capabilities. The current ranking is:<br><br>${rankingText}`;
 }
 
 function getAIRisksByCapability(capabilityLevel) {
@@ -262,8 +291,9 @@ function getAIRisksByCapability(capabilityLevel) {
 }
 
 function generateRogueAIRiskTooltip() {
-    const riskPercent = gameState.doomLevel;
-    const monthlyIncidentChance = Math.pow(riskPercent / 100, 2) * 100;
+    const riskPercent = Math.round(gameState.doomLevel);
+    const actualRiskPercent = gameState.doomLevel;
+    const monthlyIncidentChance = Math.pow(actualRiskPercent / 100, 2) * 100;
     const companyName = gameState.companyName || 'your company';
     
     // Get current capability frontier (highest AI level)
@@ -272,9 +302,9 @@ function generateRogueAIRiskTooltip() {
     
     // Apply same color logic as status bar: red if >50%, amber if >15%, otherwise white
     let riskColor = '#e0e0e0';
-    if (riskPercent > 50) {
+    if (actualRiskPercent > 50) {
         riskColor = '#ff6b6b';
-    } else if (riskPercent > 15) {
+    } else if (actualRiskPercent > 15) {
         riskColor = '#ffa726';
     }
     
@@ -284,13 +314,15 @@ function generateRogueAIRiskTooltip() {
 function updateStatusBar() {
     // AI Information
     const playerAIElement = document.getElementById('player-ai-level');
-    playerAIElement.textContent = gameState.playerAILevel;
+    const roundedPlayerAI = Math.round(gameState.playerAILevel);
+    playerAIElement.textContent = `${roundedPlayerAI}x`;
     playerAIElement.style.fontWeight = 'bold';
     // Red if less than top competitor AI level
     playerAIElement.style.color = gameState.playerAILevel < gameState.competitorAILevels[0] ? '#ff6b6b' : '#e0e0e0';
     
     const doomElement = document.getElementById('doom-level');
-    doomElement.textContent = `${gameState.doomLevel}%`;
+    const roundedDoom = Math.round(gameState.doomLevel);
+    doomElement.textContent = `${roundedDoom}%`;
     doomElement.style.fontWeight = 'bold';
     // Red if >50%, amber if >15%, otherwise white
     if (gameState.doomLevel > 50) {
@@ -312,17 +344,17 @@ function updateStatusBar() {
     }
     
     const competitor1Element = document.getElementById('competitor1-ai-level');
-    competitor1Element.textContent = gameState.competitorAILevels[0];
+    competitor1Element.textContent = `${Math.round(gameState.competitorAILevels[0])}x`;
     competitor1Element.style.fontWeight = 'bold';
     competitor1Element.style.color = '#e0e0e0';
     
     const competitor2Element = document.getElementById('competitor2-ai-level');
-    competitor2Element.textContent = gameState.competitorAILevels[1];
+    competitor2Element.textContent = `${Math.round(gameState.competitorAILevels[1])}x`;
     competitor2Element.style.fontWeight = 'bold';
     competitor2Element.style.color = '#e0e0e0';
     
     const competitor3Element = document.getElementById('competitor3-ai-level');
-    competitor3Element.textContent = gameState.competitorAILevels[2];
+    competitor3Element.textContent = `${Math.round(gameState.competitorAILevels[2])}x`;
     competitor3Element.style.fontWeight = 'bold';
     competitor3Element.style.color = '#e0e0e0';
 
@@ -345,32 +377,40 @@ function updateStatusBar() {
     }
     
     const moneyElement = document.getElementById('money');
-    moneyElement.textContent = `$${gameState.money}B`;
+    const displayMoney = Math.floor(gameState.money);
+    moneyElement.textContent = `$${displayMoney}B`;
     moneyElement.style.fontWeight = 'bold';
-    moneyElement.style.color = gameState.money === 0 ? '#ff6b6b' : '#e0e0e0';
+    moneyElement.style.color = displayMoney === 0 ? '#ff6b6b' : '#e0e0e0';
     
     const diplomacyElement = document.getElementById('diplomacy-points');
-    diplomacyElement.textContent = gameState.diplomacyPoints;
+    diplomacyElement.textContent = Math.round(gameState.diplomacyPoints);
     diplomacyElement.style.fontWeight = 'bold';
     diplomacyElement.style.color = gameState.diplomacyPoints === 0 ? '#ff6b6b' : '#e0e0e0';
     
     const productElement = document.getElementById('product-points');
-    productElement.textContent = gameState.productPoints;
+    productElement.textContent = Math.round(gameState.productPoints);
     productElement.style.fontWeight = 'bold';
     productElement.style.color = gameState.productPoints === 0 ? '#ff6b6b' : '#e0e0e0';
     
     const safetyElement = document.getElementById('safety-points');
-    safetyElement.textContent = gameState.safetyPoints;
+    safetyElement.textContent = Math.round(gameState.safetyPoints);
     safetyElement.style.fontWeight = 'bold';
     safetyElement.style.color = gameState.safetyPoints === 0 ? '#ff6b6b' : '#e0e0e0';
 
     // Status Effects
     const sanctionsElement = document.getElementById('sanctions-status');
+    const sanctionsTooltip = document.getElementById('sanctions-tooltip');
     if (gameState.hasSanctions) {
-        sanctionsElement.textContent = 'Sanctions Active';
+        sanctionsElement.textContent = 'Sanctions';
         sanctionsElement.style.color = '#ffa726'; // Orange for bad status
+        if (sanctionsTooltip) {
+            sanctionsTooltip.innerHTML = 'International sanctions cut your base AI labor by <strong>50%</strong> and prevent you from taking certain diplomatic actions. Overseas datacenters are unaffected.';
+        }
     } else {
         sanctionsElement.textContent = '';
+        if (sanctionsTooltip) {
+            sanctionsTooltip.innerHTML = '';
+        }
     }
     
     const unRecognitionElement = document.getElementById('un-recognition-status');
@@ -380,6 +420,72 @@ function updateStatusBar() {
     } else {
         unRecognitionElement.textContent = '';
     }
+
+    // Infrastructure icons with spaces
+    const datacenterElement = document.getElementById('datacenter-icon');
+    if (gameState.datacenterCount > 0) {
+        datacenterElement.textContent = Array(gameState.datacenterCount).fill('🏢').join(' ');
+    } else {
+        datacenterElement.textContent = '';
+    }
+    
+    const powerplantElement = document.getElementById('powerplant-icon');
+    if (gameState.powerplantCount > 0) {
+        powerplantElement.textContent = Array(gameState.powerplantCount).fill('⚡').join(' ');
+    } else {
+        powerplantElement.textContent = '';
+    }
+    
+    const biotechLabElement = document.getElementById('biotech-lab-icon');
+    if (gameState.biotechLabCount > 0) {
+        biotechLabElement.textContent = Array(gameState.biotechLabCount).fill('🧪').join(' ');
+    } else {
+        biotechLabElement.textContent = '';
+    }
+
+    // Infrastructure tooltips
+    const datacenterTooltip = document.getElementById('datacenter-tooltip');
+    if (datacenterTooltip && gameState.datacenterCount > 0) {
+        const plural = gameState.datacenterCount > 1 ? 's' : '';
+        const totalBoost = gameState.datacenterCount * 20;
+        datacenterTooltip.innerHTML = `${gameState.datacenterCount} 1GW datacenter${plural}. Increases AI labor by <strong>+${totalBoost}%</strong>.`;
+    }
+    
+    const powerplantTooltip = document.getElementById('powerplant-tooltip');
+    if (powerplantTooltip && gameState.powerplantCount > 0) {
+        const plural = gameState.powerplantCount > 1 ? 's' : '';
+        powerplantTooltip.innerHTML = `${gameState.powerplantCount} 1GW power plant${plural}.`;
+    }
+    
+    const biotechLabTooltip = document.getElementById('biotech-lab-tooltip');
+    if (biotechLabTooltip && gameState.biotechLabCount > 0) {
+        const plural = gameState.biotechLabCount > 1 ? 's' : '';
+        biotechLabTooltip.innerHTML = `${gameState.biotechLabCount} biotech lab${plural} used for synthetic biology.`;
+    }
+
+    // Technologies - show/hide based on availability
+    // General technologies
+    document.getElementById('robotaxi-tech').style.opacity = gameState.technologies.robotaxi ? '1' : '0.3';
+    document.getElementById('ai-novelist-tech').style.opacity = gameState.technologies.aiNovelist ? '1' : '0.3';
+    document.getElementById('cancer-cure-tech').style.opacity = gameState.technologies.cancerCure ? '1' : '0.3';
+    document.getElementById('medicine-tech').style.opacity = gameState.technologies.medicine ? '1' : '0.3';
+    document.getElementById('brain-uploading-tech').style.opacity = gameState.technologies.brainUploading ? '1' : '0.3';
+    document.getElementById('robotics-tech').style.opacity = gameState.technologies.robotics ? '1' : '0.3';
+    document.getElementById('humanoid-robots-tech').style.opacity = gameState.technologies.humanoidRobots ? '1' : '0.3';
+    document.getElementById('synthetic-biology-tech').style.opacity = gameState.technologies.syntheticBiology ? '1' : '0.3';
+    document.getElementById('information-war-tech').style.opacity = gameState.technologies.informationWar ? '1' : '0.3';
+    
+    // Alignment technologies
+    document.getElementById('ai-monitoring-tech').style.opacity = gameState.technologies.aiMonitoring ? '1' : '0.3';
+    document.getElementById('ai-control-tech').style.opacity = gameState.technologies.aiControl ? '1' : '0.3';
+    document.getElementById('ai-alignment-tech').style.opacity = gameState.technologies.aiAlignment ? '1' : '0.3';
+    document.getElementById('ai-interpretability-tech').style.opacity = gameState.technologies.aiInterpretability ? '1' : '0.3';
+    
+    // Military technologies
+    document.getElementById('cyber-warfare-tech').style.opacity = gameState.technologies.cyberWarfare ? '1' : '0.3';
+    document.getElementById('bioweapons-tech').style.opacity = gameState.technologies.bioweapons ? '1' : '0.3';
+    document.getElementById('killer-drones-tech').style.opacity = gameState.technologies.killerDrones ? '1' : '0.3';
+    document.getElementById('nukes-tech').style.opacity = gameState.technologies.nukes ? '1' : '0.3';
 }
 
 
@@ -397,14 +503,27 @@ async function finishTurn() {
 
 async function advanceTurn() {
 
-    // Increase competitor AI levels
-    gameState.competitorAILevels = gameState.competitorAILevels.map(level => 
-        level + Math.floor(Math.sqrt(Math.max(1, level / 8))));
+    // Increase competitor AI levels using continuous geometric distribution
+    const highestCompetitor = Math.max(...gameState.competitorAILevels);
+    const mean = highestCompetitor / 25;
+    
+    // Sample from continuous geometric distribution for each competitor
+    gameState.competitorAILevels = gameState.competitorAILevels.map(level => {
+        // Continuous geometric distribution with mean = Z/25
+        // PDF: f(x) = λe^(-λx), where λ = 1/mean = 25/Z
+        // Sample using inverse CDF: x = -ln(U) / λ = -ln(U) * mean
+        const lambda = 1 / mean;
+        const u = Math.random();
+        const sample = -Math.log(u) / lambda;
+        
+        return level + sample;
+    });
+    
     // Sort to maintain descending order
     gameState.competitorAILevels.sort((a, b) => b - a);
 
-    // Apply overseas datacenter bonus
-    if (gameState.aiLevelPerTurn) {
+    // Apply overseas datacenter bonus (disabled during sanctions)
+    if (gameState.aiLevelPerTurn && !gameState.hasSanctions) {
         gameState.playerAILevel += gameState.aiLevelPerTurn;
     }
 
@@ -581,29 +700,59 @@ function refreshEvalsDisplay() {
 }
 
 function calculateResources() {
-    // Formula from README: floor(sqrt(max(1, AL - OL)))
-    let baseResources = Math.floor(Math.sqrt(Math.max(1, gameState.competitorAILevels[0] / 4, gameState.playerAILevel - gameState.competitorAILevels[0])));
+    // Start with base AI level
+    let baseCompute = gameState.playerAILevel;
+
+    // Sanctions cut base compute in half (before datacenter boost)
+    if (gameState.hasSanctions) {
+        baseCompute = baseCompute / 2;
+    }
+
+    // Apply datacenter boost: +20% per datacenter (additive, unaffected by sanctions)
+    const datacenterBoost = gameState.datacenterCount * 0.20;
+    let totalResources = baseCompute * (1 + datacenterBoost);
 
     // Apply UN recognition multiplier
     if (gameState.resourceMultiplier) {
-        baseResources = Math.floor(baseResources * gameState.resourceMultiplier);
+        totalResources = totalResources * gameState.resourceMultiplier;
     }
 
-    // Sanctions halve resources (rounded up)
-    if (gameState.hasSanctions) {
-        baseResources = Math.ceil(baseResources / 2);
-    }
-
-    return baseResources;
+    return Math.floor(totalResources);
 }
 
 function generateActionLabels(resources) {
+    // AI R&D: X^0.8 / 5
+    const aiGain = Math.round((Math.pow(resources, 0.8) / 5) * 10) / 10;
+    
+    // Safety R&D: X^0.8 / 5 safety points, with diminishing returns risk reduction
+    const safetyGain = Math.round((Math.pow(resources, 0.8) / 5) * 10) / 10;
+    const currentSafety = gameState.safetyPoints;
+    const newSafety = currentSafety + safetyGain;
+    const riskReduction = Math.round((resources / 10 * Math.pow(newSafety, -0.1)) * 10) / 10;
+    
+    // Diplomacy: X^0.8/5 * 10 / (sqrt(D) + 10) rounded up
+    const diplomacyBase = Math.pow(resources, 0.8) / 5;
+    const diplomacyMultiplier = 10 / (Math.sqrt(gameState.diplomacyPoints) + 10);
+    const diplomacyGain = Math.ceil(diplomacyBase * diplomacyMultiplier);
+    
+    // Product: Same formula as diplomacy
+    const productBase = Math.pow(resources, 0.8) / 5;
+    const productMultiplier = 10 / (Math.sqrt(gameState.productPoints) + 10);
+    const productGain = Math.ceil(productBase * productMultiplier);
+    
+    // Revenue: X / (1 + sum_i(min(1, Y_i^2 / X^2)))
+    const playerLevel = gameState.playerAILevel;
+    const competitorPenalty = gameState.competitorAILevels.reduce((sum, yLevel) => {
+        return sum + Math.min(1, Math.pow(yLevel, 2) / Math.pow(playerLevel, 2));
+    }, 0);
+    const revenueGain = Math.round((resources / (1 + competitorPenalty)) * 10) / 10;
+    
     return [
-        `AI R&D (+${resources} AI Level, +${resources} Risk)`,
-        `+${resources} Diplomacy`,
-        `+${resources} Product`,
-        `Safety R&D (+${resources} Safety, -${Math.floor(resources * 3)}% Risk)`,
-        `Revenue (+$${resources}B)`
+        `AI R&D (+${aiGain} AI Level, +${aiGain} Risk)`,
+        `Diplomacy (+${diplomacyGain})`,
+        `Product (+${productGain})`,
+        `Safety R&D (+${safetyGain} Safety, -${riskReduction}% Risk)`,
+        `Revenue (+$${revenueGain}B)`
     ];
 }
 
@@ -626,24 +775,38 @@ function canAffordChoice(choice) {
 function applyResourceAllocation(resourceType, corporateResources) {
     switch(resourceType) {
         case 'ai-rd':
-            gameState.playerAILevel += corporateResources;
-            gameState.doomLevel += corporateResources;
+            const aiGain = Math.pow(corporateResources, 0.8) / 5;
+            gameState.playerAILevel += aiGain;
+            gameState.doomLevel += aiGain;
             break;
         case 'diplomacy':
-            gameState.diplomacyPoints += corporateResources;
+            const diplomacyBase = Math.pow(corporateResources, 0.8) / 5;
+            const diplomacyMultiplier = 10 / (Math.sqrt(gameState.diplomacyPoints) + 10);
+            const diplomacyGain = Math.ceil(diplomacyBase * diplomacyMultiplier);
+            gameState.diplomacyPoints += diplomacyGain;
             break;
         case 'product':
-            gameState.productPoints += corporateResources;
+            const productBase = Math.pow(corporateResources, 0.8) / 5;
+            const productMultiplier = 10 / (Math.sqrt(gameState.productPoints) + 10);
+            const productGain = Math.ceil(productBase * productMultiplier);
+            gameState.productPoints += productGain;
             break;
         case 'safety-rd':
-            gameState.safetyPoints += corporateResources;
-            // Each SP decreases XL by 3% (relative reduction)
-            const reductionFactor = 1 - (corporateResources * 0.03);
-            gameState.doomLevel = Math.floor(gameState.doomLevel * Math.max(0, reductionFactor));
+            const safetyGain = Math.pow(corporateResources, 0.8) / 5;
+            gameState.safetyPoints += safetyGain;
+            // New diminishing returns formula: X/10 * Z^-0.1 percent reduction
+            const newSafety = gameState.safetyPoints;
+            const riskReduction = corporateResources / 10 * Math.pow(newSafety, -0.1);
+            const reductionFactor = 1 - (riskReduction / 100);
+            gameState.doomLevel = gameState.doomLevel * Math.max(0, reductionFactor);
             break;
         case 'revenue':
-            // Convert corporate resources to saved money
-            gameState.money += corporateResources;
+            const playerLevel = gameState.playerAILevel;
+            const competitorPenalty = gameState.competitorAILevels.reduce((sum, yLevel) => {
+                return sum + Math.min(1, Math.pow(yLevel, 2) / Math.pow(playerLevel, 2));
+            }, 0);
+            const revenueGain = corporateResources / (1 + competitorPenalty);
+            gameState.money += revenueGain;
             break;
     }
     updateStatusBar();
@@ -651,14 +814,39 @@ function applyResourceAllocation(resourceType, corporateResources) {
 
 function resetGameState() {
     gameState.playerAILevel = 10;
-    gameState.doomLevel = 20;
-    gameState.competitorAILevels = [2, 1, 1]; // Top 3 competitors in descending order
+    gameState.doomLevel = 20.0;
+    gameState.competitorAILevels = [8, 6, 4]; // Top 3 competitors in descending order
     gameState.competitorNames = []; // Will be set during game setup
     gameState.diplomacyPoints = 0;
     gameState.productPoints = 0;
     gameState.safetyPoints = 0;
     gameState.hasSanctions = false;
     gameState.hasUNRecognition = false;
+    gameState.datacenterCount = 0;
+    gameState.powerplantCount = 0;
+    gameState.biotechLabCount = 0;
+    gameState.technologies = {
+        // General technologies
+        robotaxi: true, // Starts enabled
+        aiNovelist: false,
+        cancerCure: false,
+        medicine: false,
+        brainUploading: false,
+        robotics: false,
+        humanoidRobots: false,
+        syntheticBiology: false, // Dual-use technology
+        informationWar: false, // Dangerous but not military
+        // Alignment technologies
+        aiMonitoring: false,
+        aiControl: false,
+        aiAlignment: false,
+        aiInterpretability: false,
+        // Military technologies
+        cyberWarfare: true, // Starts enabled
+        bioweapons: false,
+        killerDrones: false,
+        nukes: false
+    };
     gameState.currentPage = "start";
     gameState.alignmentLevel = Math.random();
     gameState.evalsBuilt = {
@@ -826,11 +1014,12 @@ async function showPage(pageId) {
 
         // Show sanctions calculation if active
         if (gameState.hasSanctions) {
-            const baseResources = Math.floor(Math.sqrt(Math.max(1, gameState.competitorAILevels[0] / 4, gameState.playerAILevel - gameState.competitorAILevels[0])));
-            const multipliedResources = gameState.resourceMultiplier ? Math.floor(baseResources * gameState.resourceMultiplier) : baseResources;
-            headerDiv.textContent = `You have ${corporateResources} Resources (${multipliedResources} resources x 50% sanctions factor) to allocate this turn:`;
+            const baseCompute = gameState.playerAILevel;
+            const datacenterBoost = gameState.datacenterCount * 0.20;
+            const unsanctionedResources = Math.floor(baseCompute * (1 + datacenterBoost));
+            headerDiv.textContent = `Allocate your AI labor for this month (${corporateResources} available, base compute cut 50% by sanctions):`;
         } else {
-            headerDiv.textContent = `You have ${corporateResources} resources to allocate this turn:`;
+            headerDiv.textContent = `Allocate your AI labor for this month (${corporateResources} available):`;
         }
         actionsPanel.appendChild(headerDiv);
 
@@ -997,6 +1186,22 @@ async function handleEventChoice(choiceIndex) {
     // Track events that are accepted (for requirement checking)
     if (choice.action === 'accept' || choice.action === 'accept-sanctions') {
         gameState.dsaEventsAccepted.add(event.type);
+        
+        // Unlock technologies when corresponding events are accepted
+        if (event.type === 'product-breakthrough-medicine') {
+            gameState.technologies.medicine = true;
+        } else if (event.type === 'product-breakthrough-robotics') {
+            gameState.technologies.robotics = true;
+        } else if (event.type === 'nuclear-weapons') {
+            gameState.technologies.nukes = true;
+        }
+        
+        // Track infrastructure construction
+        if (event.type === 'overseas-datacenter') {
+            gameState.datacenterCount++;
+        } else if (event.type === 'synthetic-biology') {
+            gameState.biotechLabCount++;
+        }
     }
 
     // Handle custom event handlers
