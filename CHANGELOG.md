@@ -4,9 +4,21 @@ All notable changes to the Save the World Game will be documented in this file.
 
 ## Summary
 
+- **v0.3.1** : Fixed event handlers and updated datacenter event text
 - **v0.3.0** : Competitor acquisition events and VP Safety role with unit testing
 - **v0.2.0** : Projects panel system and humanoid robotics event chain  
 - **v0.1.0** : Initial AI strategy game with turn-based gameplay and minigames
+
+## [v0.3.1] - 2025-06-28
+
+### Bug Fixes
+- Fixed TypeError in nuclear weapons, missile defense, and overseas datacenter custom handlers
+- Handlers now correctly access `other_texts` via `event.originalEventData.other_texts`
+
+### Improvements  
+- Updated overseas datacenter event text to focus on US government compliance rather than sanctions
+- Added conditional text for Chinese companies about "navigating US export controls"
+- Changed "be above board" to "comply" for clearer language
 
 ## [v0.3.0] - 2025-06-28
 

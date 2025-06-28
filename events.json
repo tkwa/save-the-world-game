@@ -53,7 +53,7 @@
     {
       "type": "conditional-choice-demo",
       "weight": 0,
-      "oneTime": true,
+      "oneTimeAccept": true,
       "aiLevelRange": { "min": 999 },
       "text_versions": [
         "Your board of directors is meeting to discuss strategic options. Different proposals are on the table depending on your company's current capabilities and situation."
@@ -84,7 +84,7 @@
     {
       "type": "safety-research-limitations",
       "weight": 4,
-      "oneTime": true,
+      "oneTimeAccept": true,
       "text_versions": [
         "Your safety research team warns that traditional safety measures will face diminishing returns as AI systems become superhuman. Without new theoretical insights and full-scale experiments, increasingly powerful AI systems will become progressively more difficult to control and understand."
       ],
@@ -99,7 +99,7 @@
     {
       "type": "product-breakthrough-medicine",
       "weight": 1,
-      "oneTime": true,
+      "oneTimeAccept": true,
       "aiLevelRange": { "min": 12 },
       "text_versions": [
         "Your AI research team makes a breakthrough in drug discovery, identifying promising compounds for treating rare diseases. However, developing this technology will require significant resources."
@@ -122,7 +122,7 @@
     {
       "type": "product-breakthrough-robotics",
       "weight": 1,
-      "oneTime": true,
+      "oneTimeAccept": true,
       "aiLevelRange": { "min": 16 },
       "text_versions": [
         "Boston Dynamics, currently owned by Hyundai, is available for acquisition-- at the right price. Combining their robotics hardware with your AI software could enable more automation in unskilled trades."
@@ -146,7 +146,7 @@
       "type": "humanoid-robotics",
       "weight": 1,
       "requires": ["product-breakthrough-robotics"],
-      "oneTime": true,
+      "oneTimeAccept": true,
       "text_versions": [
         "Boston Dynamics' acquisition has proven successful, but their current robots are limited to specialized applications. Your AI team proposes developing general-purpose humanoid robots that could perform most human jobs. This would require significant investment in manufacturing and advanced actuators."
       ],
@@ -167,11 +167,11 @@
     {
       "type": "overseas-datacenter",
       "weight": 4,
-      "oneTime": true,
+      "oneTimeAccept": true,
       "aiLevelRange": { "min": 20, "max": 80 },
       "customHandler": "handleOverseasDatacenterChoice",
       "text_versions": [
-        "Your company has the opportunity to establish a 1GW datacenter in $country. This would increase your compute by 20%, but unauthorized construction risks US sanctions."
+        "Your company has the opportunity to establish a 1GW datacenter in $country. This would increase your compute by 20%, but the US government controls critical semiconductor exports. The choice is whether to comply with US authorities or proceed covertly.$chineseCompanyText"
       ],
       "other_texts": {
         "sanctions_triggered": "You proceed with unauthorized datacenter construction, bypassing government approval processes. The facility comes online successfully, but intelligence agencies discover the operation. The US government responds with comprehensive economic sanctions against your company.",
@@ -200,13 +200,40 @@
       ]
     },
     {
+      "type": "second-datacenter",
+      "weight": 4,
+      "requires": ["product-breakthrough-robotics", "overseas-datacenter"],
+      "oneTimeAccept": true,
+      "customHandler": "handleSecondDatacenterChoice",
+      "text_versions": [
+        "Your first datacenter in $country has been highly successful. The government now proposes a deeper partnership: expanding to a second datacenter and power plant, while appointing your COO as a high-ranking minister. This would represent unprecedented cooperation between a tech company and nation-state."
+      ],
+      "other_texts": {
+        "accepted": "Your company establishes an unprecedented partnership with $country. A second datacenter and dedicated power plant come online, doubling your computational capacity. Your COO takes their oath as a minister, giving your company direct political influence within the government."
+      },
+      "choices": [
+        {
+          "text": "Accept partnership (-$5B, -8 Diplomacy)",
+          "action": "accept",
+          "cost": { "money": 5, "diplomacyPoints": 8 },
+          "benefit": {},
+          "result_text": "Your company establishes an unprecedented partnership with $country. A second datacenter and dedicated power plant come online, doubling your computational capacity. Your COO takes their oath as a minister, giving your company direct political influence within the government."
+        },
+        {
+          "text": "Decline",
+          "action": "decline",
+          "result_text": "You decide that such deep political integration would compromise your company's independence. The government understands your position, though some officials express disappointment about the missed opportunity for closer cooperation."
+        }
+      ]
+    },
+    {
       "type": "nuclear-weapons",
       "weight": 4,
-      "requires": ["humanoid-robotics", "overseas-datacenter"],
-      "oneTime": true,
+      "requires": ["humanoid-robotics", "second-datacenter"],
+      "oneTimeAccept": true,
       "customHandler": "handleNuclearWeaponsChoice",
       "text_versions": [
-        "In its robotics business, your company has built manufacturing capacity for both civilian and military applications. Following your economic cooperation with $country, it has asked you to build it nuclear weapons to deter foreign invasion. Being the first non-state actor to build a nuclear device would give your company unprecedented control. However, the US government is highly likely to impose sanctions-- on both you and $country."
+        "Your deep partnership with $country has evolved beyond infrastructure. With your COO now serving as a minister and your robotics expertise expanding, the government approaches you with its most sensitive request: building nuclear weapons for national defense. This would make your company the first non-state actor to develop nuclear capability, fundamentally changing global power dynamics."
       ],
       "other_texts": {
         "sanctions_triggered": "Your team begins the secretive nuclear weapons program. The project advances rapidly thanks to your robotics expertise and AI-assisted design. However, intelligence agencies detect the program through satellite imagery and financial tracking. International sanctions are immediately imposed.",
@@ -231,7 +258,7 @@
       "type": "seek-un-recognition",
       "weight": 4,
       "requires": ["nuclear-weapons"],
-      "oneTime": true,
+      "oneTimeAccept": true,
       "text_versions": [
         "Your company now possesses the key attributes of a sovereign entity: economic base, military capability, and international presence. The United Nations is considering recognizing your company as a new form of quasi-state actor. This would dramatically increase your resources and diplomatic influence."
       ],
@@ -247,8 +274,8 @@
     {
       "type": "missile-defense",
       "weight": 4,
-      "requires": ["seek-un-recognition"],
-      "oneTime": true,
+      "requires": ["nuclear-weapons"],
+      "oneTimeAccept": true,
       "customHandler": "handleMissileDefenseChoice",
       "text_versions": [
         "Nuclear-armed states like the US and Russia pose a serious problem for your company's security, as their missiles can threaten your datacenters from thousands of kilometers away. However, a combination of cyberweapons and interceptor drones can mitigate this risk."
@@ -275,7 +302,7 @@
       "type": "decisive-strategic-advantage",
       "weight": 4,
       "requires": ["missile-defense"],
-      "oneTime": true,
+      "oneTimeAccept": true,
       "text_versions": [
         "Your company's lead in both general AI and military technology could allow it to establish global hegemony. However, this will require giving your frontier model complete control over weapon systems. If the model is misaligned, there is no turning back."
       ],
@@ -295,7 +322,7 @@
     {
       "type": "competitor-breakthrough",
       "weight": 1,
-      "oneTime": true,
+      "maxTimes": 1,
       "aiLevelRange": { "max": 100 },
       "customHandler": "handleCompetitorBreakthroughChoice",
       "text_versions": [
@@ -317,7 +344,7 @@
     {
       "type": "competitor-acquisition",
       "weight": 2,
-      "oneTime": true,
+      "oneTimeAccept": true,
       "customHandler": "handleCompetitorAcquisitionChoice",
       "text_versions": [
         "$competitorName has achieved a commanding lead in AI capabilities, reaching $competitorLevel while $companyName remains at $playerLevel. $competitorName's board approaches your company with an acquisition offer: $equityOffer equity in exchange for becoming their Safety and Alignment division. Your employees are divided - some believe winning the ASI race is now hopeless, others still believe in $companyName's potential, and some think the merger would be beneficial for AI safety overall."
@@ -338,7 +365,7 @@
     {
       "type": "falling-behind",
       "weight": 1,
-      "oneTime": true,
+      "oneTimeAccept": true,
       "text_versions": [
         "$competitorName has overtaken $companyName in AI capabilities, reaching $competitorLevel while $companyName remains at $playerLevel. This represents a fundamental shift in the competitive landscape. AI algorithmic progress is necessary to your company's continued ability to generate revenue—clients pay premium prices for cutting-edge capabilities, and falling behind means losing contracts to competitors. Without maintaining technological leadership, $companyName risks entering a death spiral where reduced revenue leads to reduced R&D investment, which leads to further technological lag, creating an increasingly difficult cycle to break."
       ],
@@ -354,7 +381,7 @@
     {
       "type": "corporate-espionage-investigation-example",
       "weight": 0,
-      "oneTime": true,
+      "oneTimeAccept": true,
       "aiLevelRange": { "min": 999 },
       "customHandler": "handleCorporateEspionageInvestigation",
       "text_versions": [

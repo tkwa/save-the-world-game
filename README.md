@@ -7,11 +7,17 @@ Open `savetheworld.html` in a browser, e.g. by using Cursor Live Preview or `pyt
 
 ## Status
 
-TODO:
-- [ ] Nukes more realistic-- should require running for president or something. And UN recognition should be removed on the DSA track
+TODO for Claude (check off when finished):
+- [x] The first datacenter choice should be about whether to be above board with the US government-- since they're the ones that could impose sanctions. In the second text, there should be a phrase about "navigating US export controls on Chinese companies" if player company is Chinese
+- [x] Bump patch version and update changelog and commit these changes...
+
+
+
+Longer term goals -- Claude shouldn't start these yet
 - [ ] More alignment minigames
 - [ ] Integrate forecasting minigame
 - [ ] Integrate capabilities minigame
+- [ ] Integrate the forecasting minigame as one of the Projects. 
 
 
 

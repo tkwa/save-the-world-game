@@ -77,6 +77,10 @@ function trackEventSeen(event) {
         gameState.eventsSeen[event.type] = 0;
     }
     gameState.eventsSeen[event.type]++;
+    
+    // Also track appearance count for maxTimes filtering
+    const currentCount = gameState.eventAppearanceCounts.get(event.type) || 0;
+    gameState.eventAppearanceCounts.set(event.type, currentCount + 1);
 }
 
 // Check if event requirements are met and hasn't been accepted yet
@@ -129,9 +133,17 @@ function getAvailableEvents(allEvents) {
             }
         }
         
-        // Check if this event has already been accepted (one-time events)
-        if (event.oneTime && gameState.eventsAccepted.has(event.type)) {
+        // Check if this event has already been accepted (oneTimeAccept events)
+        if (event.oneTimeAccept && gameState.eventsAccepted.has(event.type)) {
             return false; // Already accepted
+        }
+        
+        // Check if this event has exceeded maxTimes appearances
+        if (event.maxTimes) {
+            const appearanceCount = gameState.eventAppearanceCounts.get(event.type) || 0;
+            if (appearanceCount >= event.maxTimes) {
+                return false; // Already appeared maximum times
+            }
         }
         
         // Check AI level range requirements
@@ -183,15 +195,22 @@ function createEventVariables(eventType) {
     variables.companyName = gameState.companyName || 'Your company';
     variables.playerLevel = `${Math.round(gameState.playerAILevel)}x`;
     
-    if (eventType === 'overseas-datacenter' || eventType === 'nuclear-weapons') {
+    if (eventType === 'overseas-datacenter' || eventType === 'second-datacenter' || eventType === 'nuclear-weapons') {
         if (eventType === 'overseas-datacenter') {
             // Pick a random country for the datacenter event and store it
             const countries = GAME_CONSTANTS.DATACENTER_COUNTRIES;
             const country = countries[Math.floor(Math.random() * countries.length)];
             gameState.datacenterCountry = country;
             variables.country = country;
-        } else if (eventType === 'nuclear-weapons' && gameState.datacenterCountry) {
-            // Use the previously stored datacenter country for nuclear weapons
+            
+            // Add Chinese company specific text for overseas datacenter
+            if (gameState.companyCountry === 'CN') {
+                variables.chineseCompanyText = ' This involves navigating US export controls on Chinese companies.';
+            } else {
+                variables.chineseCompanyText = '';
+            }
+        } else if ((eventType === 'second-datacenter' || eventType === 'nuclear-weapons') && gameState.datacenterCountry) {
+            // Use the previously stored datacenter country for second datacenter and nuclear weapons
             variables.country = gameState.datacenterCountry;
         }
     }
@@ -571,9 +590,9 @@ function handleOverseasDatacenterChoice(choice, event, sanctionsTriggered) {
         if (choice.action === 'accept-sanctions') {
             let resultText;
             if (sanctionsTriggered) {
-                resultText = event.other_texts.sanctions_triggered;
+                resultText = event.originalEventData.other_texts.sanctions_triggered;
             } else {
-                resultText = event.other_texts.sanctions_avoided;
+                resultText = event.originalEventData.other_texts.sanctions_avoided;
             }
             
             gameState.currentEvent.showResult = true;
@@ -597,13 +616,55 @@ function handleOverseasDatacenterChoice(choice, event, sanctionsTriggered) {
     showPage('main-game');
 }
 
+function handleSecondDatacenterChoice(choice, event, sanctionsTriggered) {
+    console.log('Calling custom handler: handleSecondDatacenterChoice');
+    
+    if (choice.action === 'accept') {
+        // Increment datacenter count for the second datacenter
+        gameState.datacenterCount++;
+        
+        // Add powerplant (could be tracked separately if needed)
+        gameState.powerplantCount = (gameState.powerplantCount || 0) + 1;
+        
+        // Set flag for COO being a minister (for other events to reference)
+        gameState.cooIsMinister = true;
+        
+        // Show result text from other_texts or fallback to choice result_text
+        gameState.currentEvent.showResult = true;
+        if (event && event.other_texts && event.other_texts.accepted) {
+            // Apply country variable substitution to the result text
+            let resultText = event.other_texts.accepted;
+            if (gameState.datacenterCountry) {
+                resultText = resultText.replace(/\$country/g, gameState.datacenterCountry);
+            }
+            gameState.currentEvent.resultText = resultText;
+        } else if (choice.result_text) {
+            // Also apply variable substitution to choice result text
+            let resultText = choice.result_text;
+            if (gameState.datacenterCountry) {
+                resultText = resultText.replace(/\$country/g, gameState.datacenterCountry);
+            }
+            gameState.currentEvent.resultText = resultText;
+        }
+    } else {
+        // Handle decline normally
+        if (choice.result_text) {
+            gameState.currentEvent.showResult = true;
+            gameState.currentEvent.resultText = choice.result_text;
+        }
+    }
+    
+    updateStatusBar();
+    showPage('main-game');
+}
+
 function handleNuclearWeaponsChoice(choice, event, sanctionsTriggered) {
     if (choice.action === 'accept') {
         let resultText;
         if (sanctionsTriggered) {
-            resultText = event.other_texts.sanctions_triggered;
+            resultText = event.originalEventData.other_texts.sanctions_triggered;
         } else {
-            resultText = event.other_texts.sanctions_avoided;
+            resultText = event.originalEventData.other_texts.sanctions_avoided;
         }
         
         gameState.currentEvent.showResult = true;
@@ -623,9 +684,9 @@ function handleMissileDefenseChoice(choice, event, sanctionsTriggered) {
     if (choice.action === 'accept') {
         let resultText;
         if (sanctionsTriggered) {
-            resultText = event.other_texts.sanctions_triggered;
+            resultText = event.originalEventData.other_texts.sanctions_triggered;
         } else {
-            resultText = event.other_texts.sanctions_avoided;
+            resultText = event.originalEventData.other_texts.sanctions_avoided;
         }
         
         gameState.currentEvent.showResult = true;
@@ -704,7 +765,7 @@ function handleCompetitorBreakthroughChoice(choice, _event, _sanctionsTriggered)
                 const investigationEvent = {
                     type: 'corporate-espionage-investigation',
                     weight: 1,
-                    oneTime: true,
+                    oneTimeAccept: true,
                     text_versions: [
                         'Federal investigators have discovered evidence of unauthorized access to competitor communications from your company\'s systems. A formal investigation into corporate espionage has been launched, and sanctions are being considered.'
                     ],

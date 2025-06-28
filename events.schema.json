@@ -91,9 +91,14 @@
           "minimum": 0,
           "description": "Probability weight for event selection (0 = disabled)"
         },
-        "oneTime": {
+        "oneTimeAccept": {
           "type": "boolean",
-          "description": "Whether this event can only occur once per game"
+          "description": "Whether this event can only occur once if accepted"
+        },
+        "maxTimes": {
+          "type": "number",
+          "minimum": 1,
+          "description": "Maximum number of times this event can occur regardless of choice"
         },
         "requires": {
           "type": "array",

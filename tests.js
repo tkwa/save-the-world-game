@@ -1,4 +1,5 @@
 // Unit tests for Critical Path AI Strategy Game
+/* global require, module, process */
 
 class TestSuite {
     constructor() {
@@ -75,7 +76,7 @@ function createTestGameState() {
 let gameState = createTestGameState();
 
 // Test helper functions
-function mockCalculateAdjustedRisk() {
+function _mockCalculateAdjustedRisk() {
     return gameState.doomLevel || 20;
 }
 
@@ -494,7 +495,6 @@ function testOtherTextsUsage() {
         if (typeof require !== 'undefined' && typeof process !== 'undefined') {
             // Node.js environment
             const fs = require('fs');
-            const path = require('path');
             
             eventData = JSON.parse(fs.readFileSync('events.json', 'utf8'));
             eventsJsContent = fs.readFileSync('events.js', 'utf8');
@@ -956,79 +956,19 @@ function testEventsSchemaValidation() {
     return suite.runAll();
 }
 
-// Mock functions for Node.js environment
-function mockGetChoiceAffordability(choice) {
-    if (!choice.cost) return { canAfford: true, missingResources: [] };
+// Import actual functions from game-core.js for testing
+let getChoiceAffordability, formatChoiceTextWithCosts, formatAllocationLabelWithCosts, gameCoreState;
 
-    const missingResources = [];
-    
-    if (choice.cost.productPoints && gameState.productPoints < choice.cost.productPoints) {
-        missingResources.push({
-            type: 'productPoints',
-            needed: choice.cost.productPoints,
-            have: gameState.productPoints,
-            name: 'Product Points'
-        });
+try {
+    if (typeof require !== 'undefined') {
+        const gameCoreModule = require('./game-core.js');
+        getChoiceAffordability = gameCoreModule.getChoiceAffordability;
+        formatChoiceTextWithCosts = gameCoreModule.formatChoiceTextWithCosts;
+        formatAllocationLabelWithCosts = gameCoreModule.formatAllocationLabelWithCosts;
+        gameCoreState = gameCoreModule.gameState;
     }
-    if (choice.cost.diplomacyPoints && gameState.diplomacyPoints < choice.cost.diplomacyPoints) {
-        missingResources.push({
-            type: 'diplomacyPoints', 
-            needed: choice.cost.diplomacyPoints,
-            have: gameState.diplomacyPoints,
-            name: 'Diplomacy Points'
-        });
-    }
-    if (choice.cost.money && gameState.money < choice.cost.money) {
-        missingResources.push({
-            type: 'money',
-            needed: choice.cost.money,
-            have: gameState.money,
-            name: 'Money'
-        });
-    }
-
-    return {
-        canAfford: missingResources.length === 0,
-        missingResources: missingResources
-    };
-}
-
-function mockFormatChoiceTextWithCosts(choice) {
-    if (!choice.cost) return choice.text;
-    
-    const affordability = mockGetChoiceAffordability(choice);
-    let formattedText = choice.text;
-    
-    // Replace cost indicators with styled versions
-    if (choice.cost.money) {
-        const isMissing = affordability.missingResources.some(r => r.type === 'money');
-        const costText = `-$${choice.cost.money}B`;
-        const styledCost = isMissing ? 
-            `<span style="color: #ff6b6b; font-weight: bold;">${costText}</span>` : 
-            costText;
-        formattedText = formattedText.replace(costText, styledCost);
-    }
-    
-    if (choice.cost.diplomacyPoints) {
-        const isMissing = affordability.missingResources.some(r => r.type === 'diplomacyPoints');
-        const costText = `-${choice.cost.diplomacyPoints} Diplomacy`;
-        const styledCost = isMissing ? 
-            `<span style="color: #ff6b6b; font-weight: bold;">${costText}</span>` : 
-            costText;
-        formattedText = formattedText.replace(costText, styledCost);
-    }
-    
-    if (choice.cost.productPoints) {
-        const isMissing = affordability.missingResources.some(r => r.type === 'productPoints');
-        const costText = `-${choice.cost.productPoints} Product`;
-        const styledCost = isMissing ? 
-            `<span style="color: #ff6b6b; font-weight: bold;">${costText}</span>` : 
-            costText;
-        // Handle both "Product Points" and "Product" variations
-        formattedText = formattedText.replace(new RegExp(`-${choice.cost.productPoints} Product(?:\\s+Points)?`, 'g'), styledCost);
-    }
-    
-    return formattedText;
+} catch (error) {
+    console.warn('Could not import from game-core.js:', error.message);
 }
 
 // Test unaffordable choice highlighting
@@ -1036,10 +976,11 @@ function testUnaffordableChoiceHighlighting() {
     const suite = new TestSuite();
     
     suite.test('getChoiceAffordability should identify missing resources correctly', () => {
-        gameState = createTestGameState();
-        gameState.money = 5; // Less than needed
-        gameState.diplomacyPoints = 2; // Less than needed
-        gameState.productPoints = 10; // Enough
+        // Set up the game-core gameState for testing
+        Object.assign(gameCoreState, createTestGameState());
+        gameCoreState.money = 5; // Less than needed
+        gameCoreState.diplomacyPoints = 2; // Less than needed
+        gameCoreState.productPoints = 10; // Enough
         
         const choice = {
             text: "Expensive option (-$10B, -3 Diplomacy, -1 Product)",
@@ -1050,7 +991,7 @@ function testUnaffordableChoiceHighlighting() {
             }
         };
         
-        const affordability = mockGetChoiceAffordability(choice);
+        const affordability = getChoiceAffordability(choice);
         
         suite.assertFalse(affordability.canAfford, 'Choice should be unaffordable');
         suite.assertEqual(affordability.missingResources.length, 2, 'Should have 2 missing resources');
@@ -1062,9 +1003,9 @@ function testUnaffordableChoiceHighlighting() {
     });
     
     suite.test('formatChoiceTextWithCosts should highlight unaffordable costs in red', () => {
-        gameState = createTestGameState();
-        gameState.money = 5; // Less than needed
-        gameState.diplomacyPoints = 10; // Enough
+        Object.assign(gameCoreState, createTestGameState());
+        gameCoreState.money = 5; // Less than needed
+        gameCoreState.diplomacyPoints = 10; // Enough
         
         const choice = {
             text: "Test choice (-$10B, -3 Diplomacy)",
@@ -1074,7 +1015,7 @@ function testUnaffordableChoiceHighlighting() {
             }
         };
         
-        const formattedText = mockFormatChoiceTextWithCosts(choice);
+        const formattedText = formatChoiceTextWithCosts(choice);
         
         // Should highlight money cost in red but not diplomacy
         suite.assertTrue(formattedText.includes('<span style="color: #ff6b6b; font-weight: bold;">-$10B</span>'), 
@@ -1087,9 +1028,9 @@ function testUnaffordableChoiceHighlighting() {
     });
     
     suite.test('formatChoiceTextWithCosts should not highlight when all costs are affordable', () => {
-        gameState = createTestGameState();
-        gameState.money = 15; // More than enough
-        gameState.diplomacyPoints = 10; // More than enough
+        Object.assign(gameCoreState, createTestGameState());
+        gameCoreState.money = 15; // More than enough
+        gameCoreState.diplomacyPoints = 10; // More than enough
         
         const choice = {
             text: "Affordable choice (-$10B, -3 Diplomacy)",
@@ -1099,7 +1040,7 @@ function testUnaffordableChoiceHighlighting() {
             }
         };
         
-        const formattedText = mockFormatChoiceTextWithCosts(choice);
+        const formattedText = formatChoiceTextWithCosts(choice);
         
         // Should not highlight any costs
         suite.assertFalse(formattedText.includes('color: #ff6b6b'), 'Should not highlight any costs when affordable');
@@ -1111,9 +1052,312 @@ function testUnaffordableChoiceHighlighting() {
             text: "Free choice"
         };
         
-        const formattedText = mockFormatChoiceTextWithCosts(choice);
+        const formattedText = formatChoiceTextWithCosts(choice);
         
         suite.assertEqual(formattedText, choice.text, 'Should return original text for choices without costs');
+    });
+    
+    return suite.runAll();
+}
+
+// Test unaffordable allocation highlighting
+function testUnaffordableAllocationHighlighting() {
+    const suite = new TestSuite();
+    
+    suite.test('formatAllocationLabelWithCosts should highlight unaffordable AI R&D costs in red', () => {
+        Object.assign(gameCoreState, createTestGameState());
+        gameCoreState.money = 5; // Less than needed for AI R&D
+        
+        const gains = { aiCost: 10, safetyCost: 8 };
+        const label = `<strong>A</strong>I R&D<br>(+2.5 AI, +2.5% Risk, -$10.0B)`;
+        
+        const formattedLabel = formatAllocationLabelWithCosts(label, 'ai-rd', gains);
+        
+        // Should highlight AI R&D cost in red
+        suite.assertTrue(formattedLabel.includes('<span style="color: #ff6b6b; font-weight: bold;">-$10.0B</span>'), 
+            'Should highlight unaffordable AI R&D cost in red');
+    });
+    
+    suite.test('formatAllocationLabelWithCosts should highlight unaffordable Safety R&D costs in red', () => {
+        Object.assign(gameCoreState, createTestGameState());
+        gameCoreState.money = 5; // Less than needed for Safety R&D
+        
+        const gains = { aiCost: 10, safetyCost: 8 };
+        const label = `<strong>S</strong>afety R&D<br>(+1.5 Safety, -2.1% Risk, -$8.0B)`;
+        
+        const formattedLabel = formatAllocationLabelWithCosts(label, 'safety-rd', gains);
+        
+        // Should highlight Safety R&D cost in red
+        suite.assertTrue(formattedLabel.includes('<span style="color: #ff6b6b; font-weight: bold;">-$8.0B</span>'), 
+            'Should highlight unaffordable Safety R&D cost in red');
+    });
+    
+    suite.test('formatAllocationLabelWithCosts should not highlight when allocations are affordable', () => {
+        Object.assign(gameCoreState, createTestGameState());
+        gameCoreState.money = 20; // More than enough
+        
+        const gains = { aiCost: 10, safetyCost: 8 };
+        const aiLabel = `<strong>A</strong>I R&D<br>(+2.5 AI, +2.5% Risk, -$10.0B)`;
+        const safetyLabel = `<strong>S</strong>afety R&D<br>(+1.5 Safety, -2.1% Risk, -$8.0B)`;
+        
+        const formattedAiLabel = formatAllocationLabelWithCosts(aiLabel, 'ai-rd', gains);
+        const formattedSafetyLabel = formatAllocationLabelWithCosts(safetyLabel, 'safety-rd', gains);
+        
+        // Should not highlight any costs
+        suite.assertFalse(formattedAiLabel.includes('color: #ff6b6b'), 'Should not highlight affordable AI R&D cost');
+        suite.assertFalse(formattedSafetyLabel.includes('color: #ff6b6b'), 'Should not highlight affordable Safety R&D cost');
+        suite.assertEqual(formattedAiLabel, aiLabel, 'Should return original AI R&D label when affordable');
+        suite.assertEqual(formattedSafetyLabel, safetyLabel, 'Should return original Safety R&D label when affordable');
+    });
+    
+    suite.test('formatAllocationLabelWithCosts should not modify non-cost allocations', () => {
+        const gains = { aiCost: 10, safetyCost: 8 };
+        const diplomacyLabel = `<strong>D</strong>iplomacy (+2.0)`;
+        const productLabel = `<strong>P</strong>roduct (+2.0)`;
+        const revenueLabel = `<strong>R</strong>evenue (+$5.0B)`;
+        
+        const formattedDiplomacy = formatAllocationLabelWithCosts(diplomacyLabel, 'diplomacy', gains);
+        const formattedProduct = formatAllocationLabelWithCosts(productLabel, 'product', gains);
+        const formattedRevenue = formatAllocationLabelWithCosts(revenueLabel, 'revenue', gains);
+        
+        suite.assertEqual(formattedDiplomacy, diplomacyLabel, 'Should not modify diplomacy allocation');
+        suite.assertEqual(formattedProduct, productLabel, 'Should not modify product allocation');
+        suite.assertEqual(formattedRevenue, revenueLabel, 'Should not modify revenue allocation');
+    });
+    
+    return suite.runAll();
+}
+
+// Test event dependency graph validation
+function testEventDependencyGraph() {
+    const suite = new TestSuite();
+    
+    suite.test('All required events should exist', () => {
+        const events = require('./events.json');
+        const allEventTypes = new Set();
+        
+        // Collect all event types
+        Object.keys(events.specialEvents).forEach(type => allEventTypes.add(type));
+        events.defaultEvents.forEach(event => allEventTypes.add(event.type));
+        
+        // Check that all required events exist
+        events.defaultEvents.forEach(event => {
+            if (event.requires) {
+                event.requires.forEach(requiredType => {
+                    suite.assertTrue(allEventTypes.has(requiredType), 
+                        `Event "${event.type}" requires "${requiredType}" which does not exist`);
+                });
+            }
+        });
+    });
+    
+    suite.test('Should detect circular dependencies', () => {
+        // Create test data with circular dependency
+        const testEvents = {
+            defaultEvents: [
+                { type: "foo", requires: ["bar"] },
+                { type: "bar", requires: ["foo"] }
+            ]
+        };
+        
+        function hasCircularDependency(events) {
+            const visited = new Set();
+            const recursionStack = new Set();
+            
+            function dfs(eventType, eventMap) {
+                if (recursionStack.has(eventType)) {
+                    return true; // Circular dependency found
+                }
+                if (visited.has(eventType)) {
+                    return false; // Already processed
+                }
+                
+                visited.add(eventType);
+                recursionStack.add(eventType);
+                
+                const event = eventMap.get(eventType);
+                if (event && event.requires) {
+                    for (const dep of event.requires) {
+                        if (dfs(dep, eventMap)) {
+                            return true;
+                        }
+                    }
+                }
+                
+                recursionStack.delete(eventType);
+                return false;
+            }
+            
+            // Build event map
+            const eventMap = new Map();
+            events.defaultEvents.forEach(event => {
+                eventMap.set(event.type, event);
+            });
+            
+            // Check each event for circular dependencies
+            for (const event of events.defaultEvents) {
+                if (dfs(event.type, eventMap)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        suite.assertTrue(hasCircularDependency(testEvents), 
+            'Should detect circular dependency between foo and bar');
+    });
+    
+    suite.test('Should detect nonexistent dependencies', () => {
+        // Create test data with nonexistent dependency
+        const testEvents = {
+            defaultEvents: [
+                { type: "foo", requires: ["nonexistent"] }
+            ]
+        };
+        
+        function hasNonexistentDependency(events) {
+            const allEventTypes = new Set();
+            events.defaultEvents.forEach(event => allEventTypes.add(event.type));
+            
+            for (const event of events.defaultEvents) {
+                if (event.requires) {
+                    for (const requiredType of event.requires) {
+                        if (!allEventTypes.has(requiredType)) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+        
+        suite.assertTrue(hasNonexistentDependency(testEvents), 
+            'Should detect nonexistent dependency');
+    });
+    
+    suite.test('Real events.json should have valid dependency graph', () => {
+        const events = require('./events.json');
+        
+        // Check for circular dependencies
+        function hasCircularDependency(events) {
+            const visited = new Set();
+            const recursionStack = new Set();
+            
+            function dfs(eventType, eventMap) {
+                if (recursionStack.has(eventType)) {
+                    return true;
+                }
+                if (visited.has(eventType)) {
+                    return false;
+                }
+                
+                visited.add(eventType);
+                recursionStack.add(eventType);
+                
+                const event = eventMap.get(eventType);
+                if (event && event.requires) {
+                    for (const dep of event.requires) {
+                        if (dfs(dep, eventMap)) {
+                            return true;
+                        }
+                    }
+                }
+                
+                recursionStack.delete(eventType);
+                return false;
+            }
+            
+            const eventMap = new Map();
+            events.defaultEvents.forEach(event => {
+                eventMap.set(event.type, event);
+            });
+            
+            for (const event of events.defaultEvents) {
+                if (dfs(event.type, eventMap)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        suite.assertFalse(hasCircularDependency(events), 
+            'Real events.json should not have circular dependencies');
+    });
+    
+    return suite.runAll();
+}
+
+// Test oneTimeAccept vs maxTimes behavior
+function testEventTimingBehavior() {
+    const suite = new TestSuite();
+    
+    suite.test('oneTimeAccept events should reappear if declined', () => {
+        // Mock an oneTimeAccept event that was declined
+        const event = { type: "test-one-time-accept", oneTimeAccept: true };
+        
+        // Simulate the event was shown but not accepted (declined)
+        if (!gameCoreState.eventAppearanceCounts) {
+            gameCoreState.eventAppearanceCounts = new Map();
+        }
+        if (!gameCoreState.eventsAccepted) {
+            gameCoreState.eventsAccepted = new Set();
+        }
+        
+        // Event appeared once but was not accepted
+        gameCoreState.eventAppearanceCounts.set("test-one-time-accept", 1);
+        // Not in eventsAccepted since it was declined
+        
+        // Should still be available since it wasn't accepted
+        function canEventAppear(event) {
+            // oneTimeAccept logic
+            if (event.oneTimeAccept && gameCoreState.eventsAccepted.has(event.type)) {
+                return false;
+            }
+            // maxTimes logic  
+            if (event.maxTimes) {
+                const appearanceCount = gameCoreState.eventAppearanceCounts.get(event.type) || 0;
+                if (appearanceCount >= event.maxTimes) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        
+        suite.assertTrue(canEventAppear(event), 
+            'oneTimeAccept event should reappear if it was declined');
+    });
+    
+    suite.test('maxTimes events should not reappear after limit', () => {
+        const event = { type: "test-max-times", maxTimes: 1 };
+        
+        if (!gameCoreState.eventAppearanceCounts) {
+            gameCoreState.eventAppearanceCounts = new Map();
+        }
+        
+        // Event appeared once (regardless of choice)
+        gameCoreState.eventAppearanceCounts.set("test-max-times", 1);
+        
+        function canEventAppear(event) {
+            if (event.maxTimes) {
+                const appearanceCount = gameCoreState.eventAppearanceCounts.get(event.type) || 0;
+                if (appearanceCount >= event.maxTimes) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        
+        suite.assertFalse(canEventAppear(event), 
+            'maxTimes event should not reappear after reaching limit');
+    });
+    
+    suite.test('competitor-breakthrough should use maxTimes: 1', () => {
+        const events = require('./events.json');
+        const competitorEvent = events.defaultEvents.find(e => e.type === 'competitor-breakthrough');
+        
+        suite.assertTrue(competitorEvent !== undefined, 'competitor-breakthrough event should exist');
+        suite.assertEqual(competitorEvent.maxTimes, 1, 'competitor-breakthrough should have maxTimes: 1');
+        suite.assertTrue(competitorEvent.oneTimeAccept === undefined, 'competitor-breakthrough should not have oneTimeAccept');
     });
     
     return suite.runAll();
@@ -1136,7 +1380,10 @@ async function runAllTests() {
         testConditionalChoices(),
         testMultiStageEventSystem(),
         testEventsSchemaValidation(),
-        testUnaffordableChoiceHighlighting()
+        testUnaffordableChoiceHighlighting(),
+        testUnaffordableAllocationHighlighting(),
+        testEventDependencyGraph(),
+        testEventTimingBehavior()
     ]);
     
     const allPassed = results.every(result => result);

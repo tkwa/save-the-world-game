@@ -1,6 +1,6 @@
 // Core game logic for the AI Timeline Game
 
-VERSION = "v0.3.0"
+VERSION = "v0.3.1"
 
 // Technology configuration
 const INITIAL_TECHNOLOGIES = {
@@ -166,6 +166,7 @@ const gameState = {
     powerplantCount: 0,
     biotechLabCount: 0,
     datacenterCountry: null, // Stores the country where datacenter was built
+    cooIsMinister: false, // Whether COO is serving as minister in datacenter country
 
     // Technologies
     technologies: { ...INITIAL_TECHNOLOGIES },
@@ -195,6 +196,7 @@ const gameState = {
     eventsSeen: {}, // Tracks count of each event type seen
     choicesTaken: {}, // Tracks choices taken for each event type
     eventsAccepted: new Set(), // Tracks which DSA events have been accepted
+    eventAppearanceCounts: new Map(), // Tracks how many times each event has appeared
     alignmentMaxScore: 0, // Maximum score achieved in alignment minigame
     endgameAdjustedRisk: null, // Adjusted risk level at endgame trigger
     projectsUnlocked: false, // Whether Projects panel is unlocked (at 100 safety points)
@@ -295,16 +297,20 @@ const storyContent = {
                         // Format choice text with cost highlighting
                         const formattedText = formatChoiceTextWithCosts(choice);
                         
-                        // Create tooltip for unaffordable choices
-                        let tooltip = '';
+                        // Create tooltip for unaffordable choices using custom CSS tooltip system
+                        let tooltipHtml = '';
                         if (!canAfford && affordability.missingResources.length > 0) {
                             const missingList = affordability.missingResources.map(r => 
                                 `${r.name}: need ${r.needed}, have ${r.have}`
-                            ).join('; ');
-                            tooltip = ` title="Not enough resources: ${missingList}"`;
+                            ).join('<br>');
+                            tooltipHtml = `<span class="tooltiptext">Not enough resources:<br>${missingList}</span>`;
+                        } else if (!allocationMade) {
+                            // Create tooltip for when allocation hasn't been made yet
+                            tooltipHtml = `<span class="tooltiptext">Allocate AI labor first</span>`;
                         }
                         
-                        eventHtml += `<button class="button" onclick="${onclick}" style="${buttonStyle}"${tooltip}>${formattedText}</button>`;
+                        const buttonClass = tooltipHtml ? 'button tooltip' : 'button';
+                        eventHtml += `<button class="${buttonClass}" onclick="${onclick}" style="${buttonStyle}">${formattedText}${tooltipHtml}</button>`;
                     });
                 } else {
                     // No choices - just next turn button
@@ -313,7 +319,15 @@ const storyContent = {
                         `` :
                         `background-color: #666; cursor: not-allowed; opacity: 0.6;`;
                     const onclick = allocationMade ? `finishTurn()` : '';
-                    eventHtml += `<button class="button" onclick="${onclick}" style="${buttonStyle}">Next Turn <strong>⏎</strong></button>`;
+                    
+                    // Add tooltip for when allocation hasn't been made yet
+                    let tooltipHtml = '';
+                    if (!allocationMade) {
+                        tooltipHtml = `<span class="tooltiptext">Allocate AI labor first</span>`;
+                    }
+                    
+                    const buttonClass = tooltipHtml ? 'button tooltip' : 'button';
+                    eventHtml += `<button class="${buttonClass}" onclick="${onclick}" style="${buttonStyle}">Next Turn <strong>⏎</strong>${tooltipHtml}</button>`;
                 }
 
                 eventHtml += `</div>`;
@@ -689,12 +703,12 @@ function updateInfrastructure() {
     // Country flag (shown only when datacenter is built)
     const countryFlagElement = document.getElementById('country-flag-icon');
     const countryFlagTooltip = document.getElementById('country-flag-tooltip');
-    if (gameState.datacenterCountry && gameState.datacenterCount > 0) {
+    if (gameState.datacenterCountry && gameState.cooIsMinister) {
         const flag = GAME_CONSTANTS.COUNTRY_FLAGS[gameState.datacenterCountry];
         if (flag) {
             countryFlagElement.textContent = flag;
             if (countryFlagTooltip) {
-                countryFlagTooltip.innerHTML = `Economic Cooperation with <strong>${gameState.datacenterCountry}</strong>`;
+                countryFlagTooltip.innerHTML = `Economic and political cooperation with <strong>${gameState.datacenterCountry}</strong>`;
             }
         }
     } else {
@@ -866,6 +880,12 @@ async function advanceTurn() {
     
     // Generate new event for next turn
     gameState.currentEvent = await generateEvent();
+
+    // Apply the selected allocation now that the turn is advancing
+    if (gameState.selectedAllocation) {
+        const corporateResources = calculateResources();
+        applyResourceAllocation(gameState.selectedAllocation, corporateResources);
+    }
 
     // Clear selection for next turn (after everything is processed)
     gameState.selectedAllocation = null;
@@ -1073,6 +1093,20 @@ function generateActionLabels(resources) {
     ];
 }
 
+// Format allocation label with cost highlighting for unaffordable costs
+function formatAllocationLabelWithCosts(label, actionType, gains) {
+    if (actionType === 'ai-rd' && gameState.money < gains.aiCost) {
+        const costText = `-$${(Math.round(gains.aiCost * 10) / 10).toFixed(1)}B`;
+        const styledCost = `<span style="color: #ff6b6b; font-weight: bold;">${costText}</span>`;
+        return label.replace(costText, styledCost);
+    } else if (actionType === 'safety-rd' && gameState.money < gains.safetyCost) {
+        const costText = `-$${(Math.round(gains.safetyCost * 10) / 10).toFixed(1)}B`;
+        const styledCost = `<span style="color: #ff6b6b; font-weight: bold;">${costText}</span>`;
+        return label.replace(costText, styledCost);
+    }
+    return label;
+}
+
 function canAffordChoice(choice) {
     if (!choice.cost) return true;
 
@@ -1232,6 +1266,7 @@ function resetGameState() {
     gameState.eventsSeen = {};
     gameState.choicesTaken = {};
     gameState.eventsAccepted = new Set();
+    gameState.eventAppearanceCounts = new Map();
     gameState.endGamePhase = 1;
     gameState.alignmentRolls = null;
     gameState.galaxyDistribution = null;
@@ -1364,8 +1399,31 @@ async function showPage(pageId) {
 
         actionLabels.forEach((actionLabel, index) => {
             const button = document.createElement('button');
-            button.className = 'button';
-            button.innerHTML = actionLabel;
+            
+            // Check if player can afford this action
+            const gains = calculateResourceGains(corporateResources);
+            let canAfford = true;
+            
+            if (page.actions[index] === 'ai-rd' && gameState.money < gains.aiCost) {
+                canAfford = false;
+            } else if (page.actions[index] === 'safety-rd' && gameState.money < gains.safetyCost) {
+                canAfford = false;
+            }
+            
+            // Format label with cost highlighting and set button class
+            const formattedLabel = formatAllocationLabelWithCosts(actionLabel, page.actions[index], gains);
+            
+            // Add tooltip for unaffordable allocations
+            let hasTooltip = false;
+            if (!canAfford) {
+                button.className = 'button tooltip';
+                button.style.position = 'relative';
+                hasTooltip = true;
+            } else {
+                button.className = 'button';
+            }
+            
+            button.innerHTML = formattedLabel;
             button.style.fontFamily = "'Courier New', Courier, monospace";
             button.style.fontSize = '14px';
             button.style.width = '100%';
@@ -1377,15 +1435,22 @@ async function showPage(pageId) {
             } else {
                 button.style.height = '35px'; // Shorter height for Diplomacy, Product, Revenue
             }
-
-            // Check if player can afford this action
-            const gains = calculateResourceGains(corporateResources);
-            let canAfford = true;
             
-            if (page.actions[index] === 'ai-rd' && gameState.money < gains.aiCost) {
-                canAfford = false;
-            } else if (page.actions[index] === 'safety-rd' && gameState.money < gains.safetyCost) {
-                canAfford = false;
+            // Add tooltip content for unaffordable allocations
+            if (hasTooltip) {
+                let tooltipText = '';
+                if (page.actions[index] === 'ai-rd') {
+                    tooltipText = `Not enough money:<br>Need $${Math.round(gains.aiCost * 10) / 10}B, have $${Math.round(gameState.money * 10) / 10}B`;
+                } else if (page.actions[index] === 'safety-rd') {
+                    tooltipText = `Not enough money:<br>Need $${Math.round(gains.safetyCost * 10) / 10}B, have $${Math.round(gameState.money * 10) / 10}B`;
+                }
+                
+                const tooltipSpan = document.createElement('span');
+                tooltipSpan.className = 'tooltiptext';
+                tooltipSpan.innerHTML = tooltipText;
+                tooltipSpan.style.width = '300px';
+                tooltipSpan.style.marginLeft = '-150px';
+                button.appendChild(tooltipSpan);
             }
 
             // Style based on selection state and affordability
@@ -1424,7 +1489,6 @@ async function showPage(pageId) {
             button.onclick = () => {
                 if (!gameState.selectedAllocation && canAfford) {
                     gameState.selectedAllocation = page.actions[index];
-                    applyResourceAllocation(page.actions[index], corporateResources);
                     showPage('main-game');
                 }
             };
@@ -1799,18 +1863,34 @@ async function handleEventChoice(choiceIndex) {
     }
 }
 
-// Make functions globally accessible
-window.finishTurn = finishTurn;
-window.handleEventChoice = handleEventChoice;
-window.forceEvent = forceEvent;
-window.populateDebugDropdown = populateDebugDropdown;
-window.giveResources = giveResources;
-window.debugShowAllTechs = debugShowAllTechs;
-window.getChoiceAffordability = getChoiceAffordability;
-window.formatChoiceTextWithCosts = formatChoiceTextWithCosts;
+// Browser-specific initialization
+if (typeof window !== 'undefined') {
+    // Make functions globally accessible
+    window.finishTurn = finishTurn;
+    window.handleEventChoice = handleEventChoice;
+    window.forceEvent = forceEvent;
+    window.populateDebugDropdown = populateDebugDropdown;
+    window.giveResources = giveResources;
+    window.debugShowAllTechs = debugShowAllTechs;
+    window.getChoiceAffordability = getChoiceAffordability;
+    window.formatChoiceTextWithCosts = formatChoiceTextWithCosts;
+}
 
-// Keyboard controls
-document.addEventListener('keydown', function(event) {
+// Export for Node.js testing
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        gameState,
+        getChoiceAffordability,
+        formatChoiceTextWithCosts,
+        formatAllocationLabelWithCosts,
+        canAffordChoice
+    };
+}
+
+// Browser-specific event listeners
+if (typeof document !== 'undefined') {
+    // Keyboard controls
+    document.addEventListener('keydown', function(event) {
     // Ignore if user is typing in an input field
     if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
         return;
@@ -1881,7 +1961,8 @@ document.addEventListener('keydown', function(event) {
     }
 });
 
-// Initialize the game
-document.addEventListener('DOMContentLoaded', function () {
-    showPage('start');
-});
+    // Initialize the game
+    document.addEventListener('DOMContentLoaded', function () {
+        showPage('start');
+    });
+}

@@ -57,6 +57,9 @@ There's a TODO list atop `README.md`.
 - **Test categories**: Event logic, merger mechanics, endgame scoring, role indicators, other_texts usage
 - **Commit integration**: Failed tests block commits; passed tests append timing info to commit messages
 
+### Commit messages
+- Limit commit messages to 100 words.
+
 ## Writing style
 
 - The game is meant to be played by a "steely-eyed missile man".
