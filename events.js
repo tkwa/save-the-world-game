@@ -647,7 +647,7 @@ function handleCompetitorAcquisitionChoice(choice, _event, _sanctionsTriggered) 
         
         const playerEquityPercent = Math.round((gameState.offeredEquity || 0.01) * 100 * 10) / 10;
         const totalEquityPercent = Math.round((gameState.totalEquityOffered || 0.1) * 100 * 10) / 10;
-        const resultText = `The merger is completed successfully. ${newCompanyName} acquires ${gameState.startingCompany} for ${totalEquityPercent}% equity, giving you ${playerEquityPercent}% equity as your 10% share of the deal. You assume the role of VP of Safety and Alignment. With access to ${newCompanyName}'s advanced AI capabilities and resources, you now focus on ensuring AI development benefits humanity. Having ${playerEquityPercent < 1 ? 'very little' : playerEquityPercent < 5 ? 'little' : 'some'} financial interest in the ASI race, your priorities have fundamentally shifted toward what would be best for the world.<br><br>You are ${playerEquityPercent < 1 ? 'quite resentful about accepting such a low valuation' : playerEquityPercent < 5 ? 'somewhat resentful about the valuation' : 'reasonably satisfied with the valuation'}, but the acquisition was ultimately necessary given the competitive reality.`;
+        const resultText = `The merger is completed successfully. ${newCompanyName} acquires ${gameState.startingCompany} for ${totalEquityPercent}% equity, giving you ${playerEquityPercent}% equity as your 10% share of the deal. You assume the role of VP of Safety and Alignment. With access to ${newCompanyName}'s advanced AI capabilities and resources, you now focus on ensuring AI development benefits humanity. Having ${playerEquityPercent < 1 ? 'very little' : playerEquityPercent < 5 ? 'little' : 'somewhat less'} financial interest in the ASI race, your priorities have ${playerEquityPercent < 1 ? 'fundamentally' : ''} shifted toward what would be best for the world.<br><br>You are ${playerEquityPercent < 1 ? 'quite resentful about accepting such a low valuation' : playerEquityPercent < 5 ? 'somewhat resentful about the valuation' : 'reasonably satisfied with the valuation'}, but the acquisition was ultimately necessary given the competitive reality.`;
         
         gameState.currentEvent.showResult = true;
         gameState.currentEvent.resultText = resultText;
@@ -722,4 +722,32 @@ function giveResources() {
     
     updateStatusBar();
     showPage('main-game');
+}
+
+// Unlock projects panel (for testing)
+function debugUnlockProjects() {
+    gameState.projectsUnlocked = true;
+    updateStatusBar();
+    showPage('main-game');
+}
+
+// Show current event pool (for debugging)
+function debugShowEventPool() {
+    loadEventData().then(events => {
+        const availableEvents = getAvailableEvents(events.defaultEvents);
+        console.log('=== Current Event Pool ===');
+        console.log('Total events in pool:', availableEvents.length);
+        console.log('Available event types:', availableEvents.map(e => `${e.type} (weight: ${e.weight || 1})`));
+        console.log('Events with requirements:', availableEvents.filter(e => e.requires).map(e => `${e.type} requires: ${e.requires.join(', ')}`));
+        console.log('One-time events:', availableEvents.filter(e => e.oneTime).map(e => e.type));
+        console.log('=== Player State ===');
+        console.log('Player AI Level:', gameState.playerAILevel);
+        console.log('Competitor AI Levels:', gameState.competitorAILevels);
+        console.log('Max Competitor Level:', Math.max(...gameState.competitorAILevels));
+        console.log('Projects Unlocked:', gameState.projectsUnlocked);
+        console.log('Safety Points:', gameState.safetyPoints);
+        console.log('Has Ever Fallen Behind:', gameState.hasEverFallenBehind);
+        console.log('Events Accepted:', Array.from(gameState.dsaEventsAccepted));
+        console.log('========================');
+    });
 }

@@ -1511,6 +1511,26 @@ function addDebugControls() {
         existingDebug.remove();
     }
     
+    // Shared CSS styles for debug elements
+    const debugButtonStyle = `
+        background-color: #333; 
+        color: #fff; 
+        border: 1px solid #555; 
+        padding: 5px 10px; 
+        font-size: 12px;
+        opacity: 0.7;
+        cursor: pointer;
+    `;
+    
+    const debugDropdownStyle = `
+        background-color: #333; 
+        color: #fff; 
+        border: 1px solid #555; 
+        padding: 5px; 
+        font-size: 12px;
+        opacity: 0.7;
+    `;
+    
     // Create debug controls container
     const debugControls = document.createElement('div');
     debugControls.id = 'debug-controls';
@@ -1528,14 +1548,7 @@ function addDebugControls() {
     const dropdown = document.createElement('select');
     dropdown.id = 'debugEventDropdown';
     dropdown.onchange = function() { forceEvent(this.value); };
-    dropdown.style.cssText = `
-        background-color: #333; 
-        color: #fff; 
-        border: 1px solid #555; 
-        padding: 5px; 
-        font-size: 12px;
-        opacity: 0.7;
-    `;
+    dropdown.style.cssText = debugDropdownStyle;
     dropdown.innerHTML = '<option value="">Debug: Force Event</option>';
     debugControls.appendChild(dropdown);
     
@@ -1543,15 +1556,7 @@ function addDebugControls() {
     const resourcesBtn = document.createElement('button');
     resourcesBtn.textContent = '+1000 Resources';
     resourcesBtn.onclick = giveResources;
-    resourcesBtn.style.cssText = `
-        background-color: #333; 
-        color: #fff; 
-        border: 1px solid #555; 
-        padding: 5px 10px; 
-        font-size: 12px;
-        opacity: 0.7;
-        cursor: pointer;
-    `;
+    resourcesBtn.style.cssText = debugButtonStyle;
     debugControls.appendChild(resourcesBtn);
     
     // Show All Techs button
@@ -1559,30 +1564,14 @@ function addDebugControls() {
     techsBtn.textContent = 'Show All Techs';
     techsBtn.onclick = debugShowAllTechs;
     techsBtn.id = 'debug-techs-btn';
-    techsBtn.style.cssText = `
-        background-color: #333; 
-        color: #fff; 
-        border: 1px solid #555; 
-        padding: 5px 10px; 
-        font-size: 12px;
-        opacity: 0.7;
-        cursor: pointer;
-    `;
+    techsBtn.style.cssText = debugButtonStyle;
     debugControls.appendChild(techsBtn);
     
     // Main Game button
     const mainGameBtn = document.createElement('button');
     mainGameBtn.textContent = 'Main Game';
     mainGameBtn.onclick = () => showPage('main-game');
-    mainGameBtn.style.cssText = `
-        background-color: #333; 
-        color: #fff; 
-        border: 1px solid #555; 
-        padding: 5px 10px; 
-        font-size: 12px;
-        opacity: 0.7;
-        cursor: pointer;
-    `;
+    mainGameBtn.style.cssText = debugButtonStyle;
     debugControls.appendChild(mainGameBtn);
     
     // End Screen button
@@ -1595,16 +1584,22 @@ function addDebugControls() {
         gameState.endGameResult = calculateEndGameScore();
         showPage('end-game');
     };
-    endScreenBtn.style.cssText = `
-        background-color: #333; 
-        color: #fff; 
-        border: 1px solid #555; 
-        padding: 5px 10px; 
-        font-size: 12px;
-        opacity: 0.7;
-        cursor: pointer;
-    `;
+    endScreenBtn.style.cssText = debugButtonStyle;
     debugControls.appendChild(endScreenBtn);
+    
+    // Unlock Projects button
+    const unlockProjectsBtn = document.createElement('button');
+    unlockProjectsBtn.textContent = 'Unlock Projects';
+    unlockProjectsBtn.onclick = debugUnlockProjects;
+    unlockProjectsBtn.style.cssText = debugButtonStyle;
+    debugControls.appendChild(unlockProjectsBtn);
+    
+    // Show Event Pool button
+    const showEventPoolBtn = document.createElement('button');
+    showEventPoolBtn.textContent = 'Show Event Pool';
+    showEventPoolBtn.onclick = debugShowEventPool;
+    showEventPoolBtn.style.cssText = debugButtonStyle;
+    debugControls.appendChild(showEventPoolBtn);
     
     // Add to page
     document.body.appendChild(debugControls);
