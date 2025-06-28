@@ -7,21 +7,20 @@ Open `savetheworld.html` in a browser, e.g. by using Cursor Live Preview or `pyt
 
 ## Status
 
-Done:
-- Skeleton
-- Capability evals minigame
-- Forecasting minigame
-
 TODO:
-- Make investment in safety have a cumulative effect on risk
-- Nukes more realistic-- should require running for president or something. And UN recognition should be removed on the DSA track
-- More alignment minigames
-- Events
+- [ ] Nukes more realistic-- should require running for president or something. And UN recognition should be removed on the DSA track
+- [ ] More alignment minigames
+- [ ] Integrate forecasting minigame
+- [ ] Integrate capabilities minigame
+
+
+
+Ideas:
 - Consider other ways to organize the turn
   - real-time? David says this would be a huge engagement boost, but it might be hard to implement / balance
     - minimum delay between allocating resources
     - how to deal with events?
-  - a "projects" section of things you can always spend on?
+  - an "available items" section of things you can always spend on?
     - this is appropriate for the setting
     - 
 

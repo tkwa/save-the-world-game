@@ -733,21 +733,117 @@ function debugUnlockProjects() {
 
 // Show current event pool (for debugging)
 function debugShowEventPool() {
+    // Remove existing overlay if present
+    const existingOverlay = document.getElementById('event-pool-overlay');
+    if (existingOverlay) {
+        existingOverlay.remove();
+        return; // Toggle off if already showing
+    }
+    
     loadEventData().then(events => {
         const availableEvents = getAvailableEvents(events.defaultEvents);
-        console.log('=== Current Event Pool ===');
-        console.log('Total events in pool:', availableEvents.length);
-        console.log('Available event types:', availableEvents.map(e => `${e.type} (weight: ${e.weight || 1})`));
-        console.log('Events with requirements:', availableEvents.filter(e => e.requires).map(e => `${e.type} requires: ${e.requires.join(', ')}`));
-        console.log('One-time events:', availableEvents.filter(e => e.oneTime).map(e => e.type));
-        console.log('=== Player State ===');
-        console.log('Player AI Level:', gameState.playerAILevel);
-        console.log('Competitor AI Levels:', gameState.competitorAILevels);
-        console.log('Max Competitor Level:', Math.max(...gameState.competitorAILevels));
-        console.log('Projects Unlocked:', gameState.projectsUnlocked);
-        console.log('Safety Points:', gameState.safetyPoints);
-        console.log('Has Ever Fallen Behind:', gameState.hasEverFallenBehind);
-        console.log('Events Accepted:', Array.from(gameState.dsaEventsAccepted));
-        console.log('========================');
+        
+        // Create overlay element
+        const overlay = document.createElement('div');
+        overlay.id = 'event-pool-overlay';
+        overlay.style.cssText = `
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: #e0e0e0;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            line-height: 1.3;
+            max-width: 400px;
+            max-height: 60vh;
+            overflow-y: auto;
+            z-index: 2000;
+            border: 1px solid #555;
+        `;
+        
+        // Build content lines with compact format
+        const lines = [];
+        lines.push(`Event Pool (${availableEvents.length}):`);
+        
+        // Compact format: weight | event-name
+        availableEvents.forEach(e => {
+            const weight = (e.weight || 1).toString().padStart(2);
+            lines.push(`${weight} | ${e.type}`);
+        });
+        
+        // Only show debug-specific player state (not already in status bar)
+        lines.push('');
+        lines.push('Debug State:');
+        lines.push(`Fallen Behind: ${gameState.hasEverFallenBehind}`);
+        const acceptedEvents = Array.from(gameState.dsaEventsAccepted);
+        if (acceptedEvents.length > 0) {
+            lines.push(`Accepted: ${acceptedEvents.join(', ')}`);
+        } else {
+            lines.push('Accepted: none');
+        }
+        
+        // Set content
+        overlay.innerHTML = lines.map(line => line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')).join('<br>');
+        
+        // Add close button
+        const closeBtn = document.createElement('div');
+        closeBtn.textContent = '✕';
+        closeBtn.style.cssText = `
+            position: absolute;
+            top: 5px;
+            right: 8px;
+            cursor: pointer;
+            color: #ccc;
+            font-weight: bold;
+        `;
+        closeBtn.onclick = () => {
+            overlay.remove();
+            // Update button text
+            const btn = document.getElementById('debug-event-pool-btn');
+            if (btn) btn.textContent = 'Show Event Pool';
+        };
+        overlay.appendChild(closeBtn);
+        
+        // Add to page
+        document.body.appendChild(overlay);
+    });
+}
+
+// Update event pool overlay if it's currently visible
+function updateEventPoolOverlay() {
+    const overlay = document.getElementById('event-pool-overlay');
+    if (!overlay) return; // Not currently shown
+    
+    loadEventData().then(events => {
+        const availableEvents = getAvailableEvents(events.defaultEvents);
+        
+        // Build updated content with compact format
+        const lines = [];
+        lines.push(`Event Pool (${availableEvents.length}):`);
+        
+        // Compact format: weight | event-name
+        availableEvents.forEach(e => {
+            const weight = (e.weight || 1).toString().padStart(2);
+            lines.push(`${weight} | ${e.type}`);
+        });
+        
+        // Only show debug-specific player state (not already in status bar)
+        lines.push('');
+        lines.push('Debug State:');
+        lines.push(`Fallen Behind: ${gameState.hasEverFallenBehind}`);
+        const acceptedEvents = Array.from(gameState.dsaEventsAccepted);
+        if (acceptedEvents.length > 0) {
+            lines.push(`Accepted: ${acceptedEvents.join(', ')}`);
+        } else {
+            lines.push('Accepted: none');
+        }
+        
+        // Update content (preserve close button)
+        const closeBtn = overlay.querySelector('div');
+        overlay.innerHTML = lines.map(line => line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')).join('<br>');
+        if (closeBtn) overlay.appendChild(closeBtn);
     });
 }

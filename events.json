@@ -74,7 +74,7 @@
       ],
       "choices": [
         {
-          "text": "Research (-4 Product Points, +$1B/turn)",
+          "text": "Research (-4 Product Points, +$1B/turn, +💊)",
           "action": "accept",
           "cost": { "productPoints": 4 },
           "benefit": { "incomeBonus": 1 },
@@ -92,13 +92,13 @@
       "weight": 1,
       "oneTime": true,
       "text_versions": [
-        "Boston Dynamics is available for acquisition. Their advanced robotics hardware, combined with your sophisticated AI software, could enable widespread automation across industries. However, the acquisition requires significant capital and resources."
+        "Boston Dynamics, currently owned by Hyundai, is available for acquisition-- at the right price. Combining their robotics hardware with your AI software could enable more automation in unskilled trades."
       ],
       "choices": [
         {
-          "text": "Acquire Boston Dynamics (-$3B, -1 Diplomacy, -1 Product, +$1B/turn, +🤖)",
+          "text": "Acquire Boston Dynamics (-$10B, -1 Diplomacy, -1 Product, +$1B/turn, +🤖)",
           "action": "accept",
-          "cost": { "money": 3, "diplomacyPoints": 1, "productPoints": 1 },
+          "cost": { "money": 10, "diplomacyPoints": 1, "productPoints": 1 },
           "benefit": { "incomeBonus": 1 },
           "result_text": "The acquisition succeeds. Boston Dynamics' bipedal robots, quadrupeds, and manipulation systems are now enhanced with your AI capabilities. The combination enables revolutionary automation solutions, generating substantial revenue from manufacturing, logistics, and specialized applications."
         },

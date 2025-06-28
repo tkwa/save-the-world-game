@@ -3,6 +3,8 @@
 ## Project Overview
 This is a turn-based AI strategy game where players act as CEOs of AI companies navigating the race to AGI while balancing safety concerns. The game features complex mechanics including resource allocation, technology trees, minigames, and risk calculations.
 
+There's a TODO list atop `README.md`.
+
 ## Coding Guidelines
 
 ### DRY Principle (Don't Repeat Yourself)
@@ -30,8 +32,8 @@ This is a turn-based AI strategy game where players act as CEOs of AI companies 
 - `game-core.js`: Main game logic, state management, UI updates
 - `minigames.js`: Standalone minigame implementations
 - `events.js`: Event system and handlers
+- `events.json`: Event text and data
 - `endgame.js`: End game calculations and display
-- `utils.js`: Shared utility functions
 
 ### Performance Considerations
 - Use efficient canvas operations for graphics
@@ -54,6 +56,16 @@ This is a turn-based AI strategy game where players act as CEOs of AI companies 
 - **Test categories**: Event logic, merger mechanics, endgame scoring, role indicators, other_texts usage
 - **Commit integration**: Failed tests block commits; passed tests append timing info to commit messages
 
+## Writing style
+
+- The game is meant to be played by a "steely-eyed missile man".
+- Text shouldn't be overly verbose-- less use of adjectives
+- Be specific rather than vague
+- Use game state about the player and world when relevant
+- Example
+  - Original: The acquisition succeeds. Boston Dynamics' bipedal robots, quadrupeds, and manipulation systems are now enhanced with your AI capabilities. The combination enables revolutionary automation solutions, generating substantial revenue from manufacturing, logistics, and specialized applications.
+  - Better: The acquisition succeeds. Boston Dynamics' bipedal and quadrupedal robots are now piloted by a specialized version of ${aiVersion}. The new subsidiary ${companyName} Dynamics expands from manufacturing to other unskilled trades; your robots can fold clothes and operate in normal office spaces.
+
 ## Game Mechanics Notes
 
 ### Risk Calculation Formula
@@ -66,8 +78,6 @@ where:
 
 ### Technology Dependencies
 - Use `TECHNOLOGY_DEPENDENCIES` object for prerequisite checks
-- AI Control requires AI Monitoring
-- Military tech has complex dependency chains
 
 ### Minigame Integration
 - Register minigames in the global minigame system

@@ -781,6 +781,11 @@ function updateStatusBar() {
     updateStatusEffects();
     updateInfrastructure();
     updateTechnologies();
+    
+    // Update event pool overlay if visible
+    if (typeof updateEventPoolOverlay === 'function') {
+        updateEventPoolOverlay();
+    }
 }
 
 
@@ -1596,8 +1601,16 @@ function addDebugControls() {
     
     // Show Event Pool button
     const showEventPoolBtn = document.createElement('button');
+    showEventPoolBtn.id = 'debug-event-pool-btn';
     showEventPoolBtn.textContent = 'Show Event Pool';
-    showEventPoolBtn.onclick = debugShowEventPool;
+    showEventPoolBtn.onclick = () => {
+        debugShowEventPool();
+        // Update button text after toggle
+        setTimeout(() => {
+            const overlay = document.getElementById('event-pool-overlay');
+            showEventPoolBtn.textContent = overlay ? 'Hide Event Pool' : 'Show Event Pool';
+        }, 50);
+    };
     showEventPoolBtn.style.cssText = debugButtonStyle;
     debugControls.appendChild(showEventPoolBtn);
     
