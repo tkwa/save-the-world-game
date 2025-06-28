@@ -937,6 +937,25 @@ function testMultiStageEventSystem() {
     return suite.runAll();
 }
 
+// Test events.json schema validation
+function testEventsSchemaValidation() {
+    const suite = new TestSuite();
+    
+    suite.test('events.json should be valid according to schema', () => {
+        // Check if we're in Node.js environment
+        if (typeof require !== 'undefined' && typeof process !== 'undefined') {
+            const { validateEvents } = require('./validate-events.js');
+            const isValid = validateEvents();
+            suite.assertTrue(isValid, 'events.json should pass schema validation');
+        } else {
+            // Skip in browser environment
+            console.log('Skipping schema validation test in browser environment');
+        }
+    });
+    
+    return suite.runAll();
+}
+
 // Main test runner
 async function runAllTests() {
     const startTime = Date.now();
@@ -952,7 +971,8 @@ async function runAllTests() {
         testOtherTextsUsage(),
         testAILevelRangeFiltering(),
         testConditionalChoices(),
-        testMultiStageEventSystem()
+        testMultiStageEventSystem(),
+        testEventsSchemaValidation()
     ]);
     
     const allPassed = results.every(result => result);

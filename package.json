@@ -4,6 +4,9 @@
   "description": "AI Strategy Game",
   "scripts": {
     "test": "node -e \"require('./tests.js').runAllTests().then(result => process.exit((typeof result === 'object' ? result.passed : result) ? 0 : 1))\"",
+    "validate": "node validate-events.js",
+    "validate:schema": "node validate-events.js",
+    "test:all": "npm run validate && npm run test",
     "lint": "eslint *.js",
     "lint:unused": "eslint --rule 'no-unused-vars: error' *.js"
   },

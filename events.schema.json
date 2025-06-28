@@ -1,0 +1,294 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Critical Path Game Events Schema",
+  "description": "Schema for validating events.json in the Critical Path AI strategy game",
+  "type": "object",
+  "properties": {
+    "specialEvents": {
+      "type": "object",
+      "description": "Special events that trigger under specific conditions",
+      "patternProperties": {
+        "^[a-z-]+$": {
+          "$ref": "#/definitions/specialEvent"
+        }
+      },
+      "additionalProperties": false
+    },
+    "safetyIncidents": {
+      "type": "object",
+      "description": "Safety incident event template",
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "safety-incident"
+        },
+        "weight": {
+          "type": "number",
+          "minimum": 0
+        },
+        "text_versions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        }
+      },
+      "required": ["type", "weight", "text_versions"],
+      "additionalProperties": false
+    },
+    "defaultEvents": {
+      "type": "array",
+      "description": "Default events that can occur during gameplay",
+      "items": {
+        "$ref": "#/definitions/defaultEvent"
+      }
+    }
+  },
+  "required": ["specialEvents", "safetyIncidents", "defaultEvents"],
+  "additionalProperties": false,
+  "definitions": {
+    "specialEvent": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "pattern": "^[a-z-]+$"
+        },
+        "text_versions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "choices": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/choice"
+          },
+          "minItems": 1
+        },
+        "other_texts": {
+          "$ref": "#/definitions/otherTexts"
+        }
+      },
+      "required": ["type", "text_versions", "choices"],
+      "additionalProperties": false
+    },
+    "defaultEvent": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "pattern": "^[a-z-]+$",
+          "description": "Unique identifier for the event type"
+        },
+        "weight": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Probability weight for event selection (0 = disabled)"
+        },
+        "oneTime": {
+          "type": "boolean",
+          "description": "Whether this event can only occur once per game"
+        },
+        "requires": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z-]+$"
+          },
+          "description": "List of event types that must be accepted before this event can occur"
+        },
+        "aiLevelRange": {
+          "$ref": "#/definitions/aiLevelRange"
+        },
+        "customHandler": {
+          "type": "string",
+          "pattern": "^[a-zA-Z][a-zA-Z0-9]*$",
+          "description": "Name of custom JavaScript function to handle this event"
+        },
+        "text_versions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "description": "Array of possible text variations for this event"
+        },
+        "other_texts": {
+          "$ref": "#/definitions/otherTexts"
+        },
+        "choices": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/choice"
+          },
+          "minItems": 1,
+          "description": "Available choices for the player"
+        }
+      },
+      "required": ["type", "weight", "text_versions"],
+      "additionalProperties": false
+    },
+    "aiLevelRange": {
+      "type": "object",
+      "description": "AI level constraints for when this event can occur",
+      "properties": {
+        "min": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Minimum AI level required for this event"
+        },
+        "max": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Maximum AI level allowed for this event"
+        }
+      },
+      "additionalProperties": false,
+      "anyOf": [
+        {"required": ["min"]},
+        {"required": ["max"]},
+        {"required": ["min", "max"]}
+      ]
+    },
+    "otherTexts": {
+      "type": "object",
+      "description": "Additional text content for multi-stage events or outcome variations",
+      "patternProperties": {
+        "^[a-z_]+$": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "choice": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Display text for this choice"
+        },
+        "action": {
+          "type": "string",
+          "enum": ["accept", "decline", "accept-sanctions"],
+          "description": "Action type for this choice"
+        },
+        "condition": {
+          "type": "string",
+          "pattern": "^[a-zA-Z][a-zA-Z0-9]*$",
+          "description": "Boolean gameState variable that must be true for this choice to appear"
+        },
+        "hotkey": {
+          "type": "string",
+          "enum": ["enter"],
+          "description": "Keyboard shortcut for this choice"
+        },
+        "cost": {
+          "$ref": "#/definitions/resourceCost"
+        },
+        "benefit": {
+          "$ref": "#/definitions/resourceBenefit"
+        },
+        "penalty": {
+          "$ref": "#/definitions/resourcePenalty"
+        },
+        "risk": {
+          "$ref": "#/definitions/resourceRisk"
+        },
+        "result_text": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Text to display after choosing this option"
+        }
+      },
+      "required": ["text", "action"],
+      "additionalProperties": false
+    },
+    "resourceCost": {
+      "type": "object",
+      "description": "Resources that will be deducted when this choice is taken",
+      "properties": {
+        "money": {
+          "type": "number",
+          "minimum": 0
+        },
+        "diplomacyPoints": {
+          "type": "number", 
+          "minimum": 0
+        },
+        "productPoints": {
+          "type": "number",
+          "minimum": 0
+        },
+        "safetyPoints": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "resourceBenefit": {
+      "type": "object",
+      "description": "Resources or bonuses gained when this choice is taken",
+      "properties": {
+        "incomeBonus": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Permanent income increase per turn"
+        },
+        "aiLevelPerTurn": {
+          "type": "number",
+          "minimum": 0,
+          "description": "AI level increase per turn"
+        },
+        "resourceMultiplier": {
+          "type": "number",
+          "minimum": 1,
+          "description": "Multiplier for all monthly resources"
+        },
+        "unRecognition": {
+          "type": "boolean",
+          "description": "Grants UN recognition status"
+        }
+      },
+      "additionalProperties": false
+    },
+    "resourcePenalty": {
+      "type": "object", 
+      "description": "Guaranteed negative effects when this choice is taken",
+      "properties": {
+        "doomLevel": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Increase to doom level"
+        },
+        "sanctions": {
+          "type": "boolean",
+          "description": "Triggers economic sanctions"
+        }
+      },
+      "additionalProperties": false
+    },
+    "resourceRisk": {
+      "type": "object",
+      "description": "Probability-based negative effects when this choice is taken",
+      "properties": {
+        "sanctions": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Probability (0-1) of triggering sanctions"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

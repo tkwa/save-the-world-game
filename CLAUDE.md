@@ -13,6 +13,7 @@ There's a TODO list atop `README.md`.
 - Create utility functions for commonly used calculations
 - Maintain single source of truth for data transformations
 - When you see similar code patterns, consider refactoring into shared functions
+- If you notice yourself making kludgy changes repeatedly, stop and propose a plan to the user about doing it more extensibly
 
 ### Code Organization
 - Keep related functions grouped together
