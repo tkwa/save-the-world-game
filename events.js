@@ -114,6 +114,21 @@ function getAvailableEvents(allEvents) {
             }
         }
         
+        // Check special requirements for falling behind
+        if (event.type === 'falling-behind') {
+            const maxCompetitorLevel = Math.max(...gameState.competitorAILevels);
+            if (gameState.playerAILevel >= maxCompetitorLevel) {
+                return false; // Player must be behind the top competitor
+            }
+            // Also check if this is the first time falling behind
+            if (!gameState.hasEverFallenBehind) {
+                gameState.hasEverFallenBehind = true; // Mark that player has fallen behind
+                return true; // Trigger the event
+            } else {
+                return false; // Already triggered once
+            }
+        }
+        
         // Check if this event has already been accepted (one-time events)
         if (event.oneTime && gameState.dsaEventsAccepted.has(event.type)) {
             return false; // Already accepted
@@ -249,6 +264,20 @@ function substituteEventVariables(text, eventType) {
             substitutedText = substitutedText.replace(/\$playerLevel/g, `${Math.round(gameState.playerAILevel)}x`);
             substitutedText = substitutedText.replace(/\$equityOffer/g, `${totalEquityPercent}%`);
         }
+    }
+    
+    // Handle falling behind event variables
+    if (eventType === 'falling-behind') {
+        // Find the leading competitor who overtook the player
+        const maxCompetitorLevel = Math.max(...gameState.competitorAILevels);
+        const leadingCompetitorIndex = gameState.competitorAILevels.findIndex(level => level === maxCompetitorLevel);
+        const competitorName = gameState.competitorNames[leadingCompetitorIndex] || `Competitor ${leadingCompetitorIndex + 1}`;
+        
+        // Substitute variables
+        substitutedText = substitutedText.replace(/\$competitorName/g, competitorName);
+        substitutedText = substitutedText.replace(/\$competitorLevel/g, `${Math.round(maxCompetitorLevel)}x`);
+        substitutedText = substitutedText.replace(/\$companyName/g, gameState.companyName || 'Your company');
+        substitutedText = substitutedText.replace(/\$playerLevel/g, `${Math.round(gameState.playerAILevel)}x`);
     }
     
     return substitutedText;

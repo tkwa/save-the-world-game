@@ -205,7 +205,8 @@ const gameState = {
     companyCountry: null, // Company home country code
     companyFlag: null, // Company flag emoji
     offeredEquity: null, // Equity player receives in acquisition event (player's share)
-    totalEquityOffered: null // Total equity offered to the old company
+    totalEquityOffered: null, // Total equity offered to the old company
+    hasEverFallenBehind: false // Whether player has ever fallen behind the top competitor
 };
 
 // Story content
@@ -1147,6 +1148,7 @@ function resetGameState() {
     gameState.playerEquity = 0.1;
     gameState.offeredEquity = null;
     gameState.totalEquityOffered = null;
+    gameState.hasEverFallenBehind = false;
 }
 
 

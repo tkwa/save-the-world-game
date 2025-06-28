@@ -287,6 +287,22 @@
           "result_text": "You reject the acquisition offer and double down on independent development. Your team remains committed to competing in the ASI race, though the capability gap will be challenging to overcome."
         }
       ]
+    },
+    {
+      "type": "falling-behind",
+      "weight": 1,
+      "oneTime": true,
+      "text_versions": [
+        "$competitorName has overtaken $companyName in AI capabilities, reaching $competitorLevel while $companyName remains at $playerLevel. This represents a fundamental shift in the competitive landscape. AI algorithmic progress is necessary to your company's continued ability to generate revenue—clients pay premium prices for cutting-edge capabilities, and falling behind means losing contracts to competitors. Without maintaining technological leadership, $companyName risks entering a death spiral where reduced revenue leads to reduced R&D investment, which leads to further technological lag, creating an increasingly difficult cycle to break."
+      ],
+      "choices": [
+        {
+          "text": "Understood",
+          "action": "accept",
+          "hotkey": "enter",
+          "result_text": "You resolve to find some way to stay competitive."
+        }
+      ]
     }
   ]
 }

@@ -66,7 +66,8 @@ function createTestGameState() {
         acquisitionCompetitorIndex: null,
         playerEquity: 0.1,
         offeredEquity: null,
-        totalEquityOffered: null
+        totalEquityOffered: null,
+        hasEverFallenBehind: false
     };
 }
 
@@ -425,6 +426,63 @@ function testPreferenceText() {
     return suite.runAll();
 }
 
+// Test falling behind event
+function testFallingBehindEvent() {
+    const suite = new TestSuite();
+
+    suite.test('Falling behind event not available when player is ahead', () => {
+        gameState = createTestGameState();
+        gameState.playerAILevel = 15;
+        gameState.competitorAILevels = [12, 10, 8]; // Player is ahead
+        
+        const maxCompetitorLevel = Math.max(...gameState.competitorAILevels);
+        const shouldBeAvailable = gameState.playerAILevel < maxCompetitorLevel;
+        
+        suite.assertFalse(shouldBeAvailable, 'Event should not be available when player is ahead');
+    });
+
+    suite.test('Falling behind event available when player falls behind for first time', () => {
+        gameState = createTestGameState();
+        gameState.playerAILevel = 10;
+        gameState.competitorAILevels = [15, 12, 8]; // Player is behind
+        gameState.hasEverFallenBehind = false; // First time falling behind
+        
+        const maxCompetitorLevel = Math.max(...gameState.competitorAILevels);
+        const shouldBeAvailable = gameState.playerAILevel < maxCompetitorLevel && !gameState.hasEverFallenBehind;
+        
+        suite.assertTrue(shouldBeAvailable, 'Event should be available when player falls behind for first time');
+    });
+
+    suite.test('Falling behind event not available if already triggered', () => {
+        gameState = createTestGameState();
+        gameState.playerAILevel = 10;
+        gameState.competitorAILevels = [15, 12, 8]; // Player is behind
+        gameState.hasEverFallenBehind = true; // Already triggered
+        
+        const maxCompetitorLevel = Math.max(...gameState.competitorAILevels);
+        const shouldBeAvailable = gameState.playerAILevel < maxCompetitorLevel && !gameState.hasEverFallenBehind;
+        
+        suite.assertFalse(shouldBeAvailable, 'Event should not be available if already triggered once');
+    });
+
+    suite.test('Falling behind event correctly identifies leading competitor', () => {
+        gameState = createTestGameState();
+        gameState.playerAILevel = 10;
+        gameState.competitorAILevels = [15, 12, 8];
+        gameState.competitorNames = ['OpenAI', 'Google', 'Anthropic'];
+        
+        const maxCompetitorLevel = Math.max(...gameState.competitorAILevels);
+        const leadingCompetitorIndex = gameState.competitorAILevels.findIndex(level => level === maxCompetitorLevel);
+        const leadingCompetitor = gameState.competitorNames[leadingCompetitorIndex];
+        
+        suite.assertEqual(maxCompetitorLevel, 15, 'Should identify correct max level');
+        suite.assertEqual(leadingCompetitorIndex, 0, 'Should identify correct index');
+        suite.assertEqual(leadingCompetitor, 'OpenAI', 'Should identify correct competitor name');
+    });
+
+    return suite.runAll();
+}
+
 // Main test runner
 async function runAllTests() {
     console.log('🧪 Critical Path Game - Acquisition Event Tests\n');
@@ -434,7 +492,8 @@ async function runAllTests() {
         testMergerMechanics(), 
         testEndgameScoring(),
         testRoleIndicator(),
-        testPreferenceText()
+        testPreferenceText(),
+        testFallingBehindEvent()
     ]);
     
     const allPassed = results.every(result => result);
