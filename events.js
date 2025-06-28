@@ -154,30 +154,37 @@ function generateSafetyIncident(events) {
     };
 }
 
-// Helper function to substitute variables in event text
-function substituteEventVariables(text, eventType) {
+// Simple variable substitution function using a dictionary
+function substituteVariables(text, variables) {
     let substitutedText = text;
+    for (const [key, value] of Object.entries(variables)) {
+        const regex = new RegExp('\\$' + key, 'g');
+        substitutedText = substitutedText.replace(regex, value);
+    }
+    return substitutedText;
+}
+
+// Create variable dictionary for specific event types
+function createEventVariables(eventType) {
+    const variables = {};
     
-    // Handle country substitution for both overseas-datacenter and nuclear-weapons events
-    if (text.includes('$country')) {
-        let country;
-        
+    // Common variables available to all events
+    variables.companyName = gameState.companyName || 'Your company';
+    variables.playerLevel = `${Math.round(gameState.playerAILevel)}x`;
+    
+    if (eventType === 'overseas-datacenter' || eventType === 'nuclear-weapons') {
         if (eventType === 'overseas-datacenter') {
             // Pick a random country for the datacenter event and store it
             const countries = GAME_CONSTANTS.DATACENTER_COUNTRIES;
-            country = countries[Math.floor(Math.random() * countries.length)];
+            const country = countries[Math.floor(Math.random() * countries.length)];
             gameState.datacenterCountry = country;
+            variables.country = country;
         } else if (eventType === 'nuclear-weapons' && gameState.datacenterCountry) {
             // Use the previously stored datacenter country for nuclear weapons
-            country = gameState.datacenterCountry;
-        }
-        
-        if (country) {
-            substitutedText = substitutedText.replace(/\$country/g, country);
+            variables.country = gameState.datacenterCountry;
         }
     }
     
-    // Handle competitor breakthrough event variables
     if (eventType === 'competitor-breakthrough') {
         // Calculate market share before breakthrough
         const playerLevel = gameState.playerAILevel;
@@ -202,7 +209,6 @@ function substituteEventVariables(text, eventType) {
         
         // Determine surpassing text based on levels
         let surpassingText = '';
-        
         if (newCompetitorLevel > playerLevel) {
             surpassingText = `, surpassing ${gameState.companyName || 'your company'}`;
         }
@@ -210,17 +216,14 @@ function substituteEventVariables(text, eventType) {
         // Get player's AI system name
         const playerAISystemName = getAISystemVersion(gameState.companyName || 'Company', gameState.playerAILevel);
         
-        // Substitute variables
-        substitutedText = substitutedText.replace(/\$competitorName/g, competitorName);
-        substitutedText = substitutedText.replace(/\$companyName/g, gameState.companyName || 'Your company');
-        substitutedText = substitutedText.replace(/\$aiSystemName/g, playerAISystemName);
-        substitutedText = substitutedText.replace(/\$newCompetitorLevel/g, `${Math.round(newCompetitorLevel)}x`);
-        substitutedText = substitutedText.replace(/\$surpassingText/g, surpassingText);
-        substitutedText = substitutedText.replace(/\$marketShareBefore/g, (Math.round(marketShareBefore * 10) / 10).toString());
-        substitutedText = substitutedText.replace(/\$marketShareAfter/g, (Math.round(marketShareAfter * 10) / 10).toString());
+        variables.competitorName = competitorName;
+        variables.aiSystemName = playerAISystemName;
+        variables.newCompetitorLevel = `${Math.round(newCompetitorLevel)}x`;
+        variables.surpassingText = surpassingText;
+        variables.marketShareBefore = (Math.round(marketShareBefore * 10) / 10).toString();
+        variables.marketShareAfter = (Math.round(marketShareAfter * 10) / 10).toString();
     }
     
-    // Handle competitor acquisition event variables
     if (eventType === 'competitor-acquisition') {
         // Find the leading competitor (at least 2x player level)
         let leadingCompetitorIndex = -1;
@@ -257,30 +260,29 @@ function substituteEventVariables(text, eventType) {
             // Format total equity as percentage for display (what the company gets)
             const totalEquityPercent = Math.round(totalCompanyEquityOffered * 100 * 10) / 10; // Round to 1 decimal place
             
-            // Substitute variables
-            substitutedText = substitutedText.replace(/\$competitorName/g, competitorName);
-            substitutedText = substitutedText.replace(/\$competitorLevel/g, `${Math.round(maxCompetitorLevel)}x`);
-            substitutedText = substitutedText.replace(/\$companyName/g, gameState.companyName || 'Your company');
-            substitutedText = substitutedText.replace(/\$playerLevel/g, `${Math.round(gameState.playerAILevel)}x`);
-            substitutedText = substitutedText.replace(/\$equityOffer/g, `${totalEquityPercent}%`);
+            variables.competitorName = competitorName;
+            variables.competitorLevel = `${Math.round(maxCompetitorLevel)}x`;
+            variables.equityOffer = `${totalEquityPercent}%`;
         }
     }
     
-    // Handle falling behind event variables
     if (eventType === 'falling-behind') {
         // Find the leading competitor who overtook the player
         const maxCompetitorLevel = Math.max(...gameState.competitorAILevels);
         const leadingCompetitorIndex = gameState.competitorAILevels.findIndex(level => level === maxCompetitorLevel);
         const competitorName = gameState.competitorNames[leadingCompetitorIndex] || `Competitor ${leadingCompetitorIndex + 1}`;
         
-        // Substitute variables
-        substitutedText = substitutedText.replace(/\$competitorName/g, competitorName);
-        substitutedText = substitutedText.replace(/\$competitorLevel/g, `${Math.round(maxCompetitorLevel)}x`);
-        substitutedText = substitutedText.replace(/\$companyName/g, gameState.companyName || 'Your company');
-        substitutedText = substitutedText.replace(/\$playerLevel/g, `${Math.round(gameState.playerAILevel)}x`);
+        variables.competitorName = competitorName;
+        variables.competitorLevel = `${Math.round(maxCompetitorLevel)}x`;
     }
     
-    return substitutedText;
+    return variables;
+}
+
+// Helper function to substitute variables in event text (legacy wrapper)
+function substituteEventVariables(text, eventType) {
+    const variables = createEventVariables(eventType);
+    return substituteVariables(text, variables);
 }
 
 // Select a random event from an array using weighted probabilities
