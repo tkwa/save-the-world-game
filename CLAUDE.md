@@ -24,6 +24,7 @@ This is a turn-based AI strategy game where players act as CEOs of AI companies 
 - **Game state**: Always update through proper state management
 - **Formulas**: Document mathematical formulas in comments
 - **Constants**: Use named constants instead of magic numbers
+- **Numbers**: Bold important numbers in UI text using `<strong>` tags (percentages, multipliers, values)
 
 ### File Structure
 - `game-core.js`: Main game logic, state management, UI updates
