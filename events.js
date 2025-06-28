@@ -399,7 +399,7 @@ function applyChoiceEffects(choice) {
 
 // Custom event handlers for events with risk/success-failure mechanics
 
-function handleOverseasDatacenterChoice(choice, _event, sanctionsTriggered) {
+function handleOverseasDatacenterChoice(choice, event, sanctionsTriggered) {
     console.log('Calling custom handler: handleOverseasDatacenterChoice');
     
     if (choice.action === 'accept' || choice.action === 'accept-sanctions') {
@@ -409,9 +409,9 @@ function handleOverseasDatacenterChoice(choice, _event, sanctionsTriggered) {
         if (choice.action === 'accept-sanctions') {
             let resultText;
             if (sanctionsTriggered) {
-                resultText = "You proceed with unauthorized datacenter construction, bypassing government approval processes. The facility comes online successfully, but intelligence agencies discover the operation. The US government responds with comprehensive economic sanctions against your company.";
+                resultText = event.other_texts.sanctions_triggered;
             } else {
-                resultText = "You proceed with unauthorized datacenter construction, bypassing government approval processes. The facility comes online successfully, and your covert operations remain undetected. You've gained substantial computational capacity without triggering sanctions.";
+                resultText = event.other_texts.sanctions_avoided;
             }
             
             gameState.currentEvent.showResult = true;
@@ -435,13 +435,13 @@ function handleOverseasDatacenterChoice(choice, _event, sanctionsTriggered) {
     showPage('main-game');
 }
 
-function handleNuclearWeaponsChoice(choice, _event, sanctionsTriggered) {
+function handleNuclearWeaponsChoice(choice, event, sanctionsTriggered) {
     if (choice.action === 'accept') {
         let resultText;
         if (sanctionsTriggered) {
-            resultText = "Your team begins the secretive nuclear weapons program. The project advances rapidly thanks to your robotics expertise and AI-assisted design. However, intelligence agencies detect the program through satellite imagery and financial tracking. International sanctions are immediately imposed.";
+            resultText = event.other_texts.sanctions_triggered;
         } else {
-            resultText = "Your team begins the secretive nuclear weapons program. The project advances rapidly thanks to your robotics expertise and AI-assisted design. Intelligence agencies remain unaware of the program, and your company's position in global politics fundamentally changes without immediate retaliation.";
+            resultText = event.other_texts.sanctions_avoided;
         }
         
         gameState.currentEvent.showResult = true;
@@ -457,13 +457,13 @@ function handleNuclearWeaponsChoice(choice, _event, sanctionsTriggered) {
     showPage('main-game');
 }
 
-function handleMissileDefenseChoice(choice, _event, sanctionsTriggered) {
+function handleMissileDefenseChoice(choice, event, sanctionsTriggered) {
     if (choice.action === 'accept') {
         let resultText;
         if (sanctionsTriggered) {
-            resultText = "Your missile defense system comes online successfully. Advanced AI-controlled interceptors and cyber warfare capabilities now protect your facilities from conventional military threats. However, the deployment is detected by multiple intelligence agencies, triggering immediate international sanctions and significantly escalating global tensions.";
+            resultText = event.other_texts.sanctions_triggered;
         } else {
-            resultText = "Your missile defense system comes online successfully. Advanced AI-controlled interceptors and cyber warfare capabilities now protect your facilities from conventional military threats. The deployment remains largely undetected, though global tensions increase significantly due to the technology's existence.";
+            resultText = event.other_texts.sanctions_avoided;
         }
         
         gameState.currentEvent.showResult = true;

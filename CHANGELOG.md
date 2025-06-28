@@ -2,6 +2,12 @@
 
 All notable changes to the Save the World Game will be documented in this file.
 
+## Summary
+
+- **v0.3.0** : Competitor acquisition events and VP Safety role with unit testing
+- **v0.2.0** : Projects panel system and humanoid robotics event chain  
+- **v0.1.0** : Initial AI strategy game with turn-based gameplay and minigames
+
 ## [v0.3.0] - 2025-06-28
 
 ### Major Features

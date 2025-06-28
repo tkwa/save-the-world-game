@@ -483,6 +483,57 @@ function testFallingBehindEvent() {
     return suite.runAll();
 }
 
+// Test that all other_texts values are used in events.js
+function testOtherTextsUsage() {
+    const suite = new TestSuite();
+    
+    suite.test('All other_texts values should be referenced in events.js', async () => {
+        let eventData, eventsJsContent;
+        
+        // Check if we're in Node.js environment
+        if (typeof require !== 'undefined' && typeof process !== 'undefined') {
+            // Node.js environment
+            const fs = require('fs');
+            const path = require('path');
+            
+            eventData = JSON.parse(fs.readFileSync('events.json', 'utf8'));
+            eventsJsContent = fs.readFileSync('events.js', 'utf8');
+        } else {
+            // Browser environment
+            const response = await fetch('events.json');
+            eventData = await response.json();
+            
+            const eventsJsResponse = await fetch('events.js');
+            eventsJsContent = await eventsJsResponse.text();
+        }
+        
+        const eventsWithOtherTexts = eventData.defaultEvents.filter(event => event.other_texts);
+        
+        for (const event of eventsWithOtherTexts) {
+            const eventType = event.type;
+            const otherTexts = event.other_texts;
+            
+            for (const [key, value] of Object.entries(otherTexts)) {
+                // Check if the key is referenced in events.js
+                const keyPattern = new RegExp(`other_texts\\.${key}`, 'g');
+                const isKeyUsed = keyPattern.test(eventsJsContent);
+                
+                suite.assertTrue(isKeyUsed, `Event "${eventType}" other_texts key "${key}" should be used in events.js`);
+                
+                // Check if the actual text content appears nowhere else in the codebase (to ensure no duplication)
+                const textPattern = new RegExp(value.substring(0, 50).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+                const textMatches = eventsJsContent.match(textPattern);
+                
+                // It should not appear as a hardcoded string (only in JSON)
+                suite.assertTrue(!textMatches || textMatches.length === 0, 
+                    `Event "${eventType}" other_texts value "${key}" should not be hardcoded in events.js`);
+            }
+        }
+    });
+    
+    return suite.runAll();
+}
+
 // Main test runner
 async function runAllTests() {
     console.log('🧪 Critical Path Game - Acquisition Event Tests\n');
@@ -493,7 +544,8 @@ async function runAllTests() {
         testEndgameScoring(),
         testRoleIndicator(),
         testPreferenceText(),
-        testFallingBehindEvent()
+        testFallingBehindEvent(),
+        testOtherTextsUsage()
     ]);
     
     const allPassed = results.every(result => result);
