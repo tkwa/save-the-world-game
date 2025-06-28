@@ -1,17 +1,31 @@
 A WIP game to represent the AI singularity.
 
+
+## To run
+
+Open `savetheworld.html` in a browser, e.g. by using Cursor Live Preview or `python -m http.server 8000`
+
+## Status
+
 Done:
 - Skeleton
 - Capability evals minigame
 - Forecasting minigame
 
 TODO:
-- Corrigibility evals minigame
-- Alignment evals minigame
-- Alignment minigames
+- Make investment in safety have a cumulative effect on risk
+- Nukes more realistic-- should require running for president or something. And UN recognition should be removed on the DSA track
+- More alignment minigames
 - Events
+- Consider other ways to organize the turn
+  - real-time? David says this would be a huge engagement boost, but it might be hard to implement / balance
+    - minimum delay between allocating resources
+    - how to deal with events?
+  - a "projects" section of things you can always spend on?
+    - this is appropriate for the setting
+    - 
 
-# Critical Path: a turn-based game
+## Critical Path: a turn-based game
 
 1 month per turn, game takes place over the course of 2026-2027, around 25 turns.
 
@@ -29,27 +43,6 @@ Directions
 * Foundational science --> Pick correct alignment direction --> solve alignment --> get other companies to implement
 * Evals --> wake up government --> pause + international treaty
 * Get alignment from someone else
-
-Spending: Every turn, the player can choose between allocating all their resources ($) to
-  * AI R&D (immediately turned into AL)
-  * Diplomacy R&D (DP)
-  * Product R&D (PP)
-  * Safety R&D (SP; each SP gained also decreases XL by 3%)
-  * None
-
-More $ are generated the higher the AI level is: f(1) = 1, f(99) = 9. floor(sqrt(max(1, AL - OL))) is reasonable.
-
-Status bar: 3 columns. All values are ints.
-* AI Information
-    * Player AI Level (AL)-- 10 - 100, starts at 10.
-    * Doom Level (XL)-- 0 - 100, starts at 20, increases with XL
-        * Instant game over if doom >= 100; in this case all AIs are misaligned
-        * Otherwise doom happens with Doom Level % at game over
-    * Open-source AI level (OL)-- 2 - 100
-        * Player must always stay ahead of this. It increases by floor(sqrt(max(1, OL / 8))).
-* Corporate Divisions
-    * DP / PP / SP
-* Status effects: Sanctions, UN Recognition
 
 Plot ideas
 * Pause track
@@ -77,6 +70,24 @@ Plot ideas
 * Evals: pay 2 Safety Research to multiply XL by a value in [0.3,1.7].
 * International treaty (requires 2 Evals, 10 SP): Unrestricted AI development poses an unacceptable risk of catastrophe. [name] has drafted a treaty that places development of frontier AI under an international body of neutral observers. However, treaties are a messy, bureaucratic process, and this document codifies today's best guess at an alignment protocol-- it will only cut existential risk by half, not eliminate it. (-6 DP, -50% XL) (Leads to end screen with AL and OL proportionally scaled up to 100) / Not yet
 
+Capabilities breakthrough
+* Automated AIRD
+* Correlations game: Gives AI Research Lead (better AIRD scaling)
+
+Alignment track:
+* AI monitoring
+* AI Control
+  * Gives a reroll to endgame alignment
+  * maybe also gives a reroll to safety incidents?
+  * The base risk score calculates
+  * Minigame: something outputs suspiciousness scores
+* Alignment
+  * Reduces the rate at which AI R&D causes risk, retroactively
+  * Minigame: 
+* Interpretability
+  * 
+
+
 
 DSA track: 
 Nation-states are more powerful than even the largest companies. An entity must meet four conditions to be classified as a state: sovereign territory, an economic base, military power, and international recognition. 
@@ -95,6 +106,18 @@ Other AIs: (100 - (AL - OL)) / 100
 If an AI is misaligned its galaxies go in the rogue AI category rather than player / humanity at large.
 
 Finally the score is computed as above, and the end screen is displayed.
+
+### Balance
+
+There should be about 40 turns
+
+If safety cuts risk by a relative percent based on cumulative investment, it could be
+- safety factor = 1 / 1 + (safety investment / X)
+
+If risk continues being proportional to AI level...
+
+We want risk to be cut by ~10x with 1000 investment, and for there to be diminishing returns, so that 1000 capabilities gives 1000 raw risk -> 100 risk. 
+
 
 ### Brainstorming
 

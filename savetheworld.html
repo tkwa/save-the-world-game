@@ -29,9 +29,12 @@
         }
         .status-columns {
             display: flex;
-            justify-content: space-between;
+            gap: 10px;
         }
         .status-column {
+            flex: 1;
+        }
+        .resources-column {
             flex: 1;
         }
         .story-content {
@@ -134,12 +137,20 @@
                         <span class="tooltiptext" id="rogue-ai-risk-tooltip"></span>
                     </div>
                 </div>
-                <div class="status-column">
+                <div class="status-column resources-column">
                     <strong><span id="company-name-header">Company</span> Resources</strong><br>
-                    Funds: <span id="money">$1B</span><br>
-                    Diplomacy: <span id="diplomacy-points">0</span><br>
-                    Product: <span id="product-points">0</span><br>
-                    Safety: <span id="safety-points">0</span><br>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Funds:</span><span id="money" style="padding-right: 10px;">$1B</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Diplomacy:</span><span id="diplomacy-points" style="padding-right: 10px;">0</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Product:</span><span id="product-points" style="padding-right: 10px;">0</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Safety:</span><span id="safety-points" style="padding-right: 10px;">0</span>
+                    </div>
                     <div style="display: inline-block;" class="tooltip">
                         <span id="datacenter-icon"></span>
                         <span class="tooltiptext" id="datacenter-tooltip"></span>
@@ -176,14 +187,26 @@
                                     <span class="tooltiptext">AI Novelist: NYT Bestsellers written entirely by AI</span>
                                 </div>
                                 <div class="tooltip">
-                                    <span id="cancer-cure-tech">🧬</span>
-                                    <span class="tooltiptext">Cancer Cure: Complete elimination of cancer through AI-designed treatments</span>
+                                    <span id="ai-research-lead-tech">🔬</span>
+                                    <span class="tooltiptext">AI Research Lead: AI systems that can conduct independent research</span>
+                                </div>
+                                <div class="tooltip">
+                                    <span id="persuasion-tech">🗣️</span>
+                                    <span class="tooltiptext">Persuasion: Enables large-scale propaganda and narrative control</span>
                                 </div>
                             </div>
                             <div style="display: flex; flex-direction: column;">
                                 <div class="tooltip">
                                     <span id="medicine-tech">💊</span>
                                     <span class="tooltiptext">Medicine: Advanced drug discovery and biotech capabilities</span>
+                                </div>
+                                <div class="tooltip">
+                                    <span id="synthetic-biology-tech">🧪</span>
+                                    <span class="tooltiptext">Synthetic Biology: Engineered organisms for medicine or warfare</span>
+                                </div>
+                                <div class="tooltip">
+                                    <span id="cancer-cure-tech">🧬</span>
+                                    <span class="tooltiptext">Cancer Cure: Complete elimination of cancer through AI-designed treatments</span>
                                 </div>
                                 <div class="tooltip">
                                     <span id="brain-uploading-tech">🧠</span>
@@ -200,12 +223,8 @@
                                     <span class="tooltiptext">Humanoid Robots: Human-like robots for general purpose tasks</span>
                                 </div>
                                 <div class="tooltip">
-                                    <span id="synthetic-biology-tech">🧪</span>
-                                    <span class="tooltiptext">Synthetic Biology: Engineered organisms for medicine or warfare</span>
-                                </div>
-                                <div class="tooltip">
-                                    <span id="information-war-tech">🌐</span>
-                                    <span class="tooltiptext">Information War: Large-scale propaganda and narrative control</span>
+                                    <span id="nanotech-tech">🐜</span>
+                                    <span class="tooltiptext">Nanotech: Molecular-scale manufacturing and self-replicating systems</span>
                                 </div>
                             </div>
                         </div>
@@ -249,8 +268,6 @@
                 </div>
             </div>
         </div>
-        
-        
         
         <div id="story-content" class="story-content">
             <!-- Content will be loaded by JavaScript -->

@@ -2,6 +2,59 @@
 
 VERSION = "v0.1.0"
 
+// Technology configuration
+const INITIAL_TECHNOLOGIES = {
+    // General technologies (column 1 - all visible from start)
+    robotaxi: true, // Starts enabled
+    aiNovelist: false,
+    aiResearchLead: false,
+    persuasion: false,
+    // Medicine technologies (column 2 - only medicine visible at start)
+    medicine: false,
+    syntheticBiology: false,
+    cancerCure: false,
+    brainUploading: false,
+    // Robotics technologies (column 3 - only robotics visible at start)
+    robotics: false,
+    humanoidRobots: false,
+    nanotech: false,
+    // Alignment technologies (column 4 - all visible from start)
+    aiMonitoring: false,
+    aiControl: false,
+    aiAlignment: false,
+    aiInterpretability: false,
+    // Military technologies (column 5 - only cyberWarfare visible at start)
+    cyberWarfare: false, // Starts shown but not developed
+    bioweapons: false,
+    killerDrones: false,
+    nukes: false
+};
+
+// Technology dependencies - what must be developed to show the next tech
+const TECHNOLOGY_DEPENDENCIES = {
+    // Column 1: Random - all visible from start (depend on robotaxi only)
+    aiNovelist: 'robotaxi',
+    aiResearchLead: 'robotaxi', 
+    persuasion: 'robotaxi',
+    
+    // Column 2: Medicine - each depends on the one above
+    syntheticBiology: 'medicine',
+    cancerCure: 'syntheticBiology',
+    brainUploading: 'cancerCure',
+    
+    // Column 3: Robotics - each depends on the one above  
+    humanoidRobots: 'robotics',
+    nanotech: 'humanoidRobots',
+    
+    // Column 4: Alignment - control needs monitoring
+    aiControl: 'aiMonitoring',
+    
+    // Column 5: Military - special dependencies
+    bioweapons: 'syntheticBiology',
+    killerDrones: 'robotics', 
+    nukes: 'humanoidRobots'
+};
+
 // Game constants
 const GAME_CONSTANTS = {
     // Initial values
@@ -112,28 +165,7 @@ const gameState = {
     datacenterCountry: null, // Stores the country where datacenter was built
 
     // Technologies
-    technologies: {
-        // General technologies
-        robotaxi: true, // Starts enabled
-        aiNovelist: false,
-        cancerCure: false,
-        medicine: false,
-        brainUploading: false,
-        robotics: false,
-        humanoidRobots: false,
-        syntheticBiology: false, // Dual-use technology
-        informationWar: false, // Dangerous but not military
-        // Alignment technologies
-        aiMonitoring: false,
-        aiControl: false,
-        aiAlignment: false,
-        aiInterpretability: false,
-        // Military technologies
-        cyberWarfare: true, // Starts enabled
-        bioweapons: false,
-        killerDrones: false,
-        nukes: false
-    },
+    technologies: { ...INITIAL_TECHNOLOGIES },
 
     // Other game state
     currentPage: "start",
@@ -311,6 +343,33 @@ const storyContent = {
         customButtons: true,
         buttons: []
     },
+    "alignment-minigame": {
+        title: "Alignment Research",
+        text: function () {
+            return `<div style="text-align: center;">
+                <p>Balance AI alignment vs capability! Blue circles grow slowly (aligned), red circles grow fast (misaligned).</p>
+                <p>Click circles to stop them from growing. Goal: Maximize blue area coverage at the end.</p>
+                <canvas id="alignment-canvas" width="600" height="400" 
+                        style="border: 2px solid #555; background-color: #1a1a1a; cursor: crosshair;"
+                        onclick="clickAlignmentCanvas(event)"></canvas>
+                <p style="margin-top: 10px; font-size: 14px; color: #ccc;">
+                    Blue: 20px/s growth • Red: 100px/s growth • Game lasts 15 seconds
+                </p>
+            </div>`;
+        },
+        showStatus: false,
+        customButtons: true,
+        buttons: [],
+        onShow: function() {
+            // Start the minigame animation when the page is shown
+            setTimeout(() => {
+                if (gameState.currentMinigame && gameState.currentMinigame.type === 'alignment-research') {
+                    gameState.currentMinigame.dotsData.lastSpawn = Date.now();
+                    updateAlignmentMinigame();
+                }
+            }, 100);
+        }
+    },
 };
 
 function getAISystemVersion(companyName, capabilityLevel) {
@@ -370,7 +429,7 @@ function generateAICapabilitiesTooltip() {
         return `${rank}. ${companyText}: ${company.level}x (${systemVersion})`;
     }).join('<br>');
     
-    return `AI capabilities level determines how much cognitive labor is available to companies each turn. <strong style="color: #ff6b6b;">ASI</strong> is achieved when one company reaches 1000x capabilities. The current ranking is:<br><br>${rankingText}`;
+    return `AI level determines the effective labor available to a company. A company with <strong>1x</strong> AI has <strong>1 million labor-hours/month</strong>. <strong style="color: #ff6b6b;">ASI</strong> is achieved when one company reaches <strong>1000x</strong> capabilities. The current ranking is:<br><br>${rankingText}`;
 }
 
 function getAIRisksByCapability(capabilityLevel) {
@@ -603,13 +662,15 @@ function getCriticalRiskColor(riskLevel) {
 const TECHNOLOGY_ELEMENT_MAPPING = {
     'robotaxi-tech': 'robotaxi',
     'ai-novelist-tech': 'aiNovelist',
-    'cancer-cure-tech': 'cancerCure',
+    'ai-research-lead-tech': 'aiResearchLead',
+    'persuasion-tech': 'persuasion',
     'medicine-tech': 'medicine',
+    'synthetic-biology-tech': 'syntheticBiology',
+    'cancer-cure-tech': 'cancerCure',
     'brain-uploading-tech': 'brainUploading',
     'robotics-tech': 'robotics',
     'humanoid-robots-tech': 'humanoidRobots',
-    'synthetic-biology-tech': 'syntheticBiology',
-    'information-war-tech': 'informationWar',
+    'nanotech-tech': 'nanotech',
     'ai-monitoring-tech': 'aiMonitoring',
     'ai-control-tech': 'aiControl',
     'ai-alignment-tech': 'aiAlignment',
@@ -624,9 +685,32 @@ function updateTechnologies() {
     Object.entries(TECHNOLOGY_ELEMENT_MAPPING).forEach(([elementId, techKey]) => {
         const element = document.getElementById(elementId);
         if (element) {
-            element.style.opacity = gameState.technologies[techKey] ? '1' : '0.3';
+            // Check if technology should be visible (dependency met or no dependency)
+            const dependency = TECHNOLOGY_DEPENDENCIES[techKey];
+            const isVisible = !dependency || gameState.technologies[dependency] || gameState.debugShowAllTechs;
+            
+            if (isVisible) {
+                // Technology is visible - show with appropriate opacity
+                element.parentElement.style.display = 'block';
+                element.style.opacity = gameState.technologies[techKey] ? '1' : '0.3';
+            } else {
+                // Technology is hidden - dependency not met
+                element.parentElement.style.display = 'none';
+            }
         }
     });
+}
+
+// Debug function to show all technologies
+function debugShowAllTechs() {
+    gameState.debugShowAllTechs = !gameState.debugShowAllTechs;
+    updateTechnologies();
+    
+    // Update button text to reflect current state
+    const button = document.getElementById('debug-techs-btn');
+    if (button) {
+        button.textContent = gameState.debugShowAllTechs ? 'Hide Locked Techs' : 'Show All Techs';
+    }
 }
 
 function updateStatusBar() {
@@ -906,6 +990,25 @@ function calculateResourceGains(resources) {
     };
 }
 
+function generateActionTooltip(actionType, resources) {
+    switch(actionType) {
+        case 'revenue':
+            // Calculate TAM and market share for revenue tooltip
+            const playerLevel = gameState.playerAILevel;
+            const tam = playerLevel; // TAM = AI level in billions per month
+            
+            // Market share calculation: 1 / (1 + sum(competitor_level / player_level)^2)
+            const competitorPenalty = gameState.competitorAILevels.reduce((sum, yLevel) => {
+                return sum + Math.pow(yLevel / playerLevel, 2);
+            }, 0);
+            const marketShare = (1 / (1 + competitorPenalty)) * 100;
+            
+            return `Consumer and business applications.<br>Revenue = TAM × market share.<br>At an AI level of <strong>${Math.round(playerLevel)}x</strong>, your TAM is <strong>$${Math.round(tam)} billion/month</strong>. You have <strong>${Math.round(marketShare * 10) / 10}%</strong> market share.`;
+        default:
+            return '';
+    }
+}
+
 function generateActionLabels(resources) {
     const gains = calculateResourceGains(resources);
     
@@ -976,28 +1079,7 @@ function resetGameState() {
     gameState.powerplantCount = 0;
     gameState.biotechLabCount = 0;
     gameState.datacenterCountry = null;
-    gameState.technologies = {
-        // General technologies
-        robotaxi: true, // Starts enabled
-        aiNovelist: false,
-        cancerCure: false,
-        medicine: false,
-        brainUploading: false,
-        robotics: false,
-        humanoidRobots: false,
-        syntheticBiology: false, // Dual-use technology
-        informationWar: false, // Dangerous but not military
-        // Alignment technologies
-        aiMonitoring: false,
-        aiControl: false,
-        aiAlignment: false,
-        aiInterpretability: false,
-        // Military technologies
-        cyberWarfare: true, // Starts enabled
-        bioweapons: false,
-        killerDrones: false,
-        nukes: false
-    };
+    gameState.technologies = { ...INITIAL_TECHNOLOGIES };
     gameState.currentPage = "start";
     gameState.alignmentLevel = Math.random();
     gameState.evalsBuilt = {
@@ -1116,10 +1198,16 @@ async function showPage(pageId) {
         }
         actionsPanel.appendChild(headerDiv);
 
-        // Create container for action buttons
+        // Create main container for allocation and research sections
+        const mainContainer = document.createElement('div');
+        mainContainer.style.display = 'grid';
+        mainContainer.style.gridTemplateColumns = '2fr 1fr';
+        mainContainer.style.gap = '20px';
+        
+        // Create container for action buttons (left side)
         const buttonContainer = document.createElement('div');
         buttonContainer.style.display = 'grid';
-        buttonContainer.style.gridTemplateColumns = 'repeat(auto-fit, minmax(200px, 1fr))';
+        buttonContainer.style.gridTemplateColumns = '1fr 1fr';
         buttonContainer.style.gap = '5px';
 
         // No default selection - start with everything greyed out
@@ -1135,6 +1223,13 @@ async function showPage(pageId) {
             button.style.fontSize = '14px';
             button.style.width = 'calc(100% - 10px)';
             button.style.margin = '5px';
+            
+            // Adjust height for middle column buttons (Diplomacy, Product, Revenue)
+            if (['diplomacy', 'product', 'revenue'].includes(page.actions[index])) {
+                button.style.height = '45px'; // 2/3 of standard height
+            } else {
+                button.style.height = '67px'; // Standard height for AI R&D and Safety R&D
+            }
 
             // Check if player can afford this action
             const gains = calculateResourceGains(corporateResources);
@@ -1161,6 +1256,24 @@ async function showPage(pageId) {
                 button.disabled = true;
             }
 
+            // Add tooltip for revenue button
+            if (page.actions[index] === 'revenue') {
+                const tooltip = generateActionTooltip('revenue', corporateResources);
+                if (tooltip) {
+                    button.className = 'button tooltip';
+                    button.style.position = 'relative';
+                    
+                    // Create tooltip span element
+                    const tooltipSpan = document.createElement('span');
+                    tooltipSpan.className = 'tooltiptext';
+                    tooltipSpan.innerHTML = tooltip;
+                    tooltipSpan.style.width = '300px';
+                    tooltipSpan.style.marginLeft = '-150px';
+                    
+                    button.appendChild(tooltipSpan);
+                }
+            }
+
             button.onclick = () => {
                 if (!gameState.selectedAllocation && canAfford) {
                     gameState.selectedAllocation = page.actions[index];
@@ -1172,8 +1285,45 @@ async function showPage(pageId) {
             buttonContainer.appendChild(button);
         });
 
-        // Add the button container to the actions panel
-        actionsPanel.appendChild(buttonContainer);
+        // Create Research section (right side)
+        const researchContainer = document.createElement('div');
+        researchContainer.style.cssText = `
+            border: 2px solid #555;
+            border-radius: 8px;
+            padding: 15px;
+            background-color: #353535;
+        `;
+        
+        const researchHeader = document.createElement('h3');
+        researchHeader.textContent = 'Research';
+        researchHeader.style.cssText = `
+            margin: 0 0 15px 0;
+            color: #e0e0e0;
+            font-family: 'Courier New', Courier, monospace;
+        `;
+        researchContainer.appendChild(researchHeader);
+        
+        // Add Alignment research button
+        const alignmentBtn = document.createElement('button');
+        alignmentBtn.className = 'button';
+        alignmentBtn.innerHTML = 'Alignment 🧭<br><span style="font-size: 12px;">85%</span>';
+        alignmentBtn.style.cssText = `
+            width: 100%;
+            height: 60px;
+            margin-bottom: 10px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+            line-height: 1.2;
+        `;
+        alignmentBtn.onclick = () => startMinigame('alignment-research');
+        researchContainer.appendChild(alignmentBtn);
+        
+        // Add both containers to main container
+        mainContainer.appendChild(buttonContainer);
+        mainContainer.appendChild(researchContainer);
+        
+        // Add the main container to the actions panel
+        actionsPanel.appendChild(mainContainer);
 
         contentDiv.appendChild(actionsPanel);
 
@@ -1332,6 +1482,22 @@ function addDebugControls() {
     `;
     debugControls.appendChild(resourcesBtn);
     
+    // Show All Techs button
+    const techsBtn = document.createElement('button');
+    techsBtn.textContent = 'Show All Techs';
+    techsBtn.onclick = debugShowAllTechs;
+    techsBtn.id = 'debug-techs-btn';
+    techsBtn.style.cssText = `
+        background-color: #333; 
+        color: #fff; 
+        border: 1px solid #555; 
+        padding: 5px 10px; 
+        font-size: 12px;
+        opacity: 0.7;
+        cursor: pointer;
+    `;
+    debugControls.appendChild(techsBtn);
+    
     // Main Game button
     const mainGameBtn = document.createElement('button');
     mainGameBtn.textContent = 'Main Game';
@@ -1458,11 +1624,17 @@ window.handleEventChoice = handleEventChoice;
 window.forceEvent = forceEvent;
 window.populateDebugDropdown = populateDebugDropdown;
 window.giveResources = giveResources;
+window.debugShowAllTechs = debugShowAllTechs;
 
 // Keyboard controls
 document.addEventListener('keydown', function(event) {
     // Ignore if user is typing in an input field
     if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+        return;
+    }
+    
+    // Ignore if modifier keys are held (Cmd, Ctrl, Alt) to allow browser shortcuts
+    if (event.metaKey || event.ctrlKey || event.altKey) {
         return;
     }
     

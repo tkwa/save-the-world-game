@@ -135,7 +135,7 @@
       ],
       "choices": [
         {
-          "text": "Proceed (-20 Product, -2 Diplomacy, 50% chance of sanctions, +5% Risk)",
+          "text": "Proceed (-20 Product, -2 Diplomacy, 50% chance of sanctions, +5% Risk), ☢️",
           "action": "accept",
           "cost": { "productPoints": 20, "diplomacyPoints": 20 },
           "risk": { "sanctions": 0.5 },

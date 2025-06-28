@@ -161,3 +161,45 @@ The game now features a comprehensive AI strategy simulation with:
 - `savetheworld.html`: UI layout with tooltip system and dark theme styling
 
 The game provides a realistic simulation of AI company strategy with meaningful tradeoffs between growth, safety, and geopolitical considerations.
+
+## TODO: Testing and Debug Infrastructure
+
+### Smoke Test Implementation
+- **Single Integration Test**: Create one comprehensive test that simulates a complete game playthrough
+  - Start new game → allocate resources for 3-5 turns → trigger event → make choice → reach endgame
+  - Use Puppeteer/Playwright to automate browser interactions
+  - Verify key milestones: status bar updates, event generation, endgame trigger
+  - Focus on "does the game work" rather than "is every detail correct"
+
+### Debug Utilities for Manual Testing
+- **Console Commands**: Add global functions accessible from browser console
+  - `setGameState({playerAILevel: 500, doomLevel: 80})` - Jump to specific scenarios
+  - `fastForward(turns)` - Skip ahead multiple turns quickly
+  - `triggerEvent('nuclear-weapons')` - Force specific events for testing
+  - `unlockAll()` - Enable all technologies and events for exploration
+  
+- **Scenario Presets**: Quick setup for common test cases
+  - `scenarios.highDoom()` - 90% doom, low safety research
+  - `scenarios.richCompany()` - High money, low AI level
+  - `scenarios.nearASI()` - Close to singularity threshold
+  - `scenarios.sanctions()` - Active sanctions scenario
+
+### Import/Export Game State
+- **JSON Serialization**: Convert entire gameState object to/from JSON
+  - `exportGame()` → copies JSON to clipboard
+  - `importGame(jsonString)` → loads saved state
+  - Include all game variables: resources, events seen, technology unlocks, turn number
+  - Useful for reproducing bugs and sharing specific game situations
+
+### Implementation Context
+- **Integration Points**: 
+  - Add debug functions to `window` object in game-core.js
+  - Create new `debug.js` file for utility functions
+  - Use existing `gameState` object as single source of truth
+  - Leverage existing `updateStatusBar()` and `showPage()` for state refresh
+  
+- **Development Workflow**:
+  - Manual testing becomes faster with scenario jumping
+  - Bug reproduction easier with state export/import
+  - Smoke test catches major breaks during refactoring
+  - No maintenance overhead during rapid development phase
