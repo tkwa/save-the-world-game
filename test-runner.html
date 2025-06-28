@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Critical Path Game - Test Runner</title>
+    <style>
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+        }
+        .container {
+            background-color: #2d2d2d;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            border: 1px solid #404040;
+        }
+        .button {
+            background-color: #0066a2;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 0;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        .button:hover {
+            background-color: #004d7a;
+        }
+        #test-output {
+            background-color: #1a1a1a;
+            border: 1px solid #404040;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', Courier, monospace;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        h1 {
+            color: #e0e0e0;
+            text-align: center;
+        }
+        .pass {
+            color: #66bb6a;
+        }
+        .fail {
+            color: #ff6b6b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Critical Path Game - Test Runner</h1>
+        <p>Unit tests for the acquisition event and related functionality.</p>
+        
+        <button class="button" onclick="runTests()">Run All Tests</button>
+        <button class="button" onclick="clearOutput()">Clear Output</button>
+        
+        <div id="test-output">Click "Run All Tests" to execute the test suite...</div>
+    </div>
+
+    <script src="tests.js"></script>
+    <script>
+        async function runTests() {
+            const output = document.getElementById('test-output');
+            output.innerHTML = 'Running tests...\n';
+            
+            // Capture console output
+            const originalLog = console.log;
+            const originalError = console.error;
+            
+            console.log = (...args) => {
+                const message = args.join(' ');
+                if (message.includes('✅')) {
+                    output.innerHTML += `<span class="pass">${message}</span>\n`;
+                } else {
+                    output.innerHTML += message + '\n';
+                }
+                output.scrollTop = output.scrollHeight;
+            };
+            
+            console.error = (...args) => {
+                const message = args.join(' ');
+                output.innerHTML += `<span class="fail">${message}</span>\n`;
+                output.scrollTop = output.scrollHeight;
+            };
+            
+            try {
+                const allPassed = await runAllTests();
+                
+                if (allPassed) {
+                    output.innerHTML += '\n<span class="pass">🎉 All tests passed! Ready for commit.</span>\n';
+                } else {
+                    output.innerHTML += '\n<span class="fail">❌ Some tests failed. Please fix before committing.</span>\n';
+                }
+            } catch (error) {
+                output.innerHTML += `\n<span class="fail">Test runner error: ${error.message}</span>\n`;
+            }
+            
+            // Restore console
+            console.log = originalLog;
+            console.error = originalError;
+        }
+        
+        function clearOutput() {
+            document.getElementById('test-output').innerHTML = 'Click "Run All Tests" to execute the test suite...';
+        }
+    </script>
+</body>
+</html>

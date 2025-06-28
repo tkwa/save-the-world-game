@@ -245,6 +245,48 @@
           "result_text": "You decide that the risk of misalignment is too great. Your AI systems remain under human oversight, preserving the possibility of maintaining control even as technological capabilities continue to advance."
         }
       ]
+    },
+    {
+      "type": "competitor-breakthrough",
+      "weight": 1,
+      "oneTime": true,
+      "customHandler": "handleCompetitorBreakthroughChoice",
+      "text_versions": [
+        "Intelligence reports indicate that $competitorName has achieved a sudden breakthrough, doubling their AI capabilities overnight to <strong>$newCompetitorLevel</strong>$surpassingText. $companyName drops from <strong>$marketShareBefore%</strong> to <strong>$marketShareAfter%</strong> market share. Your technical team suggests using $aiSystemName to scan chat logs and communications of known employees at $competitorName to understand their methods."
+      ],
+      "choices": [
+        {
+          "text": "Scan competitor communications",
+          "action": "accept",
+          "result_text": "Your AI begins analyzing intercepted communications from the competitor company..."
+        },
+        {
+          "text": "Decline",
+          "action": "decline",
+          "result_text": "You decide that corporate espionage is too risky and potentially illegal. Your team focuses on independent research to catch up through legitimate means."
+        }
+      ]
+    },
+    {
+      "type": "competitor-acquisition",
+      "weight": 2,
+      "oneTime": true,
+      "customHandler": "handleCompetitorAcquisitionChoice",
+      "text_versions": [
+        "$competitorName has achieved a commanding lead in AI capabilities, reaching $competitorLevel while $companyName remains at $playerLevel. $competitorName's board approaches your company with an acquisition offer: 10% equity in exchange for becoming their Safety and Alignment division. Your employees are divided - some believe winning the ASI race is now hopeless, others still believe in $companyName's potential, and some think the merger would be beneficial for AI safety overall."
+      ],
+      "choices": [
+        {
+          "text": "Merge with $competitorName",
+          "action": "accept",
+          "result_text": "The merger proceeds smoothly. $companyName becomes the Safety and Alignment division of $competitorName, and you assume the role of VP of Safety and Alignment..."
+        },
+        {
+          "text": "We can catch up",
+          "action": "decline",
+          "result_text": "You reject the acquisition offer and double down on independent development. Your team remains committed to competing in the ASI race, though the capability gap will be challenging to overcome."
+        }
+      ]
     }
   ]
 }

@@ -2,6 +2,30 @@
 
 All notable changes to the Save the World Game will be documented in this file.
 
+## [v0.3.0] - 2025-06-28
+
+### Major Features
+- **Competitor Acquisition Event**: Added complex merger/acquisition mechanics when a competitor reaches 2x player's AI capability level. Players can choose to merge and become VP of Safety and Alignment with reduced scoring multiplier (11x vs 20x) but focus on humanity's benefit.
+- **Dynamic Endgame Scoring**: Implemented separate scoring for merged vs independent companies, with shareholder assessment using original company name while galaxy allocation uses current company.
+- **VP of Safety and Alignment Role**: New career path that changes player incentives from profit maximization to humanity optimization.
+
+### Gameplay Changes
+- Acquisition event triggers when any competitor reaches 2x player AI level with weight 2
+- Merger removes the acquiring competitor from the game (reduces to 2 competitors total)
+- Player inherits the superior AI capabilities and receives resource bonuses scaled to new capability level
+- Projects panel automatically unlocks upon merger if not already available
+- Safety points preserved during merger while other resources receive capability-based bonuses
+
+### Technical Improvements
+- **Unit Testing Framework**: Added comprehensive test suite with 12 test cases covering event availability, merger mechanics, and endgame scoring
+- **Test Runner**: Created browser-based test runner for easy validation during development
+- Fixed safety incident calculation bug to properly use adjusted risk instead of raw doom level
+- Enhanced variable substitution system for complex event text generation
+
+### Bug Fixes
+- Safety incidents now correctly respect safety research and alignment investments (was using raw doom level, now uses adjusted risk)
+- Corporate espionage investigation event only enters pool when espionage is actually attempted
+
 ## [v0.2.0] - 2025-06-28
 
 ### Major Features

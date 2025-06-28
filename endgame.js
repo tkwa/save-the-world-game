@@ -123,8 +123,9 @@ function getPhase3BaseText() {
     const expectedHumanityGalaxies = competitorRawShare * (1 - adjustedDoom / 100);
     const expectedRogueGalaxies = 100 - expectedPlayerGalaxies - expectedHumanityGalaxies;
     
-    // Calculate expected score
-    const expectedScore = expectedPlayerGalaxies * GAME_CONSTANTS.GALAXY_MULTIPLIERS.PLAYER + 
+    // Calculate expected score with dynamic player multiplier
+    const playerMultiplier = gameState.isVPSafetyAlignment ? 11 : GAME_CONSTANTS.GALAXY_MULTIPLIERS.PLAYER;
+    const expectedScore = expectedPlayerGalaxies * playerMultiplier + 
                          expectedHumanityGalaxies * GAME_CONSTANTS.GALAXY_MULTIPLIERS.HUMANITY;
     
     // Determine net assessments based on baselines
@@ -143,14 +144,14 @@ function getPhase3BaseText() {
         actualHumanitySurvival > baselineHumanitySurvival + 5 ? "positive" :
         actualHumanitySurvival < baselineHumanitySurvival - 5 ? "negative" : "neutral";
     
-    let text = `Lesser AIs run thousands of simulations to determine the average fate of the cosmic endowment. They determine that ${gameState.companyName}'s actions were <strong>net ${shareholderAssessment}</strong> for its shareholders and <strong>net ${humanityAssessment}</strong> for humanity.<br><br>`;
+    let text = `Lesser AIs run thousands of simulations to determine the average fate of the cosmic endowment. They determine that ${gameState.startingCompany || gameState.companyName}'s actions were <strong>net ${shareholderAssessment}</strong> for its shareholders and <strong>net ${humanityAssessment}</strong> for humanity.<br><br>`;
     
     // Create tooltip content with expected table and score breakdown
     const tooltipContent = `Expected % of universe<br><br>` +
         `<div style="display: flex; justify-content: space-between; width: 100%;">` +
         `<div style="text-align: center;">` +
         `<div style="color: #ffa726; margin-bottom: 5px;">${gameState.companyName}</div>` +
-        `<div>${Math.round(expectedPlayerGalaxies)}% × 20</div>` +
+        `<div>${Math.round(expectedPlayerGalaxies)}% × ${playerMultiplier}</div>` +
         `</div>` +
         `<div style="text-align: center;">` +
         `<div style="color: #66bb6a; margin-bottom: 5px;">Other humanity</div>` +
@@ -423,15 +424,16 @@ function calculateEndGameScore() {
         }
     }
 
-    // Calculate final score: 0x rogue + 10x humanity + 20x player
-    const finalScore = (0 * rogueGalaxies) + (10 * humanityGalaxies) + (20 * playerGalaxies);
+    // Calculate final score with dynamic player multiplier
+    const playerMultiplier = gameState.isVPSafetyAlignment ? 11 : 20;
+    const finalScore = (0 * rogueGalaxies) + (10 * humanityGalaxies) + (playerMultiplier * playerGalaxies);
 
     resultText += `<br><br><strong>Final Galaxy Distribution:</strong><br>`;
     resultText += `• Rogue AI: ${rogueGalaxies}%<br>`;
     resultText += `• Humanity at large: ${humanityGalaxies}%<br>`;
     resultText += `• Your company: ${playerGalaxies}%<br><br>`;
     resultText += `<strong>Final Score: ${finalScore}</strong><br>`;
-    resultText += `(${rogueGalaxies}×0 + ${humanityGalaxies}×10 + ${playerGalaxies}×20)`;
+    resultText += `(${rogueGalaxies}×0 + ${humanityGalaxies}×10 + ${playerGalaxies}×${playerMultiplier})`;
 
     // Store the result to avoid re-rolling randomness
     gameState.endGameResult = resultText;

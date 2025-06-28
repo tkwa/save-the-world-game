@@ -38,8 +38,9 @@ async function generateEvent() {
         return event;
     }
     
-    // Calculate probability of safety incident based on doom level squared
-    const safetyIncidentChance = Math.pow(gameState.doomLevel, 2) / 100;
+    // Calculate probability of safety incident based on adjusted risk level squared
+    const adjustedRisk = calculateAdjustedRisk();
+    const safetyIncidentChance = Math.pow(adjustedRisk, 2) / 100;
     
     if (Math.random() * 100 < safetyIncidentChance) {
         // Safety incident occurs
@@ -95,6 +96,14 @@ function getAvailableEvents(allEvents) {
             }
         }
         
+        // Check special requirements for competitor acquisition
+        if (event.type === 'competitor-acquisition') {
+            const maxCompetitorLevel = Math.max(...gameState.competitorAILevels);
+            if (maxCompetitorLevel < gameState.playerAILevel * 2) {
+                return false; // Need a competitor at least 2x player level
+            }
+        }
+        
         // Check if this event has already been accepted (one-time events)
         if (event.oneTime && gameState.dsaEventsAccepted.has(event.type)) {
             return false; // Already accepted
@@ -143,6 +152,75 @@ function substituteEventVariables(text, eventType) {
         }
     }
     
+    // Handle competitor breakthrough event variables
+    if (eventType === 'competitor-breakthrough') {
+        // Calculate market share before breakthrough
+        const playerLevel = gameState.playerAILevel;
+        const competitorPenaltyBefore = gameState.competitorAILevels.reduce((sum, yLevel) => {
+            return sum + Math.pow(yLevel / playerLevel, 2);
+        }, 0);
+        const marketShareBefore = (1 / (1 + competitorPenaltyBefore)) * 100;
+        
+        // Randomly select a competitor and store for later use
+        const randomCompetitorIndex = Math.floor(Math.random() * gameState.competitorAILevels.length);
+        const competitorName = gameState.competitorNames[randomCompetitorIndex] || `Competitor ${randomCompetitorIndex + 1}`;
+        gameState.breakthroughCompetitorIndex = randomCompetitorIndex;
+        
+        // Permanently double competitor capability
+        gameState.competitorAILevels[randomCompetitorIndex] *= 2;
+        const newCompetitorLevel = gameState.competitorAILevels[randomCompetitorIndex];
+        
+        const competitorPenaltyAfter = gameState.competitorAILevels.reduce((sum, yLevel) => {
+            return sum + Math.pow(yLevel / playerLevel, 2);
+        }, 0);
+        const marketShareAfter = (1 / (1 + competitorPenaltyAfter)) * 100;
+        
+        // Determine surpassing text based on levels
+        let surpassingText = '';
+        
+        if (newCompetitorLevel > playerLevel) {
+            surpassingText = `, surpassing ${gameState.companyName || 'your company'}`;
+        }
+        
+        // Get player's AI system name
+        const playerAISystemName = getAISystemVersion(gameState.companyName || 'Company', gameState.playerAILevel);
+        
+        // Substitute variables
+        substitutedText = substitutedText.replace(/\$competitorName/g, competitorName);
+        substitutedText = substitutedText.replace(/\$companyName/g, gameState.companyName || 'Your company');
+        substitutedText = substitutedText.replace(/\$aiSystemName/g, playerAISystemName);
+        substitutedText = substitutedText.replace(/\$newCompetitorLevel/g, `${Math.round(newCompetitorLevel)}x`);
+        substitutedText = substitutedText.replace(/\$surpassingText/g, surpassingText);
+        substitutedText = substitutedText.replace(/\$marketShareBefore/g, (Math.round(marketShareBefore * 10) / 10).toString());
+        substitutedText = substitutedText.replace(/\$marketShareAfter/g, (Math.round(marketShareAfter * 10) / 10).toString());
+    }
+    
+    // Handle competitor acquisition event variables
+    if (eventType === 'competitor-acquisition') {
+        // Find the leading competitor (at least 2x player level)
+        let leadingCompetitorIndex = -1;
+        let maxCompetitorLevel = 0;
+        
+        for (let i = 0; i < gameState.competitorAILevels.length; i++) {
+            if (gameState.competitorAILevels[i] >= gameState.playerAILevel * 2 && 
+                gameState.competitorAILevels[i] > maxCompetitorLevel) {
+                leadingCompetitorIndex = i;
+                maxCompetitorLevel = gameState.competitorAILevels[i];
+            }
+        }
+        
+        if (leadingCompetitorIndex !== -1) {
+            const competitorName = gameState.competitorNames[leadingCompetitorIndex] || `Competitor ${leadingCompetitorIndex + 1}`;
+            gameState.acquisitionCompetitorIndex = leadingCompetitorIndex;
+            
+            // Substitute variables
+            substitutedText = substitutedText.replace(/\$competitorName/g, competitorName);
+            substitutedText = substitutedText.replace(/\$competitorLevel/g, `${Math.round(maxCompetitorLevel)}x`);
+            substitutedText = substitutedText.replace(/\$companyName/g, gameState.companyName || 'Your company');
+            substitutedText = substitutedText.replace(/\$playerLevel/g, `${Math.round(gameState.playerAILevel)}x`);
+        }
+    }
+    
     return substitutedText;
 }
 
@@ -163,7 +241,8 @@ function selectWeightedEvent(eventArray) {
             return {
                 type: event.type,
                 text: randomText,
-                choices: event.choices || null
+                choices: event.choices || null,
+                customHandler: event.customHandler || null
             };
         }
     }
@@ -178,7 +257,8 @@ function selectWeightedEvent(eventArray) {
     return {
         type: fallbackEvent.type,
         text: randomText,
-        choices: fallbackEvent.choices || null
+        choices: fallbackEvent.choices || null,
+        customHandler: fallbackEvent.customHandler || null
     };
 }
 
@@ -240,6 +320,9 @@ function applyChoiceEffects(choice) {
             if (choice.penalty.doomLevel) {
                 gameState.doomLevel += choice.penalty.doomLevel;
             }
+            if (choice.penalty.sanctions) {
+                gameState.hasSanctions = true;
+            }
         }
         
         // Apply risks (probability-based negative effects)
@@ -256,6 +339,8 @@ function applyChoiceEffects(choice) {
 // Custom event handlers for events with risk/success-failure mechanics
 
 function handleOverseasDatacenterChoice(choice, _event, sanctionsTriggered) {
+    console.log('Calling custom handler: handleOverseasDatacenterChoice');
+    
     if (choice.action === 'accept' || choice.action === 'accept-sanctions') {
         // Increment datacenter count for successful construction
         gameState.datacenterCount++;
@@ -323,6 +408,159 @@ function handleMissileDefenseChoice(choice, _event, sanctionsTriggered) {
         gameState.currentEvent.showResult = true;
         gameState.currentEvent.resultText = resultText;
     } else {
+        if (choice.result_text) {
+            gameState.currentEvent.showResult = true;
+            gameState.currentEvent.resultText = choice.result_text;
+        }
+    }
+    
+    updateStatusBar();
+    showPage('main-game');
+}
+
+function handleCompetitorBreakthroughChoice(choice, _event, _sanctionsTriggered) {
+    console.log('Calling custom handler: handleCompetitorBreakthroughChoice');
+    
+    // Use the competitor index stored during text substitution
+    const competitorIndex = gameState.breakthroughCompetitorIndex;
+    const competitorName = gameState.competitorNames[competitorIndex] || `Competitor ${competitorIndex + 1}`;
+    
+    // Competitor capability was already doubled during text substitution
+    
+    if (choice.action === 'accept') {
+        // 25% chance to gain player capability, 75% chance the competitor was careful
+        const scanSuccessful = Math.random() < 0.25;
+        
+        // Get current AI system name for result text
+        const currentAISystemName = getAISystemVersion(gameState.companyName || 'Company', gameState.playerAILevel);
+        
+        let resultText;
+        if (scanSuccessful) {
+            const competitorLevel = gameState.competitorAILevels[competitorIndex];
+            const playerLevel = gameState.playerAILevel;
+            
+            let improvementMultiplier;
+            if (competitorLevel > playerLevel) {
+                // Competitor surpassed player, so full doubling
+                improvementMultiplier = 2;
+            } else {
+                // Player already ahead, so limited improvement: 2^(competitorLevel/playerLevel)
+                improvementMultiplier = Math.pow(2, competitorLevel / playerLevel);
+            }
+            
+            gameState.playerAILevel *= improvementMultiplier;
+            // Update sidebar immediately to show player capability change
+            updateStatusBar();
+            
+            // Get new AI system name after improvement
+            const newAISystemName = getAISystemVersion(gameState.companyName || 'Company', gameState.playerAILevel);
+            
+            // Recalculate market share after player improvement
+            const finalCompetitorPenalty = gameState.competitorAILevels.reduce((sum, yLevel) => {
+                return sum + Math.pow(yLevel / gameState.playerAILevel, 2);
+            }, 0);
+            const finalMarketShare = (1 / (1 + finalCompetitorPenalty)) * 100;
+            
+            let improvementText;
+            if (improvementMultiplier === 2) {
+                improvementText = `The breakthrough is entirely novel! Your team rapidly implements their techniques, doubling your AI capabilities and upgrading to ${newAISystemName}`;
+            } else {
+                const roundedMultiplier = Math.round(improvementMultiplier * 100) / 100;
+                improvementText = `Your team discovers that ${gameState.companyName || 'your company'} was already partially using similar techniques. The stolen insights provide a ${roundedMultiplier}x improvement, upgrading to ${newAISystemName}`;
+            }
+            
+            resultText = `${currentAISystemName} successfully infiltrates ${competitorName}'s communications and reverse-engineers their breakthrough. ${improvementText}. Market share recovers to <strong>${Math.round(finalMarketShare * 10) / 10}%</strong>. However, traces of your intrusion may have been left behind.`;
+        } else {
+            resultText = `${currentAISystemName} scans thousands of communications but finds that ${competitorName} has been extremely careful with their intellectual property. No significant insights are gained, though traces of your intrusion may have been left behind.`;
+        }
+        
+        // 25% chance to add investigation event to pool (independent of scan success)
+        if (Math.random() < 0.25) {
+            // Add investigation event to the available pool by adding it to the loaded events
+            loadEventData().then(events => {
+                const investigationEvent = {
+                    type: 'corporate-espionage-investigation',
+                    weight: 1,
+                    oneTime: true,
+                    text_versions: [
+                        'Federal investigators have discovered evidence of unauthorized access to competitor communications from your company\'s systems. A formal investigation into corporate espionage has been launched, and sanctions are being considered.'
+                    ],
+                    choices: [
+                        {
+                            text: 'Accept investigation',
+                            action: 'accept',
+                            penalty: { sanctions: true },
+                            result_text: 'The investigation concludes that your company engaged in illegal corporate espionage. Economic sanctions are immediately imposed, severely limiting your operations.'
+                        }
+                    ]
+                };
+                
+                // Add to events pool if not already there
+                const existingEvent = events.defaultEvents.find(e => e.type === 'corporate-espionage-investigation');
+                if (!existingEvent) {
+                    events.defaultEvents.push(investigationEvent);
+                }
+            });
+        }
+        
+        gameState.currentEvent.showResult = true;
+        gameState.currentEvent.resultText = resultText;
+    } else {
+        // Handle decline
+        const declineText = `You decide that corporate espionage is too risky and potentially illegal. Your team focuses on independent research to catch up through legitimate means.`;
+        
+        gameState.currentEvent.showResult = true;
+        gameState.currentEvent.resultText = declineText;
+    }
+    
+    updateStatusBar();
+    showPage('main-game');
+}
+
+function handleCompetitorAcquisitionChoice(choice, _event, _sanctionsTriggered) {
+    console.log('Calling custom handler: handleCompetitorAcquisitionChoice');
+    
+    const competitorIndex = gameState.acquisitionCompetitorIndex;
+    const competitorName = gameState.competitorNames[competitorIndex] || `Competitor ${competitorIndex + 1}`;
+    
+    if (choice.action === 'accept') {
+        // Store original company for endgame scoring
+        if (!gameState.startingCompany) {
+            gameState.startingCompany = gameState.companyName || 'Company';
+        }
+        
+        // Change to the acquiring company
+        const newCompanyName = competitorName;
+        const newAILevel = gameState.competitorAILevels[competitorIndex];
+        
+        gameState.companyName = newCompanyName;
+        gameState.playerAILevel = newAILevel;
+        gameState.isVPSafetyAlignment = true;
+        
+        // Remove the acquiring competitor from the list
+        gameState.competitorAILevels.splice(competitorIndex, 1);
+        gameState.competitorNames.splice(competitorIndex, 1);
+        
+        // Add random resources based on new capability level
+        const levelBasedBonus = Math.floor(newAILevel / 4); // Scale with AI level
+        gameState.money += Math.floor(Math.random() * levelBasedBonus + levelBasedBonus);
+        gameState.diplomacyPoints += Math.floor(Math.random() * levelBasedBonus + levelBasedBonus/2);
+        gameState.productPoints += Math.floor(Math.random() * levelBasedBonus + levelBasedBonus/2);
+        
+        // Unlock alignment project if not already unlocked
+        if (!gameState.projectsUnlocked) {
+            gameState.projectsUnlocked = true;
+        }
+        
+        // Update status immediately
+        updateStatusBar();
+        
+        const resultText = `The merger is completed successfully. ${gameState.startingCompany} becomes the Safety and Alignment division of ${newCompanyName}, and you assume the role of VP of Safety and Alignment. With access to ${newCompanyName}'s advanced AI capabilities and resources, you now focus on ensuring AI development benefits humanity. Having little financial interest in the ASI race, your priorities have fundamentally shifted toward what would be best for the world.`;
+        
+        gameState.currentEvent.showResult = true;
+        gameState.currentEvent.resultText = resultText;
+    } else {
+        // Handle decline
         if (choice.result_text) {
             gameState.currentEvent.showResult = true;
             gameState.currentEvent.resultText = choice.result_text;

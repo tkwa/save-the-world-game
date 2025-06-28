@@ -1,6 +1,6 @@
 // Core game logic for the AI Timeline Game
 
-VERSION = "v0.1.0"
+VERSION = "v0.3.0"
 
 // Technology configuration
 const INITIAL_TECHNOLOGIES = {
@@ -197,14 +197,16 @@ const gameState = {
     dsaEventsAccepted: new Set(), // Tracks which DSA events have been accepted
     alignmentMaxScore: 0, // Maximum score achieved in alignment minigame
     endgameAdjustedRisk: null, // Adjusted risk level at endgame trigger
-    projectsUnlocked: false // Whether Projects panel is unlocked (at 100 safety points)
+    projectsUnlocked: false, // Whether Projects panel is unlocked (at 100 safety points)
+    startingCompany: null, // Original company name for endgame scoring (before merger)
+    isVPSafetyAlignment: false // Whether player became VP of Safety and Alignment through merger
 };
 
 // Story content
 const storyContent = {
     start: {
         title: "",
-        text: "",
+        text: `<div style="position: absolute; top: 10px; right: 15px; color: #666; font-size: 12px;">${VERSION}</div>`,
         buttons: [
             { text: "New Game", action: "goto", target: "game-setup" }
         ]
@@ -238,7 +240,10 @@ const storyContent = {
     },
     "main-game": {
         title: function () {
-            return `${gameState.currentMonth || 'January'} ${gameState.currentYear || 2026}`;
+            const role = gameState.isVPSafetyAlignment ? 
+                'VP of Safety and Alignment' : 
+                `CEO of ${gameState.companyName || 'Company'}`;
+            return `<div style="display: flex; justify-content: space-between; align-items: center;"><span>${gameState.currentMonth || 'January'} ${gameState.currentYear || 2026}</span><span style="font-size: 14px; color: #999;">Role: ${role}</span></div>`;
         },
         text: function () {
             if (gameState.currentTurn === 1) {
@@ -1121,6 +1126,8 @@ function resetGameState() {
     gameState.alignmentMaxScore = 0;
     gameState.endgameAdjustedRisk = null;
     gameState.projectsUnlocked = false;
+    gameState.startingCompany = null;
+    gameState.isVPSafetyAlignment = false;
 }
 
 
@@ -1610,7 +1617,9 @@ async function handleEventChoice(choiceIndex) {
 
     // Track events that are accepted (for requirement checking)
     if (choice.action === 'accept' || choice.action === 'accept-sanctions') {
+        console.log('Tracking accepted event:', event.type, 'action:', choice.action);
         gameState.dsaEventsAccepted.add(event.type);
+        console.log('Current accepted events:', Array.from(gameState.dsaEventsAccepted));
         
         // Unlock technologies when corresponding events are accepted
         if (event.type === 'product-breakthrough-medicine') {
@@ -1641,8 +1650,11 @@ async function handleEventChoice(choiceIndex) {
 
     // Handle custom event handlers (after applying standard effects)
     if (event.customHandler) {
+        console.log('Calling custom handler:', event.customHandler, 'for event:', event.type);
         window[event.customHandler](choice, event, sanctionsTriggered);
         return;
+    } else {
+        console.log('No custom handler for event:', event.type);
     }
     
     // Special handling for DSA (immediate singularity)
