@@ -63,7 +63,7 @@ async function generateEvent() {
         
         // Debug: Log available event types to console
         console.log('Available event types in pool:', availableEvents.map(e => e.type));
-        console.log('Completed one-time events:', Array.from(gameState.dsaEventsAccepted));
+        console.log('Completed one-time events:', Array.from(gameState.eventsAccepted));
         
         const event = selectWeightedEvent(availableEvents);
         trackEventSeen(event);
@@ -85,7 +85,7 @@ function getAvailableEvents(allEvents) {
         // Check if event has requirements
         if (event.requires) {
             for (const requirement of event.requires) {
-                if (!gameState.dsaEventsAccepted.has(requirement)) {
+                if (!gameState.eventsAccepted.has(requirement)) {
                     return false; // Requirement not met
                 }
             }
@@ -130,8 +130,19 @@ function getAvailableEvents(allEvents) {
         }
         
         // Check if this event has already been accepted (one-time events)
-        if (event.oneTime && gameState.dsaEventsAccepted.has(event.type)) {
+        if (event.oneTime && gameState.eventsAccepted.has(event.type)) {
             return false; // Already accepted
+        }
+        
+        // Check AI level range requirements
+        if (event.aiLevelRange) {
+            const playerLevel = gameState.playerAILevel;
+            if (event.aiLevelRange.min !== undefined && playerLevel < event.aiLevelRange.min) {
+                return false; // Player AI level too low
+            }
+            if (event.aiLevelRange.max !== undefined && playerLevel > event.aiLevelRange.max) {
+                return false; // Player AI level too high
+            }
         }
         
         return true; // Event is available
@@ -285,6 +296,24 @@ function substituteEventVariables(text, eventType) {
     return substituteVariables(text, variables);
 }
 
+// Filter choices based on boolean conditions in gameState
+function filterChoicesByCondition(choices) {
+    if (!choices) return null;
+    
+    return choices.filter(choice => {
+        // Check if choice has a condition
+        if (choice.condition) {
+            // Simple boolean check: choice.condition should be a string key in gameState
+            const conditionKey = choice.condition;
+            if (typeof conditionKey === 'string') {
+                return gameState[conditionKey] === true;
+            }
+        }
+        // If no condition, always include the choice
+        return true;
+    });
+}
+
 // Select a random event from an array using weighted probabilities
 function selectWeightedEvent(eventArray) {
     const totalWeight = eventArray.reduce((sum, event) => sum + (event.weight || 1), 0);
@@ -299,11 +328,15 @@ function selectWeightedEvent(eventArray) {
             // Apply variable substitution
             randomText = substituteEventVariables(randomText, event.type);
             
+            // Filter choices based on conditions
+            const filteredChoices = filterChoicesByCondition(event.choices);
+            
             return {
                 type: event.type,
                 text: randomText,
-                choices: event.choices || null,
-                customHandler: event.customHandler || null
+                choices: filteredChoices,
+                customHandler: event.customHandler || null,
+                originalEventData: event // Preserve original data for multi-stage access
             };
         }
     }
@@ -315,11 +348,15 @@ function selectWeightedEvent(eventArray) {
     // Apply variable substitution to fallback
     randomText = substituteEventVariables(randomText, fallbackEvent.type);
     
+    // Filter choices based on conditions for fallback too
+    const filteredChoices = filterChoicesByCondition(fallbackEvent.choices);
+    
     return {
         type: fallbackEvent.type,
         text: randomText,
-        choices: fallbackEvent.choices || null,
-        customHandler: fallbackEvent.customHandler || null
+        choices: filteredChoices,
+        customHandler: fallbackEvent.customHandler || null,
+        originalEventData: fallbackEvent // Preserve original data for multi-stage access
     };
 }
 
@@ -395,6 +432,131 @@ function applyChoiceEffects(choice) {
         }
     }
     return false; // Return false if no sanctions were triggered
+}
+
+// Multi-stage event helper system
+class MultiStageEventManager {
+    constructor() {
+        this.stageData = new Map(); // Store stage data per event type
+    }
+    
+    // Initialize a multi-stage event
+    initStage(eventType, stageId, stageData = {}) {
+        if (!this.stageData.has(eventType)) {
+            this.stageData.set(eventType, {});
+        }
+        
+        const eventStages = this.stageData.get(eventType);
+        eventStages.currentStage = stageId;
+        eventStages.data = { ...eventStages.data, ...stageData };
+        
+        return eventStages;
+    }
+    
+    // Get current stage data for an event
+    getStageData(eventType) {
+        return this.stageData.get(eventType) || { currentStage: null, data: {} };
+    }
+    
+    // Transition to next stage with new choices and text
+    nextStage(eventType, stageId, text, choices, stageData = {}) {
+        const stages = this.initStage(eventType, stageId, stageData);
+        
+        // Update current event with new stage content
+        gameState.currentEvent = {
+            type: eventType,
+            text: text,
+            choices: choices,
+            customHandler: gameState.currentEvent?.customHandler || null,
+            isMultiStage: true,
+            currentStage: stageId,
+            originalEventData: gameState.currentEvent?.originalEventData // Preserve original data
+        };
+        
+        this.refreshUI();
+        return stages;
+    }
+    
+    // Enhanced method to use other_texts for stage content
+    nextStageFromOtherTexts(eventType, stageId, otherTextKey, choices, stageData = {}) {
+        // Get the original event to access other_texts
+        const originalEvent = gameState.currentEvent?.originalEventData;
+        if (!originalEvent || !originalEvent.other_texts || !originalEvent.other_texts[otherTextKey]) {
+            console.warn(`other_texts key "${otherTextKey}" not found for event ${eventType}`);
+            return this.nextStage(eventType, stageId, `Stage ${stageId} text not found`, choices, stageData);
+        }
+        
+        const stageText = originalEvent.other_texts[otherTextKey];
+        
+        // Apply variable substitution to the stage text
+        const processedText = substituteEventVariables(stageText, eventType);
+        
+        return this.nextStage(eventType, stageId, processedText, choices, stageData);
+    }
+    
+    // Enhanced method to complete event using other_texts
+    completeEventFromOtherTexts(eventType, otherTextKey, variables = {}) {
+        const originalEvent = gameState.currentEvent?.originalEventData;
+        if (!originalEvent || !originalEvent.other_texts || !originalEvent.other_texts[otherTextKey]) {
+            console.warn(`other_texts key "${otherTextKey}" not found for event ${eventType}`);
+            return this.completeEvent(eventType, `Event completion text not found`);
+        }
+        
+        let resultText = originalEvent.other_texts[otherTextKey];
+        
+        // Apply custom variable substitution if provided
+        if (Object.keys(variables).length > 0) {
+            resultText = substituteVariables(resultText, variables);
+        } else {
+            // Apply standard event variable substitution
+            resultText = substituteEventVariables(resultText, eventType);
+        }
+        
+        return this.completeEvent(eventType, resultText);
+    }
+    
+    // Complete the event and clean up
+    completeEvent(eventType, resultText) {
+        this.stageData.delete(eventType);
+        
+        gameState.currentEvent.showResult = true;
+        gameState.currentEvent.resultText = resultText;
+        
+        this.refreshUI();
+    }
+    
+    // Standard UI refresh for all handlers
+    refreshUI() {
+        updateStatusBar();
+        showPage('main-game');
+    }
+    
+    // Helper to create standardized choice objects
+    createChoice(text, action, options = {}) {
+        return {
+            text,
+            action,
+            ...options
+        };
+    }
+}
+
+// Global instance for multi-stage events
+const multiStageManager = new MultiStageEventManager();
+
+// Helper function for simple custom handlers (reduces boilerplate)
+function createSimpleHandler(handlerFn) {
+    return function(choice, event, sanctionsTriggered) {
+        const result = handlerFn(choice, event, sanctionsTriggered);
+        
+        if (result && result.resultText) {
+            gameState.currentEvent.showResult = true;
+            gameState.currentEvent.resultText = result.resultText;
+        }
+        
+        updateStatusBar();
+        showPage('main-game');
+    };
 }
 
 // Custom event handlers for events with risk/success-failure mechanics
@@ -578,6 +740,93 @@ function handleCompetitorBreakthroughChoice(choice, _event, _sanctionsTriggered)
     showPage('main-game');
 }
 
+// Example: Multi-stage corporate espionage investigation handler using other_texts
+// Note: This is a demonstration - the event would need other_texts defined like:
+// "other_texts": {
+//   "high_evidence_stage": "Federal investigators have found substantial evidence...",
+//   "low_evidence_stage": "Investigators have detected suspicious network activity...",
+//   "cooperate_result": "Your cooperation reduces tensions...",
+//   "obstruct_result": "Your obstruction backfires spectacularly...",
+//   "assist_result": "Your proactive assistance is noted favorably...",
+//   "silent_result": "Your silence is legally prudent...",
+//   "trade_result": "Your offer to share intelligence...",
+//   "misdirect_success": "Your misdirection succeeds brilliantly...",
+//   "misdirect_failure": "Your misdirection is discovered..."
+// }
+function handleCorporateEspionageInvestigation(choice, event, _sanctionsTriggered) {
+    const stages = multiStageManager.getStageData(event.type);
+    
+    // Stage 1: Initial discovery - use other_texts for stage content
+    if (!stages.currentStage) {
+        multiStageManager.initStage(event.type, 'discovery', {
+            evidenceLevel: Math.random() * 100,
+            investigatorSuspicion: 50
+        });
+        
+        const stageData = multiStageManager.getStageData(event.type);
+        const evidenceLevel = stageData.data.evidenceLevel;
+        
+        // Use other_texts based on evidence level
+        const stageTextKey = evidenceLevel > 70 ? 'high_evidence_stage' : 'low_evidence_stage';
+        
+        const nextChoices = evidenceLevel > 70 ? [
+            multiStageManager.createChoice("Cooperate fully", "cooperate"),
+            multiStageManager.createChoice("Deny and obstruct", "obstruct"),
+            multiStageManager.createChoice("Offer information trade", "trade")
+        ] : [
+            multiStageManager.createChoice("Proactively assist", "assist"),
+            multiStageManager.createChoice("Remain silent", "silent"),
+            multiStageManager.createChoice("Misdirect investigation", "misdirect")
+        ];
+        
+        // Use other_texts instead of hardcoded strings
+        multiStageManager.nextStageFromOtherTexts(event.type, 'response', stageTextKey, nextChoices);
+        return;
+    }
+    
+    // Stage 2: Response handling - use other_texts for results
+    if (stages.currentStage === 'response') {
+        let resultKey = "";
+        
+        switch (choice.action) {
+            case 'cooperate':
+                resultKey = "cooperate_result";
+                gameState.diplomacyPoints -= 2;
+                break;
+            case 'obstruct':
+                resultKey = "obstruct_result";
+                gameState.hasSanctions = true;
+                gameState.diplomacyPoints -= 5;
+                break;
+            case 'assist':
+                resultKey = "assist_result";
+                gameState.diplomacyPoints += 1;
+                break;
+            case 'silent':
+                resultKey = "silent_result";
+                gameState.hasSanctions = true;
+                break;
+            case 'trade':
+                resultKey = "trade_result";
+                gameState.hasSanctions = true;
+                gameState.hasIntelligenceAgreement = true;
+                break;
+            case 'misdirect':
+                const success = Math.random() < 0.4;
+                resultKey = success ? "misdirect_success" : "misdirect_failure";
+                if (!success) {
+                    gameState.hasSanctions = true;
+                    gameState.diplomacyPoints -= 8;
+                }
+                break;
+        }
+        
+        // Use other_texts for completion message
+        multiStageManager.completeEventFromOtherTexts(event.type, resultKey);
+        return;
+    }
+}
+
 function handleCompetitorAcquisitionChoice(choice, _event, _sanctionsTriggered) {
     console.log('Calling custom handler: handleCompetitorAcquisitionChoice');
     
@@ -692,11 +941,15 @@ async function forceEvent(eventType) {
             // Apply variable substitution
             randomText = substituteEventVariables(randomText, eventTemplate.type);
             
+            // Filter choices based on conditions
+            const filteredChoices = filterChoicesByCondition(eventTemplate.choices);
+            
             event = {
                 type: eventTemplate.type,
                 text: randomText,
-                choices: eventTemplate.choices || null,
-                customHandler: eventTemplate.customHandler || null
+                choices: filteredChoices,
+                customHandler: eventTemplate.customHandler || null,
+                originalEventData: eventTemplate // Preserve original data for multi-stage access
             };
         }
     }
@@ -768,17 +1021,23 @@ function debugShowEventPool() {
         const lines = [];
         lines.push(`Event Pool (${availableEvents.length}):`);
         
-        // Compact format: weight | event-name
+        // Compact format: weight | event-name (AI range)
         availableEvents.forEach(e => {
             const weight = (e.weight || 1).toString().padStart(2);
-            lines.push(`${weight} | ${e.type}`);
+            let aiRange = '';
+            if (e.aiLevelRange) {
+                const min = e.aiLevelRange.min !== undefined ? e.aiLevelRange.min : '∞';
+                const max = e.aiLevelRange.max !== undefined ? e.aiLevelRange.max : '∞';
+                aiRange = ` (${min}-${max})`;
+            }
+            lines.push(`${weight} | ${e.type}${aiRange}`);
         });
         
         // Only show debug-specific player state (not already in status bar)
         lines.push('');
         lines.push('Debug State:');
         lines.push(`Fallen Behind: ${gameState.hasEverFallenBehind}`);
-        const acceptedEvents = Array.from(gameState.dsaEventsAccepted);
+        const acceptedEvents = Array.from(gameState.eventsAccepted);
         if (acceptedEvents.length > 0) {
             lines.push(`Accepted: ${acceptedEvents.join(', ')}`);
         } else {
@@ -824,17 +1083,23 @@ function updateEventPoolOverlay() {
         const lines = [];
         lines.push(`Event Pool (${availableEvents.length}):`);
         
-        // Compact format: weight | event-name
+        // Compact format: weight | event-name (AI range)
         availableEvents.forEach(e => {
             const weight = (e.weight || 1).toString().padStart(2);
-            lines.push(`${weight} | ${e.type}`);
+            let aiRange = '';
+            if (e.aiLevelRange) {
+                const min = e.aiLevelRange.min !== undefined ? e.aiLevelRange.min : '∞';
+                const max = e.aiLevelRange.max !== undefined ? e.aiLevelRange.max : '∞';
+                aiRange = ` (${min}-${max})`;
+            }
+            lines.push(`${weight} | ${e.type}${aiRange}`);
         });
         
         // Only show debug-specific player state (not already in status bar)
         lines.push('');
         lines.push('Debug State:');
         lines.push(`Fallen Behind: ${gameState.hasEverFallenBehind}`);
-        const acceptedEvents = Array.from(gameState.dsaEventsAccepted);
+        const acceptedEvents = Array.from(gameState.eventsAccepted);
         if (acceptedEvents.length > 0) {
             lines.push(`Accepted: ${acceptedEvents.join(', ')}`);
         } else {

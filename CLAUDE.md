@@ -79,6 +79,105 @@ where:
 ### Technology Dependencies
 - Use `TECHNOLOGY_DEPENDENCIES` object for prerequisite checks
 
+### Event AI Level Ranges
+- Events can specify `aiLevelRange` with optional `min` and/or `max` values
+- Events are only available when player AI level is within the specified range
+- Examples:
+  - `"aiLevelRange": { "min": 12 }` - Only available at AI level 12+
+  - `"aiLevelRange": { "max": 50 }` - Only available below AI level 50
+  - `"aiLevelRange": { "min": 20, "max": 80 }` - Available between AI levels 20-80
+
+### Conditional Choices
+- Choices can specify a `condition` field with a boolean gameState variable name
+- Choices are only shown if the condition evaluates to `true`
+- Examples:
+  - `"condition": "projectsUnlocked"` - Only shown if `gameState.projectsUnlocked` is `true`
+  - `"condition": "isVPSafetyAlignment"` - Only shown if player is VP of Safety and Alignment
+- Choices without conditions are always available
+- Invalid condition types are ignored (treated as no condition)
+
+### Multi-Stage Event System
+For complex events requiring multiple interactions, use the `MultiStageEventManager` class in custom handlers.
+
+#### Basic Multi-Stage Event (with hardcoded text):
+```javascript
+function handleMyMultiStageEvent(choice, event, sanctionsTriggered) {
+    const stages = multiStageManager.getStageData(event.type);
+    
+    // First time: initialize stage
+    if (!stages.currentStage) {
+        multiStageManager.initStage(event.type, 'stage1', { 
+            playerData: someValue 
+        });
+        
+        // Transition to next stage with new text and choices
+        multiStageManager.nextStage(event.type, 'stage2', 
+            "Stage 2 text here",
+            [
+                multiStageManager.createChoice("Option A", "accept"),
+                multiStageManager.createChoice("Option B", "decline")
+            ]
+        );
+        return;
+    }
+    
+    // Handle subsequent stages
+    if (stages.currentStage === 'stage2') {
+        // Process choice and complete event
+        multiStageManager.completeEvent(event.type, "Final result text");
+    }
+}
+```
+
+#### Data-Driven Multi-Stage Event (using other_texts):
+```javascript
+// In events.json:
+{
+  "type": "my-complex-event",
+  "customHandler": "handleMyComplexEvent",
+  "other_texts": {
+    "investigation_stage": "Investigators approach your facility...",
+    "negotiation_stage": "The situation escalates to negotiations...",
+    "success_outcome": "Your strategy succeeds...",
+    "failure_outcome": "The plan backfires..."
+  }
+}
+
+// In custom handler:
+function handleMyComplexEvent(choice, event, sanctionsTriggered) {
+    const stages = multiStageManager.getStageData(event.type);
+    
+    if (!stages.currentStage) {
+        // Use other_texts for stage content instead of hardcoded strings
+        multiStageManager.nextStageFromOtherTexts(event.type, 'negotiation',
+            'investigation_stage',
+            [
+                multiStageManager.createChoice("Negotiate", "negotiate"),
+                multiStageManager.createChoice("Resist", "resist")
+            ]
+        );
+        return;
+    }
+    
+    if (stages.currentStage === 'negotiation') {
+        const success = Math.random() < 0.5;
+        const outcomeKey = success ? 'success_outcome' : 'failure_outcome';
+        
+        // Use other_texts for completion message
+        multiStageManager.completeEventFromOtherTexts(event.type, outcomeKey);
+    }
+}
+```
+
+**Benefits:**
+- Automatic stage data management and cleanup
+- Standardized UI refresh handling  
+- Helper methods for creating choices
+- Simplified state tracking between stages
+- **Data-driven content**: Use `other_texts` instead of hardcoded strings
+- **Maintainable**: Content changes don't require code modifications
+- **Localizable**: Text can be easily translated or modified
+
 ### Minigame Integration
 - Register minigames in the global minigame system
 - Use consistent scoring and feedback patterns

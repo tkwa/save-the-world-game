@@ -194,7 +194,7 @@ const gameState = {
     selectedAllocation: null,
     eventsSeen: {}, // Tracks count of each event type seen
     choicesTaken: {}, // Tracks choices taken for each event type
-    dsaEventsAccepted: new Set(), // Tracks which DSA events have been accepted
+    eventsAccepted: new Set(), // Tracks which DSA events have been accepted
     alignmentMaxScore: 0, // Maximum score achieved in alignment minigame
     endgameAdjustedRisk: null, // Adjusted risk level at endgame trigger
     projectsUnlocked: false, // Whether Projects panel is unlocked (at 100 safety points)
@@ -1141,7 +1141,7 @@ function resetGameState() {
     gameState.resourceMultiplier = null;
     gameState.eventsSeen = {};
     gameState.choicesTaken = {};
-    gameState.dsaEventsAccepted = new Set();
+    gameState.eventsAccepted = new Set();
     gameState.endGamePhase = 1;
     gameState.alignmentRolls = null;
     gameState.galaxyDistribution = null;
@@ -1647,8 +1647,8 @@ async function handleEventChoice(choiceIndex) {
     // Track events that are accepted (for requirement checking)
     if (choice.action === 'accept' || choice.action === 'accept-sanctions') {
         console.log('Tracking accepted event:', event.type, 'action:', choice.action);
-        gameState.dsaEventsAccepted.add(event.type);
-        console.log('Current accepted events:', Array.from(gameState.dsaEventsAccepted));
+        gameState.eventsAccepted.add(event.type);
+        console.log('Current accepted events:', Array.from(gameState.eventsAccepted));
         
         // Unlock technologies when corresponding events are accepted
         if (event.type === 'product-breakthrough-medicine') {

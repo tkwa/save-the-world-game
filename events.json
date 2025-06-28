@@ -51,6 +51,37 @@
       ]
     },
     {
+      "type": "conditional-choice-demo",
+      "weight": 0,
+      "oneTime": true,
+      "aiLevelRange": { "min": 999 },
+      "text_versions": [
+        "Your board of directors is meeting to discuss strategic options. Different proposals are on the table depending on your company's current capabilities and situation."
+      ],
+      "choices": [
+        {
+          "text": "Focus on safety research (Projects available)",
+          "condition": "projectsUnlocked",
+          "action": "accept",
+          "benefit": { "incomeBonus": 1 },
+          "result_text": "With the Projects panel unlocked, your team can pursue advanced safety research while maintaining competitive development."
+        },
+        {
+          "text": "Leverage VP position for safety focus",
+          "condition": "isVPSafetyAlignment", 
+          "action": "accept",
+          "benefit": { "incomeBonus": 2 },
+          "result_text": "As VP of Safety and Alignment, you can direct the merged company's resources toward ensuring AI benefits humanity."
+        },
+        {
+          "text": "Standard development approach",
+          "action": "accept",
+          "benefit": { "incomeBonus": 0.5 },
+          "result_text": "Your team continues with conventional AI development, making steady but unremarkable progress."
+        }
+      ]
+    },
+    {
       "type": "safety-research-limitations",
       "weight": 4,
       "oneTime": true,
@@ -69,6 +100,7 @@
       "type": "product-breakthrough-medicine",
       "weight": 1,
       "oneTime": true,
+      "aiLevelRange": { "min": 12 },
       "text_versions": [
         "Your AI research team makes a breakthrough in drug discovery, identifying promising compounds for treating rare diseases. However, developing this technology will require significant resources."
       ],
@@ -91,6 +123,7 @@
       "type": "product-breakthrough-robotics",
       "weight": 1,
       "oneTime": true,
+      "aiLevelRange": { "min": 16 },
       "text_versions": [
         "Boston Dynamics, currently owned by Hyundai, is available for acquisition-- at the right price. Combining their robotics hardware with your AI software could enable more automation in unskilled trades."
       ],
@@ -135,6 +168,7 @@
       "type": "overseas-datacenter",
       "weight": 4,
       "oneTime": true,
+      "aiLevelRange": { "min": 20, "max": 80 },
       "customHandler": "handleOverseasDatacenterChoice",
       "text_versions": [
         "Your company has the opportunity to establish a 1GW datacenter in $country. This would increase your compute by 20%, but unauthorized construction risks US sanctions."
@@ -262,6 +296,7 @@
       "type": "competitor-breakthrough",
       "weight": 1,
       "oneTime": true,
+      "aiLevelRange": { "max": 100 },
       "customHandler": "handleCompetitorBreakthroughChoice",
       "text_versions": [
         "Intelligence reports indicate that $competitorName has achieved a sudden breakthrough, doubling their AI capabilities overnight to <strong>$newCompetitorLevel</strong>$surpassingText. $companyName drops from <strong>$marketShareBefore%</strong> to <strong>$marketShareAfter%</strong> market share. Your technical team suggests using $aiSystemName to scan chat logs and communications of known employees at $competitorName to understand their methods."
@@ -313,6 +348,35 @@
           "action": "accept",
           "hotkey": "enter",
           "result_text": "You resolve to find some way to stay competitive."
+        }
+      ]
+    },
+    {
+      "type": "corporate-espionage-investigation-example",
+      "weight": 0,
+      "oneTime": true,
+      "aiLevelRange": { "min": 999 },
+      "customHandler": "handleCorporateEspionageInvestigation",
+      "text_versions": [
+        "Federal investigators have discovered evidence of unauthorized access to competitor communications from your company's systems. A formal investigation into corporate espionage has been launched, and sanctions are being considered."
+      ],
+      "other_texts": {
+        "high_evidence_stage": "Federal investigators have found substantial evidence of unauthorized network access from your systems. They're preparing to escalate the investigation. How do you respond?",
+        "low_evidence_stage": "Investigators have detected suspicious network activity but lack concrete proof. The investigation is still in preliminary stages. Your response could determine its direction.",
+        "cooperate_result": "Your cooperation reduces tensions, but sanctions are still likely. The investigation concludes with reduced penalties.",
+        "obstruct_result": "Your obstruction backfires spectacularly. Investigators discover additional evidence and recommend maximum penalties.",
+        "assist_result": "Your proactive assistance is noted favorably. The investigation is quietly closed with minimal consequences.",
+        "silent_result": "Your silence is legally prudent but politically unhelpful. The investigation proceeds with standard sanctions.",
+        "trade_result": "Your offer to share intelligence on competitors interests investigators. Sanctions are imposed but could be lifted with cooperation.",
+        "misdirect_success": "Your misdirection succeeds brilliantly. Investigators pursue false leads while your activities remain hidden.",
+        "misdirect_failure": "Your misdirection is discovered, proving deception. This is treated as evidence of guilt and results in severe consequences."
+      },
+      "choices": [
+        {
+          "text": "Accept investigation",
+          "action": "accept",
+          "penalty": { "sanctions": true },
+          "result_text": "The investigation concludes that your company engaged in illegal corporate espionage. Economic sanctions are immediately imposed, severely limiting your operations."
         }
       ]
     }

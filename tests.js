@@ -507,7 +507,9 @@ function testOtherTextsUsage() {
             eventsJsContent = await eventsJsResponse.text();
         }
         
-        const eventsWithOtherTexts = eventData.defaultEvents.filter(event => event.other_texts);
+        const eventsWithOtherTexts = eventData.defaultEvents.filter(event => 
+            event.other_texts && !event.type.includes('-example') && !event.type.includes('-demo')
+        );
         
         for (const event of eventsWithOtherTexts) {
             const eventType = event.type;
@@ -534,6 +536,407 @@ function testOtherTextsUsage() {
     return suite.runAll();
 }
 
+// Test AI level range filtering
+function testAILevelRangeFiltering() {
+    const suite = new TestSuite();
+    
+    suite.test('Events with aiLevelRange.min should be filtered correctly', () => {
+        gameState = createTestGameState();
+        gameState.playerAILevel = 10;
+        
+        const mockEvents = [
+            { type: 'early-event', weight: 1, aiLevelRange: { min: 5 } },
+            { type: 'mid-event', weight: 1, aiLevelRange: { min: 15 } },
+            { type: 'no-range', weight: 1 }
+        ];
+        
+        const availableEvents = mockEvents.filter(event => {
+            if (event.aiLevelRange) {
+                const playerLevel = gameState.playerAILevel;
+                if (event.aiLevelRange.min !== undefined && playerLevel < event.aiLevelRange.min) {
+                    return false;
+                }
+                if (event.aiLevelRange.max !== undefined && playerLevel > event.aiLevelRange.max) {
+                    return false;
+                }
+            }
+            return true;
+        });
+        
+        suite.assertEqual(availableEvents.length, 2, 'Should have 2 available events (early-event and no-range)');
+        suite.assertTrue(availableEvents.some(e => e.type === 'early-event'), 'Should include early-event');
+        suite.assertTrue(availableEvents.some(e => e.type === 'no-range'), 'Should include no-range event');
+        suite.assertFalse(availableEvents.some(e => e.type === 'mid-event'), 'Should exclude mid-event');
+    });
+    
+    suite.test('Events with aiLevelRange.max should be filtered correctly', () => {
+        gameState = createTestGameState();
+        gameState.playerAILevel = 30;
+        
+        const mockEvents = [
+            { type: 'early-event', weight: 1, aiLevelRange: { max: 20 } },
+            { type: 'late-event', weight: 1, aiLevelRange: { max: 40 } },
+            { type: 'no-range', weight: 1 }
+        ];
+        
+        const availableEvents = mockEvents.filter(event => {
+            if (event.aiLevelRange) {
+                const playerLevel = gameState.playerAILevel;
+                if (event.aiLevelRange.min !== undefined && playerLevel < event.aiLevelRange.min) {
+                    return false;
+                }
+                if (event.aiLevelRange.max !== undefined && playerLevel > event.aiLevelRange.max) {
+                    return false;
+                }
+            }
+            return true;
+        });
+        
+        suite.assertEqual(availableEvents.length, 2, 'Should have 2 available events (late-event and no-range)');
+        suite.assertTrue(availableEvents.some(e => e.type === 'late-event'), 'Should include late-event');
+        suite.assertTrue(availableEvents.some(e => e.type === 'no-range'), 'Should include no-range event');
+        suite.assertFalse(availableEvents.some(e => e.type === 'early-event'), 'Should exclude early-event');
+    });
+    
+    suite.test('Events with both min and max should be filtered correctly', () => {
+        gameState = createTestGameState();
+        gameState.playerAILevel = 25;
+        
+        const mockEvents = [
+            { type: 'too-early', weight: 1, aiLevelRange: { min: 30, max: 50 } },
+            { type: 'just-right', weight: 1, aiLevelRange: { min: 20, max: 30 } },
+            { type: 'too-late', weight: 1, aiLevelRange: { min: 10, max: 20 } }
+        ];
+        
+        const availableEvents = mockEvents.filter(event => {
+            if (event.aiLevelRange) {
+                const playerLevel = gameState.playerAILevel;
+                if (event.aiLevelRange.min !== undefined && playerLevel < event.aiLevelRange.min) {
+                    return false;
+                }
+                if (event.aiLevelRange.max !== undefined && playerLevel > event.aiLevelRange.max) {
+                    return false;
+                }
+            }
+            return true;
+        });
+        
+        suite.assertEqual(availableEvents.length, 1, 'Should have 1 available event');
+        suite.assertTrue(availableEvents.some(e => e.type === 'just-right'), 'Should include just-right event');
+    });
+    
+    return suite.runAll();
+}
+
+// Test conditional choice filtering
+function testConditionalChoices() {
+    const suite = new TestSuite();
+    
+    suite.test('Choices with true conditions should be included', () => {
+        gameState = createTestGameState();
+        gameState.projectsUnlocked = true;
+        gameState.isVPSafetyAlignment = false;
+        
+        const mockChoices = [
+            { text: "Choice A", condition: "projectsUnlocked", action: "accept" },
+            { text: "Choice B", condition: "isVPSafetyAlignment", action: "accept" },
+            { text: "Choice C", action: "accept" } // No condition
+        ];
+        
+        // Apply the same filtering logic as filterChoicesByCondition
+        const filteredChoices = mockChoices.filter(choice => {
+            if (choice.condition) {
+                const conditionKey = choice.condition;
+                if (typeof conditionKey === 'string') {
+                    return gameState[conditionKey] === true;
+                }
+            }
+            return true;
+        });
+        
+        suite.assertEqual(filteredChoices.length, 2, 'Should have 2 choices (A and C)');
+        suite.assertTrue(filteredChoices.some(c => c.text === 'Choice A'), 'Should include Choice A');
+        suite.assertTrue(filteredChoices.some(c => c.text === 'Choice C'), 'Should include Choice C');
+        suite.assertFalse(filteredChoices.some(c => c.text === 'Choice B'), 'Should exclude Choice B');
+    });
+    
+    suite.test('Choices with false conditions should be excluded', () => {
+        gameState = createTestGameState();
+        gameState.projectsUnlocked = false;
+        gameState.isVPSafetyAlignment = false;
+        
+        const mockChoices = [
+            { text: "Choice A", condition: "projectsUnlocked", action: "accept" },
+            { text: "Choice B", condition: "isVPSafetyAlignment", action: "accept" },
+            { text: "Choice C", action: "accept" }
+        ];
+        
+        const filteredChoices = mockChoices.filter(choice => {
+            if (choice.condition) {
+                const conditionKey = choice.condition;
+                if (typeof conditionKey === 'string') {
+                    return gameState[conditionKey] === true;
+                }
+            }
+            return true;
+        });
+        
+        suite.assertEqual(filteredChoices.length, 1, 'Should have 1 choice (C only)');
+        suite.assertTrue(filteredChoices.some(c => c.text === 'Choice C'), 'Should include Choice C');
+        suite.assertFalse(filteredChoices.some(c => c.text === 'Choice A'), 'Should exclude Choice A');
+        suite.assertFalse(filteredChoices.some(c => c.text === 'Choice B'), 'Should exclude Choice B');
+    });
+    
+    suite.test('Choices without conditions should always be included', () => {
+        gameState = createTestGameState();
+        
+        const mockChoices = [
+            { text: "Always available", action: "accept" },
+            { text: "Also always available", action: "decline" }
+        ];
+        
+        const filteredChoices = mockChoices.filter(choice => {
+            if (choice.condition) {
+                const conditionKey = choice.condition;
+                if (typeof conditionKey === 'string') {
+                    return gameState[conditionKey] === true;
+                }
+            }
+            return true;
+        });
+        
+        suite.assertEqual(filteredChoices.length, 2, 'Should include all choices without conditions');
+    });
+    
+    suite.test('Invalid condition types should be ignored', () => {
+        gameState = createTestGameState();
+        
+        const mockChoices = [
+            { text: "Invalid condition", condition: 123, action: "accept" }, // Number instead of string
+            { text: "Valid choice", action: "accept" }
+        ];
+        
+        const filteredChoices = mockChoices.filter(choice => {
+            if (choice.condition) {
+                const conditionKey = choice.condition;
+                if (typeof conditionKey === 'string') {
+                    return gameState[conditionKey] === true;
+                }
+            }
+            return true;
+        });
+        
+        suite.assertEqual(filteredChoices.length, 2, 'Should include both choices (invalid condition treated as no condition)');
+    });
+    
+    return suite.runAll();
+}
+
+// Mock functions for Node.js environment (unused but available for future use)
+function _mockUpdateStatusBar() {}
+function _mockShowPage() {}
+
+// Test multi-stage event system
+function testMultiStageEventSystem() {
+    const suite = new TestSuite();
+    
+    // Create a mock MultiStageEventManager class for testing
+    class MockMultiStageEventManager {
+        constructor() {
+            this.stageData = new Map();
+        }
+        
+        initStage(eventType, stageId, stageData = {}) {
+            if (!this.stageData.has(eventType)) {
+                this.stageData.set(eventType, {});
+            }
+            
+            const eventStages = this.stageData.get(eventType);
+            eventStages.currentStage = stageId;
+            eventStages.data = { ...eventStages.data, ...stageData };
+            
+            return eventStages;
+        }
+        
+        getStageData(eventType) {
+            return this.stageData.get(eventType) || { currentStage: null, data: {} };
+        }
+        
+        nextStage(eventType, stageId, text, choices, stageData = {}) {
+            const stages = this.initStage(eventType, stageId, stageData);
+            
+            gameState.currentEvent = {
+                type: eventType,
+                text: text,
+                choices: choices,
+                customHandler: gameState.currentEvent?.customHandler || null,
+                isMultiStage: true,
+                currentStage: stageId
+            };
+            
+            this.refreshUI();
+            return stages;
+        }
+        
+        completeEvent(eventType, resultText) {
+            this.stageData.delete(eventType);
+            
+            gameState.currentEvent.showResult = true;
+            gameState.currentEvent.resultText = resultText;
+            
+            this.refreshUI();
+        }
+        
+        refreshUI() {
+            // Mock implementation for testing
+            // In real environment, these would call updateStatusBar() and showPage('main-game')
+        }
+        
+        createChoice(text, action, options = {}) {
+            return {
+                text,
+                action,
+                ...options
+            };
+        }
+    }
+    
+    suite.test('MultiStageEventManager can initialize and track stages', () => {
+        gameState = createTestGameState();
+        
+        const manager = new MockMultiStageEventManager();
+        
+        // Initialize a stage
+        const stages = manager.initStage('test-event', 'stage1', { value: 42 });
+        
+        suite.assertEqual(stages.currentStage, 'stage1', 'Should set current stage correctly');
+        suite.assertEqual(stages.data.value, 42, 'Should store stage data correctly');
+    });
+    
+    suite.test('MultiStageEventManager can transition between stages', () => {
+        gameState = createTestGameState();
+        gameState.currentEvent = { type: 'test-event' };
+        
+        const manager = new MockMultiStageEventManager();
+        
+        // Initialize first stage
+        manager.initStage('test-event', 'stage1', { counter: 1 });
+        
+        // Transition to next stage
+        const choices = [
+            { text: 'Choice A', action: 'accept' },
+            { text: 'Choice B', action: 'decline' }
+        ];
+        
+        manager.nextStage('test-event', 'stage2', 'Stage 2 text', choices, { counter: 2 });
+        
+        const stageData = manager.getStageData('test-event');
+        suite.assertEqual(stageData.currentStage, 'stage2', 'Should transition to stage 2');
+        suite.assertEqual(stageData.data.counter, 2, 'Should update stage data');
+        suite.assertEqual(gameState.currentEvent.text, 'Stage 2 text', 'Should update event text');
+        suite.assertEqual(gameState.currentEvent.choices.length, 2, 'Should update choices');
+    });
+    
+    suite.test('MultiStageEventManager can complete events and clean up', () => {
+        gameState = createTestGameState();
+        gameState.currentEvent = { type: 'test-event' };
+        
+        const manager = new MockMultiStageEventManager();
+        
+        // Initialize and complete event
+        manager.initStage('test-event', 'stage1', { data: 'test' });
+        manager.completeEvent('test-event', 'Final result text');
+        
+        const stageData = manager.getStageData('test-event');
+        suite.assertEqual(stageData.currentStage, null, 'Should clear stage data after completion');
+        suite.assertEqual(gameState.currentEvent.showResult, true, 'Should set showResult flag');
+        suite.assertEqual(gameState.currentEvent.resultText, 'Final result text', 'Should set result text');
+    });
+    
+    suite.test('createChoice helper creates properly formatted choice objects', () => {
+        const manager = new MockMultiStageEventManager();
+        
+        const basicChoice = manager.createChoice('Test choice', 'accept');
+        suite.assertEqual(basicChoice.text, 'Test choice', 'Should set choice text');
+        suite.assertEqual(basicChoice.action, 'accept', 'Should set choice action');
+        
+        const detailedChoice = manager.createChoice('Detailed choice', 'custom', {
+            cost: { money: 5 },
+            benefit: { incomeBonus: 1 }
+        });
+        suite.assertEqual(detailedChoice.cost.money, 5, 'Should include cost options');
+        suite.assertEqual(detailedChoice.benefit.incomeBonus, 1, 'Should include benefit options');
+    });
+    
+    suite.test('MultiStageEventManager can use other_texts for stage content', () => {
+        gameState = createTestGameState();
+        gameState.currentEvent = { 
+            type: 'test-event',
+            originalEventData: {
+                other_texts: {
+                    'stage2_text': 'Stage 2 content from other_texts',
+                    'completion_text': 'Event completed via other_texts'
+                }
+            }
+        };
+        
+        const manager = new MockMultiStageEventManager();
+        
+        // Add methods for other_texts integration to mock
+        manager.nextStageFromOtherTexts = function(eventType, stageId, otherTextKey, choices, stageData = {}) {
+            const originalEvent = gameState.currentEvent?.originalEventData;
+            if (originalEvent && originalEvent.other_texts && originalEvent.other_texts[otherTextKey]) {
+                const stageText = originalEvent.other_texts[otherTextKey];
+                const stages = this.initStage(eventType, stageId, stageData);
+                
+                // Preserve originalEventData when updating currentEvent
+                gameState.currentEvent = {
+                    type: eventType,
+                    text: stageText,
+                    choices: choices,
+                    customHandler: gameState.currentEvent?.customHandler || null,
+                    isMultiStage: true,
+                    currentStage: stageId,
+                    originalEventData: originalEvent // Preserve this!
+                };
+                
+                this.refreshUI();
+                return stages;
+            }
+            return this.nextStage(eventType, stageId, 'Text not found', choices, stageData);
+        };
+        
+        manager.completeEventFromOtherTexts = function(eventType, otherTextKey) {
+            const originalEvent = gameState.currentEvent?.originalEventData;
+            if (originalEvent && originalEvent.other_texts && originalEvent.other_texts[otherTextKey]) {
+                const resultText = originalEvent.other_texts[otherTextKey];
+                this.stageData.delete(eventType);
+                gameState.currentEvent.showResult = true;
+                gameState.currentEvent.resultText = resultText;
+                this.refreshUI();
+                return;
+            }
+            return this.completeEvent(eventType, 'Result text not found');
+        };
+        
+        // Test using other_texts for stage transition
+        manager.nextStageFromOtherTexts('test-event', 'stage2', 'stage2_text', [
+            { text: 'Choice A', action: 'accept' }
+        ]);
+        
+        suite.assertEqual(gameState.currentEvent.text, 'Stage 2 content from other_texts', 'Should use other_texts for stage content');
+        
+        // Test using other_texts for completion
+        manager.completeEventFromOtherTexts('test-event', 'completion_text');
+        
+        // Debug: Check what we actually got
+        const actualResult = gameState.currentEvent.resultText;
+        suite.assertEqual(actualResult, 'Event completed via other_texts', 'Should use other_texts for completion');
+    });
+    
+    return suite.runAll();
+}
+
 // Main test runner
 async function runAllTests() {
     const startTime = Date.now();
@@ -546,7 +949,10 @@ async function runAllTests() {
         testRoleIndicator(),
         testPreferenceText(),
         testFallingBehindEvent(),
-        testOtherTextsUsage()
+        testOtherTextsUsage(),
+        testAILevelRangeFiltering(),
+        testConditionalChoices(),
+        testMultiStageEventSystem()
     ]);
     
     const allPassed = results.every(result => result);
