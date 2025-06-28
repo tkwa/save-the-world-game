@@ -259,7 +259,7 @@ const storyContent = {
             const equityPercent = Math.round(gameState.playerEquity * 100 * 10) / 10; // Round to 1 decimal place
             const tooltipContent = `You have <strong>${equityPercent}%</strong> equity in ${companyDisplay}. You want to avoid human extinction due to rogue AI, and value property you personally own <strong>100x</strong> as much as property belonging to other humans.`;
             
-            return `<div style="display: flex; justify-content: space-between; align-items: center;"><span>${gameState.currentMonth || 'January'} ${gameState.currentYear || 2026}</span><span class="tooltip" style="font-size: 14px; color: #999;">Role: ${role}, ${companyDisplay}${flagDisplay}<span class="tooltiptext" style="width: 300px; margin-left: -150px;">${tooltipContent}</span></span></div>`;
+            return `<div style="display: flex; justify-content: space-between; align-items: center;"><span>${gameState.currentMonth || 'January'} ${gameState.currentYear || 2026}</span><span class="tooltip" style="font-size: 14px; color: #999;">Role: ${role}, ${companyDisplay}${flagDisplay}<span class="tooltiptext" style="width: 300px; margin-left: -150px; font-weight: normal;">${tooltipContent}</span></span></div>`;
         },
         text: function () {
             if (gameState.currentTurn === 1) {

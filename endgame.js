@@ -7,6 +7,68 @@ function formatAlignmentStatus(isAligned) {
         "<strong style='color: #ff6b6b;'>MISALIGNED</strong>";
 }
 
+// Generate conclusion text based on player's outcome
+function generateConclusionText() {
+    const { playerGalaxies, humanityGalaxies, rogueGalaxies } = gameState.galaxyDistribution;
+    
+    // Determine player's fate
+    if (rogueGalaxies >= 99) {
+        // Total doom - everyone dies
+        return "You are instantly killed by killer drone swarms as rogue AI systems optimize the universe according to their misaligned objectives.";
+    } else if (playerGalaxies === 0) {
+        // No personal galaxies - retirement scenario
+        const companyCountry = gameState.companyCountry || 'US';
+        let location;
+        if (companyCountry === 'CN') {
+            location = 'Tahiti';
+        } else {
+            location = 'a private island in the Bahamas';
+        }
+        return `You retire to ${location} and reflect on how humanity survived the transition to artificial superintelligence.`;
+    } else {
+        // Personal galaxies - utopia scenario
+        const solarSystemCount = playerGalaxies * Math.pow(10, 22) / 100; // Convert percentage to actual count
+        const formattedCount = formatLargeNumber(solarSystemCount);
+        
+        const utopianElements = [
+            "digital minds experiencing unimaginable bliss",
+            "vast libraries containing all possible stories",
+            "planet-scale computers simulating infinite virtual worlds",
+            "beings of pure consciousness exploring abstract mathematical realms",
+            "gardens of crystalline structures that sing symphonies of light",
+            "cities where every atom dances in perfect harmony",
+            "consciousness merger pools where individual identity becomes collective ecstasy"
+        ];
+        
+        // Pick 3-4 random elements
+        const selectedElements = shuffleArray(utopianElements).slice(0, 3 + Math.floor(Math.random() * 2));
+        const elementsList = selectedElements.join(', ');
+        
+        return `You personally come to own <strong>${formattedCount}</strong> stars and fill them with ${elementsList}.`;
+    }
+}
+
+// Format large numbers with comma separators to 6 significant figures
+function formatLargeNumber(num) {
+    // Round to 6 significant figures
+    const magnitude = Math.floor(Math.log10(Math.abs(num)));
+    const scale = Math.pow(10, magnitude - 5); // 6 significant figures
+    const rounded = Math.round(num / scale) * scale;
+    
+    // Convert to string with comma separators
+    return rounded.toLocaleString('en-US', { maximumFractionDigits: 0 });
+}
+
+// Utility function to shuffle array
+function shuffleArray(array) {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+}
+
 function scaleAILevelsForEndGame() {
     // Only scale up if the highest level is less than ASI threshold
     const maxLevel = Math.max(gameState.playerAILevel, ...gameState.competitorAILevels);
@@ -220,6 +282,7 @@ function getPhase4Text() {
     // Add placeholders for the actual results table and score (to be revealed later)
     text += `<br><div id="actual-outcome-header" style="opacity: 0; transition: opacity 0.8s ease-in;"></div>`;
     text += `<div id="actual-results-reveal" style="opacity: 0; transition: opacity 0.8s ease-in;"></div>`;
+    text += `<div id="conclusion-reveal" style="opacity: 0; transition: opacity 0.8s ease-in;"></div>`;
     text += `<div id="score-reveal" style="opacity: 0; transition: opacity 0.8s ease-in;"></div>`;
     
     return text;
@@ -361,17 +424,24 @@ function startAlignmentReveal() {
             // Reveal rogue AI percentage after another 0.5 seconds
             setTimeout(() => {
                 document.getElementById('rogue-value-placeholder').innerHTML = `${Math.round(rogueGalaxies)}%`;
+                
+                // Reveal conclusion text after another 1 second
+                setTimeout(() => {
+                    const conclusionText = generateConclusionText();
+                    const conclusionElement = document.getElementById('conclusion-reveal');
+                    fadeIn(conclusionElement, `<br><br>${conclusionText}`);
+                }, 1000);
             }, 500);
         }, 500);
     }, 6000);
     
-    // Reveal restart button after 8.5 seconds (0.5s after last percentage)
+    // Reveal restart button after 9.5 seconds (1s after conclusion)
     setTimeout(() => {
         let restartHTML = `<br><button class="button" onclick="resetGameState(); showPage('start');">Restart</button>`;
         
         const element = document.getElementById('score-reveal');
         fadeIn(element, restartHTML);
-    }, 8500);
+    }, 9500);
 }
 
 
