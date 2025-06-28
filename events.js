@@ -1,5 +1,15 @@
 // Event system for Critical Path game
 
+// Company metadata shared across the game
+const COMPANIES = [
+    { name: "OpenAI", longName: "OpenAI", homeCountry: "US", flag: "🇺🇸" },
+    { name: "Anthropic", longName: "Anthropic", homeCountry: "US", flag: "🇺🇸" },
+    { name: "Google", longName: "Google DeepMind", homeCountry: "UK", flag: "🇬🇧" },
+    { name: "DeepSeek", longName: "DeepSeek", homeCountry: "CN", flag: "🇨🇳" },
+    { name: "Tencent", longName: "Tencent", homeCountry: "CN", flag: "🇨🇳" },
+    { name: "xAI", longName: "xAI", homeCountry: "US", flag: "🇺🇸" }
+];
+
 let eventData = null;
 
 // Load event data from JSON file
@@ -213,11 +223,31 @@ function substituteEventVariables(text, eventType) {
             const competitorName = gameState.competitorNames[leadingCompetitorIndex] || `Competitor ${leadingCompetitorIndex + 1}`;
             gameState.acquisitionCompetitorIndex = leadingCompetitorIndex;
             
+            // Calculate fair value: X^2 / (X^2 + Y^2) where X = player, Y = competitor
+            const playerLevel = gameState.playerAILevel;
+            const competitorLevel = maxCompetitorLevel;
+            const fairValue = (playerLevel ** 2) / (playerLevel ** 2 + competitorLevel ** 2);
+            
+            // Random offer between 30% and 100% of fair value for the TOTAL company
+            const offerMultiplier = 0.3 + Math.random() * 0.7; // 0.3 to 1.0
+            const totalCompanyEquityOffered = fairValue * offerMultiplier;
+            
+            // Player owns 10% of their current company, so they get 10% of the total equity offered
+            const playerEquityReceived = totalCompanyEquityOffered * gameState.playerEquity; // playerEquity is 0.1 (10%)
+            
+            // Store both values for use in the handler
+            gameState.totalEquityOffered = totalCompanyEquityOffered;
+            gameState.offeredEquity = playerEquityReceived;
+            
+            // Format total equity as percentage for display (what the company gets)
+            const totalEquityPercent = Math.round(totalCompanyEquityOffered * 100 * 10) / 10; // Round to 1 decimal place
+            
             // Substitute variables
             substitutedText = substitutedText.replace(/\$competitorName/g, competitorName);
             substitutedText = substitutedText.replace(/\$competitorLevel/g, `${Math.round(maxCompetitorLevel)}x`);
             substitutedText = substitutedText.replace(/\$companyName/g, gameState.companyName || 'Your company');
             substitutedText = substitutedText.replace(/\$playerLevel/g, `${Math.round(gameState.playerAILevel)}x`);
+            substitutedText = substitutedText.replace(/\$equityOffer/g, `${totalEquityPercent}%`);
         }
     }
     
@@ -533,23 +563,13 @@ function handleCompetitorAcquisitionChoice(choice, _event, _sanctionsTriggered) 
         const newCompanyName = competitorName;
         const newAILevel = gameState.competitorAILevels[competitorIndex];
         
-        // Define company metadata for the acquiring company
-        const companies = [
-            { name: "OpenAI", longName: "OpenAI", homeCountry: "US", flag: "🇺🇸" },
-            { name: "Anthropic", longName: "Anthropic", homeCountry: "US", flag: "🇺🇸" },
-            { name: "Google", longName: "Google DeepMind", homeCountry: "UK", flag: "🇬🇧" },
-            { name: "DeepSeek", longName: "DeepSeek", homeCountry: "CN", flag: "🇨🇳" },
-            { name: "Tencent", longName: "Tencent", homeCountry: "CN", flag: "🇨🇳" },
-            { name: "xAI", longName: "xAI", homeCountry: "US", flag: "🇺🇸" }
-        ];
-        
         // Find the acquiring company's metadata
-        const acquiringCompany = companies.find(c => c.name === newCompanyName);
+        const acquiringCompany = COMPANIES.find(c => c.name === newCompanyName);
         
         gameState.companyName = newCompanyName;
         gameState.playerAILevel = newAILevel;
         gameState.isVPSafetyAlignment = true;
-        gameState.playerEquity = 0.01; // 1% equity in the acquiring company
+        gameState.playerEquity = gameState.offeredEquity || 0.01; // Use offered equity or fallback to 1%
         
         // Update company metadata to match the acquiring company
         if (acquiringCompany) {
@@ -594,7 +614,9 @@ function handleCompetitorAcquisitionChoice(choice, _event, _sanctionsTriggered) 
         // Update status immediately
         updateStatusBar();
         
-        const resultText = `The merger is completed successfully. ${gameState.startingCompany} becomes the Safety and Alignment division of ${newCompanyName}, and you assume the role of VP of Safety and Alignment. With access to ${newCompanyName}'s advanced AI capabilities and resources, you now focus on ensuring AI development benefits humanity. Having little financial interest in the ASI race, your priorities have fundamentally shifted toward what would be best for the world.<br><br>You are somewhat resentful about accepting such a low valuation, but the acquisition was ultimately necessary given the competitive reality.`;
+        const playerEquityPercent = Math.round((gameState.offeredEquity || 0.01) * 100 * 10) / 10;
+        const totalEquityPercent = Math.round((gameState.totalEquityOffered || 0.1) * 100 * 10) / 10;
+        const resultText = `The merger is completed successfully. ${newCompanyName} acquires ${gameState.startingCompany} for ${totalEquityPercent}% equity, giving you ${playerEquityPercent}% equity as your 10% share of the deal. You assume the role of VP of Safety and Alignment. With access to ${newCompanyName}'s advanced AI capabilities and resources, you now focus on ensuring AI development benefits humanity. Having ${playerEquityPercent < 1 ? 'very little' : playerEquityPercent < 5 ? 'little' : 'some'} financial interest in the ASI race, your priorities have fundamentally shifted toward what would be best for the world.<br><br>You are ${playerEquityPercent < 1 ? 'quite resentful about accepting such a low valuation' : playerEquityPercent < 5 ? 'somewhat resentful about the valuation' : 'reasonably satisfied with the valuation'}, but the acquisition was ultimately necessary given the competitive reality.`;
         
         gameState.currentEvent.showResult = true;
         gameState.currentEvent.resultText = resultText;

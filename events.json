@@ -273,7 +273,7 @@
       "oneTime": true,
       "customHandler": "handleCompetitorAcquisitionChoice",
       "text_versions": [
-        "$competitorName has achieved a commanding lead in AI capabilities, reaching $competitorLevel while $companyName remains at $playerLevel. $competitorName's board approaches your company with an acquisition offer: 10% equity in exchange for becoming their Safety and Alignment division. Your employees are divided - some believe winning the ASI race is now hopeless, others still believe in $companyName's potential, and some think the merger would be beneficial for AI safety overall."
+        "$competitorName has achieved a commanding lead in AI capabilities, reaching $competitorLevel while $companyName remains at $playerLevel. $competitorName's board approaches your company with an acquisition offer: $equityOffer equity in exchange for becoming their Safety and Alignment division. Your employees are divided - some believe winning the ASI race is now hopeless, others still believe in $companyName's potential, and some think the merger would be beneficial for AI safety overall."
       ],
       "choices": [
         {

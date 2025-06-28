@@ -64,7 +64,9 @@ function createTestGameState() {
         isVPSafetyAlignment: false,
         dsaEventsAccepted: new Set(),
         acquisitionCompetitorIndex: null,
-        playerEquity: 0.1
+        playerEquity: 0.1,
+        offeredEquity: null,
+        totalEquityOffered: null
     };
 }
 
@@ -246,14 +248,14 @@ function testMergerMechanics() {
 function testEndgameScoring() {
     const suite = new TestSuite();
 
-    suite.test('VP Safety Alignment gets 11x multiplier (1% equity)', () => {
+    suite.test('VP Safety Alignment gets variable multiplier based on offered equity', () => {
         gameState = createTestGameState();
-        gameState.playerEquity = 0.01; // 1% equity after merger
+        gameState.playerEquity = 0.05; // 5% equity after merger (could be anywhere from 30%-100% of fair value)
         
         // Player gets: 10 (humanity survival) + 100 * equity (ownership stake)
         const playerMultiplier = 10 + (100 * gameState.playerEquity);
         
-        suite.assertEqual(playerMultiplier, 11, 'VP Safety Alignment should get 11x multiplier (10 + 100 * 0.01)');
+        suite.assertEqual(playerMultiplier, 15, 'VP Safety Alignment should get 15x multiplier (10 + 100 * 0.05)');
     });
 
     suite.test('Regular player gets 20x multiplier (10% equity)', () => {
@@ -266,14 +268,44 @@ function testEndgameScoring() {
         suite.assertEqual(playerMultiplier, 20, 'Regular player should get 20x multiplier (10 + 100 * 0.1)');
     });
 
-    suite.test('Merger sets equity to 1%', () => {
+    suite.test('Merger sets equity to offered amount', () => {
         gameState = createTestGameState();
         gameState.playerEquity = 0.1; // Start with 10%
+        gameState.offeredEquity = 0.03; // 3% offered equity
         
         // Simulate merger
-        gameState.playerEquity = 0.01; // 1% equity in acquiring company
+        gameState.playerEquity = gameState.offeredEquity || 0.01;
         
-        suite.assertEqual(gameState.playerEquity, 0.01, 'Player equity should be set to 1% after merger');
+        suite.assertEqual(gameState.playerEquity, 0.03, 'Player equity should be set to offered equity after merger');
+    });
+
+    suite.test('Merger equity calculation uses fair value formula with 10% player ownership', () => {
+        gameState = createTestGameState();
+        const playerLevel = 10;
+        const competitorLevel = 25;
+        
+        // Calculate fair value: X^2 / (X^2 + Y^2)
+        const fairValue = (playerLevel ** 2) / (playerLevel ** 2 + competitorLevel ** 2);
+        const expectedFairValue = 100 / (100 + 625); // 100/725 ≈ 0.138
+        
+        suite.assertTrue(Math.abs(fairValue - expectedFairValue) < 0.001, 'Fair value calculation should be correct');
+        
+        // Total offer should be between 30% and 100% of fair value
+        const minTotalOffer = fairValue * 0.3;
+        const maxTotalOffer = fairValue * 1.0;
+        
+        // Player gets 10% of the total offer (since they own 10% of their company)
+        const minPlayerOffer = minTotalOffer * 0.1;
+        const maxPlayerOffer = maxTotalOffer * 0.1;
+        
+        suite.assertTrue(minPlayerOffer < maxPlayerOffer, 'Min player offer should be less than max player offer');
+        suite.assertTrue(minPlayerOffer > 0, 'Min player offer should be positive');
+        suite.assertTrue(maxPlayerOffer < 0.1, 'Max player offer should be less than 10%');
+        
+        // Example: if total offer is 8%, player gets 0.8%
+        const exampleTotalOffer = 0.08;
+        const expectedPlayerOffer = exampleTotalOffer * gameState.playerEquity; // 0.08 * 0.1 = 0.008
+        suite.assertEqual(expectedPlayerOffer, 0.008, 'Player should get 10% of total equity offer');
     });
 
     suite.test('Shareholder assessment uses starting company', () => {

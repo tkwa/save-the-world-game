@@ -203,7 +203,9 @@ const gameState = {
     playerEquity: 0.1, // Player's equity stake in the company (0.1 = 10%, 0.01 = 1%, etc.)
     companyLongName: null, // Full company name (e.g., "Google DeepMind")
     companyCountry: null, // Company home country code
-    companyFlag: null // Company flag emoji
+    companyFlag: null, // Company flag emoji
+    offeredEquity: null, // Equity player receives in acquisition event (player's share)
+    totalEquityOffered: null // Total equity offered to the old company
 };
 
 // Story content
@@ -218,25 +220,15 @@ const storyContent = {
     "game-setup": {
         title: "January 2026",
         text: async function () {
-            // Define companies with metadata
-            const companies = [
-                { name: "OpenAI", longName: "OpenAI", homeCountry: "US", flag: "🇺🇸" },
-                { name: "Anthropic", longName: "Anthropic", homeCountry: "US", flag: "🇺🇸" },
-                { name: "Google", longName: "Google DeepMind", homeCountry: "UK", flag: "🇬🇧" },
-                { name: "DeepSeek", longName: "DeepSeek", homeCountry: "CN", flag: "🇨🇳" },
-                { name: "Tencent", longName: "Tencent", homeCountry: "CN", flag: "🇨🇳" },
-                { name: "xAI", longName: "xAI", homeCountry: "US", flag: "🇺🇸" }
-            ];
-            
-            // Randomly assign company
-            const selectedCompany = companies[Math.floor(Math.random() * companies.length)];
+            // Randomly assign company from the shared COMPANIES array (defined in events.js)
+            const selectedCompany = COMPANIES[Math.floor(Math.random() * COMPANIES.length)];
             gameState.companyName = selectedCompany.name;
             gameState.companyLongName = selectedCompany.longName;
             gameState.companyCountry = selectedCompany.homeCountry;
             gameState.companyFlag = selectedCompany.flag;
             
             // Assign competitor companies (excluding player's company)
-            const remainingCompanies = companies.filter(c => c.name !== gameState.companyName);
+            const remainingCompanies = COMPANIES.filter(c => c.name !== gameState.companyName);
             gameState.competitorNames = [];
             for (let i = 0; i < GAME_CONSTANTS.MAX_COMPETITORS; i++) {
                 const randomIndex = Math.floor(Math.random() * remainingCompanies.length);
@@ -1148,6 +1140,8 @@ function resetGameState() {
     gameState.startingCompany = null;
     gameState.isVPSafetyAlignment = false;
     gameState.playerEquity = 0.1;
+    gameState.offeredEquity = null;
+    gameState.totalEquityOffered = null;
 }
 
 
