@@ -533,13 +533,52 @@ function handleCompetitorAcquisitionChoice(choice, _event, _sanctionsTriggered) 
         const newCompanyName = competitorName;
         const newAILevel = gameState.competitorAILevels[competitorIndex];
         
+        // Define company metadata for the acquiring company
+        const companies = [
+            { name: "OpenAI", longName: "OpenAI", homeCountry: "US", flag: "🇺🇸" },
+            { name: "Anthropic", longName: "Anthropic", homeCountry: "US", flag: "🇺🇸" },
+            { name: "Google", longName: "Google DeepMind", homeCountry: "UK", flag: "🇬🇧" },
+            { name: "DeepSeek", longName: "DeepSeek", homeCountry: "CN", flag: "🇨🇳" },
+            { name: "Tencent", longName: "Tencent", homeCountry: "CN", flag: "🇨🇳" },
+            { name: "xAI", longName: "xAI", homeCountry: "US", flag: "🇺🇸" }
+        ];
+        
+        // Find the acquiring company's metadata
+        const acquiringCompany = companies.find(c => c.name === newCompanyName);
+        
         gameState.companyName = newCompanyName;
         gameState.playerAILevel = newAILevel;
         gameState.isVPSafetyAlignment = true;
+        gameState.playerEquity = 0.01; // 1% equity in the acquiring company
         
-        // Remove the acquiring competitor from the list
-        gameState.competitorAILevels.splice(competitorIndex, 1);
-        gameState.competitorNames.splice(competitorIndex, 1);
+        // Update company metadata to match the acquiring company
+        if (acquiringCompany) {
+            gameState.companyLongName = acquiringCompany.longName;
+            gameState.companyCountry = acquiringCompany.homeCountry;
+            gameState.companyFlag = acquiringCompany.flag;
+        }
+        
+        // Replace the acquiring competitor with a new one from unused companies
+        const allCompanies = ["OpenAI", "Anthropic", "Google", "DeepSeek", "Tencent", "xAI"];
+        const usedCompanies = [gameState.companyName, ...gameState.competitorNames];
+        const availableCompanies = allCompanies.filter(company => !usedCompanies.includes(company));
+        
+        if (availableCompanies.length > 0) {
+            // Pick a random available company
+            const newCompanyName = availableCompanies[Math.floor(Math.random() * availableCompanies.length)];
+            
+            // Set new capability level between 0.1 and 0.4 of the new (merged) player level
+            const minLevel = newAILevel * 0.1;
+            const maxLevel = newAILevel * 0.4;
+            const newCompetitorLevel = minLevel + Math.random() * (maxLevel - minLevel);
+            
+            // Replace the acquired competitor
+            gameState.competitorNames[competitorIndex] = newCompanyName;
+            gameState.competitorAILevels[competitorIndex] = newCompetitorLevel;
+        } else {
+            // Fallback: just reduce the capability significantly if no companies available
+            gameState.competitorAILevels[competitorIndex] = newAILevel * (0.1 + Math.random() * 0.3);
+        }
         
         // Add random resources based on new capability level
         const levelBasedBonus = Math.floor(newAILevel / 4); // Scale with AI level
@@ -555,7 +594,7 @@ function handleCompetitorAcquisitionChoice(choice, _event, _sanctionsTriggered) 
         // Update status immediately
         updateStatusBar();
         
-        const resultText = `The merger is completed successfully. ${gameState.startingCompany} becomes the Safety and Alignment division of ${newCompanyName}, and you assume the role of VP of Safety and Alignment. With access to ${newCompanyName}'s advanced AI capabilities and resources, you now focus on ensuring AI development benefits humanity. Having little financial interest in the ASI race, your priorities have fundamentally shifted toward what would be best for the world.`;
+        const resultText = `The merger is completed successfully. ${gameState.startingCompany} becomes the Safety and Alignment division of ${newCompanyName}, and you assume the role of VP of Safety and Alignment. With access to ${newCompanyName}'s advanced AI capabilities and resources, you now focus on ensuring AI development benefits humanity. Having little financial interest in the ASI race, your priorities have fundamentally shifted toward what would be best for the world.<br><br>You are somewhat resentful about accepting such a low valuation, but the acquisition was ultimately necessary given the competitive reality.`;
         
         gameState.currentEvent.showResult = true;
         gameState.currentEvent.resultText = resultText;

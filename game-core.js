@@ -199,7 +199,11 @@ const gameState = {
     endgameAdjustedRisk: null, // Adjusted risk level at endgame trigger
     projectsUnlocked: false, // Whether Projects panel is unlocked (at 100 safety points)
     startingCompany: null, // Original company name for endgame scoring (before merger)
-    isVPSafetyAlignment: false // Whether player became VP of Safety and Alignment through merger
+    isVPSafetyAlignment: false, // Whether player became VP of Safety and Alignment through merger
+    playerEquity: 0.1, // Player's equity stake in the company (0.1 = 10%, 0.01 = 1%, etc.)
+    companyLongName: null, // Full company name (e.g., "Google DeepMind")
+    companyCountry: null, // Company home country code
+    companyFlag: null // Company flag emoji
 };
 
 // Story content
@@ -214,16 +218,29 @@ const storyContent = {
     "game-setup": {
         title: "January 2026",
         text: async function () {
+            // Define companies with metadata
+            const companies = [
+                { name: "OpenAI", longName: "OpenAI", homeCountry: "US", flag: "🇺🇸" },
+                { name: "Anthropic", longName: "Anthropic", homeCountry: "US", flag: "🇺🇸" },
+                { name: "Google", longName: "Google DeepMind", homeCountry: "UK", flag: "🇬🇧" },
+                { name: "DeepSeek", longName: "DeepSeek", homeCountry: "CN", flag: "🇨🇳" },
+                { name: "Tencent", longName: "Tencent", homeCountry: "CN", flag: "🇨🇳" },
+                { name: "xAI", longName: "xAI", homeCountry: "US", flag: "🇺🇸" }
+            ];
+            
             // Randomly assign company
-            const companies = ["OpenAI", "Anthropic", "Google", "DeepSeek", "Tencent", "xAI"];
-            gameState.companyName = companies[Math.floor(Math.random() * companies.length)];
+            const selectedCompany = companies[Math.floor(Math.random() * companies.length)];
+            gameState.companyName = selectedCompany.name;
+            gameState.companyLongName = selectedCompany.longName;
+            gameState.companyCountry = selectedCompany.homeCountry;
+            gameState.companyFlag = selectedCompany.flag;
             
             // Assign competitor companies (excluding player's company)
-            const remainingCompanies = companies.filter(c => c !== gameState.companyName);
+            const remainingCompanies = companies.filter(c => c.name !== gameState.companyName);
             gameState.competitorNames = [];
             for (let i = 0; i < GAME_CONSTANTS.MAX_COMPETITORS; i++) {
                 const randomIndex = Math.floor(Math.random() * remainingCompanies.length);
-                gameState.competitorNames.push(remainingCompanies.splice(randomIndex, 1)[0]);
+                gameState.competitorNames.push(remainingCompanies.splice(randomIndex, 1)[0].name);
             }
             
             gameState.currentTurn = GAME_CONSTANTS.INITIAL_TURN;
@@ -242,8 +259,10 @@ const storyContent = {
         title: function () {
             const role = gameState.isVPSafetyAlignment ? 
                 'VP of Safety and Alignment' : 
-                `CEO of ${gameState.companyName || 'Company'}`;
-            return `<div style="display: flex; justify-content: space-between; align-items: center;"><span>${gameState.currentMonth || 'January'} ${gameState.currentYear || 2026}</span><span style="font-size: 14px; color: #999;">Role: ${role}</span></div>`;
+                'CEO';
+            const companyDisplay = gameState.companyLongName || gameState.companyName || 'Company';
+            const flagDisplay = gameState.companyFlag ? `<span style="font-size: 20px; margin-left: 8px;">${gameState.companyFlag}</span>` : '';
+            return `<div style="display: flex; justify-content: space-between; align-items: center;"><span>${gameState.currentMonth || 'January'} ${gameState.currentYear || 2026}</span><span style="font-size: 14px; color: #999;">Role: ${role}, ${companyDisplay}${flagDisplay}</span></div>`;
         },
         text: function () {
             if (gameState.currentTurn === 1) {
@@ -1128,6 +1147,7 @@ function resetGameState() {
     gameState.projectsUnlocked = false;
     gameState.startingCompany = null;
     gameState.isVPSafetyAlignment = false;
+    gameState.playerEquity = 0.1;
 }
 
 

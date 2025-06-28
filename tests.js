@@ -63,7 +63,8 @@ function createTestGameState() {
         startingCompany: null,
         isVPSafetyAlignment: false,
         dsaEventsAccepted: new Set(),
-        acquisitionCompetitorIndex: null
+        acquisitionCompetitorIndex: null,
+        playerEquity: 0.1
     };
 }
 
@@ -168,21 +169,36 @@ function testMergerMechanics() {
         suite.assertTrue(gameState.isVPSafetyAlignment, 'VP Safety Alignment flag should be set');
     });
 
-    suite.test('Merger removes acquiring competitor from list', () => {
+    suite.test('Merger replaces acquiring competitor with new company', () => {
         gameState = createTestGameState();
+        gameState.companyName = 'TestCorp';
         gameState.competitorAILevels = [25, 12, 8];
         gameState.competitorNames = ['OpenAI', 'Google', 'Anthropic'];
         gameState.acquisitionCompetitorIndex = 0;
         
         const originalLength = gameState.competitorAILevels.length;
+        const newAILevel = 25; // Player's new AI level after merger
         
-        // Simulate merger - remove the acquiring competitor
-        gameState.competitorAILevels.splice(gameState.acquisitionCompetitorIndex, 1);
-        gameState.competitorNames.splice(gameState.acquisitionCompetitorIndex, 1);
+        // Simulate merger - replace the acquiring competitor
+        const allCompanies = ["OpenAI", "Anthropic", "Google", "DeepSeek", "Tencent", "xAI"];
+        const usedCompanies = [gameState.companyName, ...gameState.competitorNames];
+        const availableCompanies = allCompanies.filter(company => !usedCompanies.includes(company));
         
-        suite.assertEqual(gameState.competitorAILevels.length, originalLength - 1, 'Competitor list should be shorter');
-        suite.assertEqual(gameState.competitorNames.length, originalLength - 1, 'Competitor names list should be shorter');
-        suite.assertFalse(gameState.competitorNames.includes('OpenAI'), 'Acquiring competitor should be removed');
+        if (availableCompanies.length > 0) {
+            const newCompanyName = availableCompanies[0]; // Use first available for testing
+            const minLevel = newAILevel * 0.1;
+            const maxLevel = newAILevel * 0.4;
+            const newCompetitorLevel = minLevel + Math.random() * (maxLevel - minLevel);
+            
+            gameState.competitorNames[gameState.acquisitionCompetitorIndex] = newCompanyName;
+            gameState.competitorAILevels[gameState.acquisitionCompetitorIndex] = newCompetitorLevel;
+        }
+        
+        suite.assertEqual(gameState.competitorAILevels.length, originalLength, 'Competitor list should maintain same size');
+        suite.assertEqual(gameState.competitorNames.length, originalLength, 'Competitor names list should maintain same size');
+        suite.assertFalse(gameState.competitorNames.includes('OpenAI'), 'Acquiring competitor should be replaced');
+        suite.assertTrue(gameState.competitorAILevels[0] >= newAILevel * 0.1, 'New competitor should be at least 10% of merged level');
+        suite.assertTrue(gameState.competitorAILevels[0] <= newAILevel * 0.4, 'New competitor should be at most 40% of merged level');
     });
 
     suite.test('Merger adds appropriate resources', () => {
@@ -230,22 +246,34 @@ function testMergerMechanics() {
 function testEndgameScoring() {
     const suite = new TestSuite();
 
-    suite.test('VP Safety Alignment gets 11x multiplier instead of 20x', () => {
+    suite.test('VP Safety Alignment gets 11x multiplier (1% equity)', () => {
         gameState = createTestGameState();
-        gameState.isVPSafetyAlignment = true;
+        gameState.playerEquity = 0.01; // 1% equity after merger
         
-        const playerMultiplier = gameState.isVPSafetyAlignment ? 11 : 20;
+        // Player gets: 10 (humanity survival) + 100 * equity (ownership stake)
+        const playerMultiplier = 10 + (100 * gameState.playerEquity);
         
-        suite.assertEqual(playerMultiplier, 11, 'VP Safety Alignment should get 11x multiplier');
+        suite.assertEqual(playerMultiplier, 11, 'VP Safety Alignment should get 11x multiplier (10 + 100 * 0.01)');
     });
 
-    suite.test('Regular player gets 20x multiplier', () => {
+    suite.test('Regular player gets 20x multiplier (10% equity)', () => {
         gameState = createTestGameState();
-        gameState.isVPSafetyAlignment = false;
+        gameState.playerEquity = 0.1; // 10% equity
         
-        const playerMultiplier = gameState.isVPSafetyAlignment ? 11 : 20;
+        // Player gets: 10 (humanity survival) + 100 * equity (ownership stake)
+        const playerMultiplier = 10 + (100 * gameState.playerEquity);
         
-        suite.assertEqual(playerMultiplier, 20, 'Regular player should get 20x multiplier');
+        suite.assertEqual(playerMultiplier, 20, 'Regular player should get 20x multiplier (10 + 100 * 0.1)');
+    });
+
+    suite.test('Merger sets equity to 1%', () => {
+        gameState = createTestGameState();
+        gameState.playerEquity = 0.1; // Start with 10%
+        
+        // Simulate merger
+        gameState.playerEquity = 0.01; // 1% equity in acquiring company
+        
+        suite.assertEqual(gameState.playerEquity, 0.01, 'Player equity should be set to 1% after merger');
     });
 
     suite.test('Shareholder assessment uses starting company', () => {
@@ -303,6 +331,68 @@ function testRoleIndicator() {
     return suite.runAll();
 }
 
+// Test preference text modifier
+function testPreferenceText() {
+    const suite = new TestSuite();
+
+    suite.test('Low equity shows "slightly prefer"', () => {
+        gameState = createTestGameState();
+        gameState.playerEquity = 0.01; // 1% equity
+        
+        const preferenceStrength = 
+            gameState.playerEquity <= 0.02 ? "slightly prefer" :
+            gameState.playerEquity > 0.2 ? "much prefer" : "prefer";
+        
+        suite.assertEqual(preferenceStrength, "slightly prefer", 'Low equity should show "slightly prefer"');
+    });
+
+    suite.test('Equity at 2% threshold shows "slightly prefer"', () => {
+        gameState = createTestGameState();
+        gameState.playerEquity = 0.02; // Exactly 2% equity
+        
+        const preferenceStrength = 
+            gameState.playerEquity <= 0.02 ? "slightly prefer" :
+            gameState.playerEquity > 0.2 ? "much prefer" : "prefer";
+        
+        suite.assertEqual(preferenceStrength, "slightly prefer", '2% equity should show "slightly prefer"');
+    });
+
+    suite.test('Mid equity shows "prefer"', () => {
+        gameState = createTestGameState();
+        gameState.playerEquity = 0.1; // 10% equity
+        
+        const preferenceStrength = 
+            gameState.playerEquity <= 0.02 ? "slightly prefer" :
+            gameState.playerEquity > 0.2 ? "much prefer" : "prefer";
+        
+        suite.assertEqual(preferenceStrength, "prefer", 'Mid equity should show "prefer"');
+    });
+
+    suite.test('High equity shows "much prefer"', () => {
+        gameState = createTestGameState();
+        gameState.playerEquity = 0.25; // 25% equity
+        
+        const preferenceStrength = 
+            gameState.playerEquity <= 0.02 ? "slightly prefer" :
+            gameState.playerEquity > 0.2 ? "much prefer" : "prefer";
+        
+        suite.assertEqual(preferenceStrength, "much prefer", 'High equity should show "much prefer"');
+    });
+
+    suite.test('Equity at 20% threshold shows "prefer"', () => {
+        gameState = createTestGameState();
+        gameState.playerEquity = 0.2; // Exactly 20% equity
+        
+        const preferenceStrength = 
+            gameState.playerEquity <= 0.02 ? "slightly prefer" :
+            gameState.playerEquity > 0.2 ? "much prefer" : "prefer";
+        
+        suite.assertEqual(preferenceStrength, "prefer", '20% equity should show "prefer" (not much prefer)');
+    });
+
+    return suite.runAll();
+}
+
 // Main test runner
 async function runAllTests() {
     console.log('🧪 Critical Path Game - Acquisition Event Tests\n');
@@ -311,7 +401,8 @@ async function runAllTests() {
         testAcquisitionEventAvailability(),
         testMergerMechanics(), 
         testEndgameScoring(),
-        testRoleIndicator()
+        testRoleIndicator(),
+        testPreferenceText()
     ]);
     
     const allPassed = results.every(result => result);

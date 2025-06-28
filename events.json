@@ -277,7 +277,7 @@
       ],
       "choices": [
         {
-          "text": "Merge with $competitorName",
+          "text": "Merge",
           "action": "accept",
           "result_text": "The merger proceeds smoothly. $companyName becomes the Safety and Alignment division of $competitorName, and you assume the role of VP of Safety and Alignment..."
         },

@@ -93,7 +93,10 @@ function getPhase2Text() {
     text += `there's a <strong style="color: ${getRiskColor(adjustedDoom)};">${doomPercent}%</strong> chance that any given ASI system is misaligned and poses an existential threat.<br><br>`;
     
     text += "You want humanity to flourish and avoid extinction. But ";
-    text += `you'd also prefer that <strong>${gameState.companyName}</strong> controls the future rather than leaving it to other organizations.`;
+    const preferenceStrength = 
+        gameState.playerEquity <= 0.02 ? "slightly prefer" :
+        gameState.playerEquity > 0.2 ? "much prefer" : "prefer";
+    text += `you'd also ${preferenceStrength} that <strong>${gameState.companyName}</strong> controls the future rather than leaving it to other organizations.`;
     
     return text;
 }
@@ -123,8 +126,9 @@ function getPhase3BaseText() {
     const expectedHumanityGalaxies = competitorRawShare * (1 - adjustedDoom / 100);
     const expectedRogueGalaxies = 100 - expectedPlayerGalaxies - expectedHumanityGalaxies;
     
-    // Calculate expected score with dynamic player multiplier
-    const playerMultiplier = gameState.isVPSafetyAlignment ? 11 : GAME_CONSTANTS.GALAXY_MULTIPLIERS.PLAYER;
+    // Calculate expected score with equity-based multiplier
+    // Player gets: 10 (humanity survival) + 100 * equity (ownership stake)
+    const playerMultiplier = 10 + (100 * gameState.playerEquity);
     const expectedScore = expectedPlayerGalaxies * playerMultiplier + 
                          expectedHumanityGalaxies * GAME_CONSTANTS.GALAXY_MULTIPLIERS.HUMANITY;
     
@@ -151,7 +155,7 @@ function getPhase3BaseText() {
         `<div style="display: flex; justify-content: space-between; width: 100%;">` +
         `<div style="text-align: center;">` +
         `<div style="color: #ffa726; margin-bottom: 5px;">${gameState.companyName}</div>` +
-        `<div>${Math.round(expectedPlayerGalaxies)}% × ${playerMultiplier}</div>` +
+        `<div>${Math.round(expectedPlayerGalaxies)}% × ${Math.round(playerMultiplier * 10) / 10}</div>` +
         `</div>` +
         `<div style="text-align: center;">` +
         `<div style="color: #66bb6a; margin-bottom: 5px;">Other humanity</div>` +
@@ -424,8 +428,9 @@ function calculateEndGameScore() {
         }
     }
 
-    // Calculate final score with dynamic player multiplier
-    const playerMultiplier = gameState.isVPSafetyAlignment ? 11 : 20;
+    // Calculate final score with equity-based multiplier
+    // Player gets: 10 (humanity survival) + 100 * equity (ownership stake)
+    const playerMultiplier = 10 + (100 * gameState.playerEquity);
     const finalScore = (0 * rogueGalaxies) + (10 * humanityGalaxies) + (playerMultiplier * playerGalaxies);
 
     resultText += `<br><br><strong>Final Galaxy Distribution:</strong><br>`;
@@ -433,7 +438,7 @@ function calculateEndGameScore() {
     resultText += `• Humanity at large: ${humanityGalaxies}%<br>`;
     resultText += `• Your company: ${playerGalaxies}%<br><br>`;
     resultText += `<strong>Final Score: ${finalScore}</strong><br>`;
-    resultText += `(${rogueGalaxies}×0 + ${humanityGalaxies}×10 + ${playerGalaxies}×${playerMultiplier})`;
+    resultText += `(${rogueGalaxies}×0 + ${humanityGalaxies}×10 + ${playerGalaxies}×${Math.round(playerMultiplier * 10) / 10})`;
 
     // Store the result to avoid re-rolling randomness
     gameState.endGameResult = resultText;
