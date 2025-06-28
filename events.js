@@ -249,22 +249,34 @@ function applyChoiceEffects(choice) {
 
 // Custom event handlers for events with risk/success-failure mechanics
 
-function handleOverseasDatacenterChoice(choice) {
-    if (choice.action === 'accept-sanctions') {
-        // Apply standard effects and check if sanctions were triggered
-        const sanctionsTriggered = applyChoiceEffects(choice);
+function handleOverseasDatacenterChoice(choice, event) {
+    if (choice.action === 'accept' || choice.action === 'accept-sanctions') {
+        // Increment datacenter count for successful construction
+        gameState.datacenterCount++;
         
-        let resultText;
-        if (sanctionsTriggered) {
-            resultText = "You proceed with unauthorized datacenter construction, bypassing government approval processes. The facility comes online successfully, but intelligence agencies discover the operation. The US government responds with comprehensive economic sanctions against your company.";
+        if (choice.action === 'accept-sanctions') {
+            // Apply standard effects and check if sanctions were triggered
+            const sanctionsTriggered = applyChoiceEffects(choice);
+            
+            let resultText;
+            if (sanctionsTriggered) {
+                resultText = "You proceed with unauthorized datacenter construction, bypassing government approval processes. The facility comes online successfully, but intelligence agencies discover the operation. The US government responds with comprehensive economic sanctions against your company.";
+            } else {
+                resultText = "You proceed with unauthorized datacenter construction, bypassing government approval processes. The facility comes online successfully, and your covert operations remain undetected. You've gained substantial computational capacity without triggering sanctions.";
+            }
+            
+            gameState.currentEvent.showResult = true;
+            gameState.currentEvent.resultText = resultText;
         } else {
-            resultText = "You proceed with unauthorized datacenter construction, bypassing government approval processes. The facility comes online successfully, and your covert operations remain undetected. You've gained substantial computational capacity without triggering sanctions.";
+            // Handle diplomatic route normally
+            applyChoiceEffects(choice);
+            if (choice.result_text) {
+                gameState.currentEvent.showResult = true;
+                gameState.currentEvent.resultText = choice.result_text;
+            }
         }
-        
-        gameState.currentEvent.showResult = true;
-        gameState.currentEvent.resultText = resultText;
     } else {
-        // Handle other choices normally
+        // Handle decline or other choices
         applyChoiceEffects(choice);
         if (choice.result_text) {
             gameState.currentEvent.showResult = true;

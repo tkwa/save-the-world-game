@@ -287,17 +287,77 @@ function submitForecastingEvalsAnswer(selectedPercentage, buttonElement) {
     }
 }
 
+// Helper function for exponential distribution
+function getNextSpawnDelay(averageInterval) {
+    // Exponential distribution for random intervals
+    // Returns delay in milliseconds
+    return -Math.log(Math.random()) * averageInterval;
+}
+
+function drawStartButton(ctx, canvas) {
+    // Draw start button in center of canvas
+    const buttonWidth = 200;
+    const buttonHeight = 60;
+    const buttonX = (canvas.width - buttonWidth) / 2;
+    const buttonY = (canvas.height - buttonHeight) / 2;
+    
+    // Draw button background
+    ctx.fillStyle = '#0066a2';
+    ctx.fillRect(buttonX, buttonY, buttonWidth, buttonHeight);
+    
+    // Draw button border
+    ctx.strokeStyle = '#66b3ff';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(buttonX, buttonY, buttonWidth, buttonHeight);
+    
+    // Draw button text
+    ctx.fillStyle = 'white';
+    ctx.font = 'bold 18px "Courier New"';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('START GAME', canvas.width / 2, canvas.height / 2);
+    
+    // Store button coordinates for click detection
+    gameState.currentMinigame.startButton = {
+        x: buttonX,
+        y: buttonY,
+        width: buttonWidth,
+        height: buttonHeight
+    };
+}
+
+function startAlignmentGame() {
+    const minigame = gameState.currentMinigame;
+    if (!minigame || minigame.type !== 'alignment-research') return;
+    
+    const dotsData = minigame.dotsData;
+    const currentTime = Date.now();
+    
+    // Initialize game state
+    dotsData.gameStarted = true;
+    dotsData.gameActive = true;
+    dotsData.gameStartTime = currentTime;
+    dotsData.lastSpawnTime = currentTime;
+    dotsData.nextSpawnTime = currentTime + getNextSpawnDelay(dotsData.spawnInterval);
+    
+    // Clear the start button reference
+    delete minigame.startButton;
+}
+
 // Alignment Minigame: Blue vs Red circle area coverage
 function startAlignmentMinigame() {
     gameState.currentMinigame = {
         type: 'alignment-research',
         dotsData: {
             circles: [],
-            gameTime: 15000, // 15 seconds
-            gameActive: true,
-            gameStartTime: Date.now(),
-            lastSpawnTime: Date.now(),
-            spawnInterval: 500 // Average 0.5 seconds between spawns
+            gameTime: 12000, // 12 seconds
+            gameActive: false, // Don't start immediately
+            gameStarted: false, // Track if game has been started
+            gameStartTime: null,
+            lastSpawnTime: null,
+            nextSpawnTime: null,
+            spawnInterval: 187, // Average 0.187 seconds between spawns (~80 total circles, ~20 red)
+            percentageHistory: [] // Track blue/red percentages over time
         }
     };
     
@@ -307,10 +367,9 @@ function startAlignmentMinigame() {
 
 function updateAlignmentMinigame() {
     const minigame = gameState.currentMinigame;
-    if (!minigame || minigame.type !== 'alignment-research' || !minigame.dotsData.gameActive) return;
+    if (!minigame || minigame.type !== 'alignment-research') return;
     
     const dotsData = minigame.dotsData;
-    const currentTime = Date.now();
     const gameCanvas = document.getElementById('alignment-canvas');
     if (!gameCanvas) return;
     
@@ -320,41 +379,100 @@ function updateAlignmentMinigame() {
     ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, gameCanvas.width, gameCanvas.height);
     
+    // If game hasn't started, show start button and continue animation loop
+    if (!dotsData.gameStarted) {
+        drawStartButton(ctx, gameCanvas);
+        requestAnimationFrame(updateAlignmentMinigame);
+        return;
+    }
+    
+    // If game is not active (ended), don't continue
+    if (!dotsData.gameActive) return;
+    
+    const currentTime = Date.now();
+    
     // Check if game time is up
     if (currentTime - dotsData.gameStartTime > dotsData.gameTime) {
         endAlignmentMinigame();
         return;
     }
     
-    // Spawn new circles at random intervals (exponential distribution)
-    if (currentTime - dotsData.lastSpawnTime > getNextSpawnDelay(dotsData.spawnInterval)) {
+    // Spawn new circles at scheduled times
+    if (currentTime >= dotsData.nextSpawnTime) {
         spawnAlignmentCircle();
         dotsData.lastSpawnTime = currentTime;
+        dotsData.nextSpawnTime = currentTime + getNextSpawnDelay(dotsData.spawnInterval);
     }
     
-    // Update and draw all circles (in order, so later ones overlap earlier ones)
+    // Separate circles into layers for proper z-ordering
+    const inactiveCircles = [];
+    const activeRedCircles = [];
+    
     dotsData.circles.forEach(circle => {
+        if (circle.color === 'red' && !circle.stopped) {
+            activeRedCircles.push(circle);
+        } else {
+            inactiveCircles.push(circle);
+        }
+    });
+    
+    // Sort inactive layer: blues by spawn time, inactive reds by click time
+    inactiveCircles.sort((a, b) => {
+        const aTime = a.color === 'blue' ? a.spawnTime : (a.stoppedAt || a.spawnTime);
+        const bTime = b.color === 'blue' ? b.spawnTime : (b.stoppedAt || b.spawnTime);
+        return aTime - bTime;
+    });
+    
+    // Draw inactive layer first, then active reds on top
+    [...inactiveCircles, ...activeRedCircles].forEach(circle => {
         let radius;
         
         if (circle.stopped) {
             // Circle was clicked - keep it at the size when it was stopped
             const stoppedAge = (circle.stoppedAt - circle.spawnTime) / 1000;
-            radius = stoppedAge * circle.growthRate;
+            radius = Math.max(0, Math.min(circle.maxRadius, stoppedAge * circle.growthRate));
         } else {
             // Circle is still growing
             const age = (currentTime - circle.spawnTime) / 1000; // Age in seconds
-            radius = age * circle.growthRate; // pixels per second
+            radius = Math.max(0, Math.min(circle.maxRadius, age * circle.growthRate));
+            
+            // Update physics for active circles
+            updateCirclePhysics(circle, currentTime, gameCanvas);
         }
         
-        // Draw circle
-        ctx.fillStyle = circle.color;
+        // Skip circles with zero radius (just spawned or timing issues)
+        if (radius <= 0) return;
+        
+        // Check if blue circle has reached max size
+        const hasReachedMax = circle.color === 'blue' && radius >= circle.maxRadius;
+        
+        // Draw circle with appropriate color and border
+        if (circle.stopped || hasReachedMax) {
+            // Stopped circles and maxed blue circles are darker, no border
+            ctx.fillStyle = circle.color === 'blue' ? '#0000AA' : '#AA0000';
+        } else {
+            // Active circles are lighter
+            ctx.fillStyle = circle.color === 'blue' ? '#4444FF' : '#FF4444';
+        }
+        
         ctx.beginPath();
         ctx.arc(circle.x, circle.y, radius, 0, 2 * Math.PI);
         ctx.fill();
         
+        // Add border for active circles (but not maxed blue circles)
+        if (!circle.stopped && !hasReachedMax) {
+            // Regular black border for growing circles
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+        
         // Update circle's current radius for scoring
         circle.currentRadius = radius;
     });
+    
+    // Update timer and percentage displays
+    updateAlignmentUI(dotsData, currentTime);
     
     // Continue animation
     if (dotsData.gameActive) {
@@ -362,26 +480,154 @@ function updateAlignmentMinigame() {
     }
 }
 
-function getNextSpawnDelay(averageInterval) {
-    // Exponential distribution for random intervals
-    // Returns delay in milliseconds
-    return -Math.log(Math.random()) * averageInterval;
+function updateAlignmentUI(dotsData, currentTime) {
+    // Update timer
+    const timeLeft = Math.max(0, dotsData.gameTime - (currentTime - dotsData.gameStartTime)) / 1000;
+    const timerElement = document.getElementById('alignment-timer');
+    if (timerElement) {
+        timerElement.textContent = timeLeft.toFixed(1);
+    }
+    
+    // Calculate current blue and red percentages
+    const canvas = document.getElementById('alignment-canvas');
+    if (canvas) {
+        const ctx = canvas.getContext('2d');
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const pixels = imageData.data;
+        let bluePixels = 0;
+        let redPixels = 0;
+        let totalPixels = 0;
+        
+        // Sample every 16th pixel for performance during live updates
+        for (let i = 0; i < pixels.length; i += 64) { // 16 pixels * 4 bytes = 64
+            const r = pixels[i];
+            const g = pixels[i + 1];
+            const b = pixels[i + 2];
+            
+            totalPixels++;
+            
+            // Check if pixel is blue (both light and dark blue)
+            if (b > 150 && r < 100 && g < 100) {
+                bluePixels++;
+            }
+            // Check if pixel is red (both light and dark red)
+            else if (r > 150 && g < 100 && b < 100) {
+                redPixels++;
+            }
+        }
+        
+        const bluePercentage = totalPixels > 0 ? (bluePixels / totalPixels) * 100 : 0;
+        const redPercentage = totalPixels > 0 ? (redPixels / totalPixels) * 100 : 0;
+        const blackPercentage = 100 - bluePercentage - redPercentage;
+        
+        // Record data point every ~0.1 seconds for smooth graph
+        const gameElapsed = (currentTime - dotsData.gameStartTime) / 1000;
+        const lastRecorded = dotsData.percentageHistory.length > 0 ? 
+            dotsData.percentageHistory[dotsData.percentageHistory.length - 1].time : -1;
+        
+        if (gameElapsed - lastRecorded >= 0.1) {
+            dotsData.percentageHistory.push({
+                time: gameElapsed,
+                blue: bluePercentage / 100,
+                red: redPercentage / 100,
+                black: blackPercentage / 100
+            });
+        }
+        
+        const percentageElement = document.getElementById('alignment-percentage');
+        if (percentageElement) {
+            percentageElement.textContent = bluePercentage.toFixed(1);
+        }
+    }
+}
+
+function updateCirclePhysics(circle, currentTime, canvas) {
+    // Check if blue circle has reached max size - if so, stop moving
+    if (circle.color === 'blue') {
+        const age = (currentTime - circle.spawnTime) / 1000;
+        const currentRadius = Math.min(circle.maxRadius, age * circle.growthRate);
+        if (currentRadius >= circle.maxRadius) {
+            // Stop all movement for maxed blue circles
+            circle.vx = 0;
+            circle.vy = 0;
+            circle.ax = 0;
+            circle.ay = 0;
+            return;
+        }
+    }
+    
+    const deltaTime = 1/60; // Assume 60fps for smooth physics
+    
+    // Change direction every second
+    if (currentTime - circle.lastDirectionChange > 1000) {
+        // Random direction (angle in radians)
+        const angle = Math.random() * 2 * Math.PI;
+        // Red circles have 1.5x acceleration
+        const baseAcceleration = 0.2 * canvas.width; // 0.2 screenwidth per second per second
+        const accelerationMagnitude = circle.color === 'red' ? baseAcceleration * 1.5 : baseAcceleration;
+        
+        circle.ax = Math.cos(angle) * accelerationMagnitude;
+        circle.ay = Math.sin(angle) * accelerationMagnitude;
+        circle.lastDirectionChange = currentTime;
+    }
+    
+    // Update velocity with acceleration
+    circle.vx += circle.ax * deltaTime;
+    circle.vy += circle.ay * deltaTime;
+    
+    // Apply velocity cap for red circles (0.5 screenwidth/second)
+    if (circle.color === 'red') {
+        const maxSpeed = 0.5 * canvas.width;
+        const currentSpeed = Math.sqrt(circle.vx * circle.vx + circle.vy * circle.vy);
+        if (currentSpeed > maxSpeed) {
+            const speedRatio = maxSpeed / currentSpeed;
+            circle.vx *= speedRatio;
+            circle.vy *= speedRatio;
+        }
+    }
+    
+    // Update position with velocity
+    circle.x += circle.vx * deltaTime;
+    circle.y += circle.vy * deltaTime;
+    
+    // Bounce off walls when center reaches boundary
+    if (circle.x <= 0 || circle.x >= canvas.width) {
+        circle.vx = -circle.vx;
+        circle.x = Math.max(0, Math.min(canvas.width, circle.x));
+    }
+    if (circle.y <= 0 || circle.y >= canvas.height) {
+        circle.vy = -circle.vy;
+        circle.y = Math.max(0, Math.min(canvas.height, circle.y));
+    }
 }
 
 function spawnAlignmentCircle() {
     const dotsData = gameState.currentMinigame.dotsData;
     const canvas = document.getElementById('alignment-canvas');
     
-    // Randomly choose blue or red (50/50)
-    const isBlue = Math.random() < 0.5;
+    // 1.8x as many blue circles as red (64.3% blue, 35.7% red)
+    const isBlue = Math.random() < 0.643;
+    
+    // Random initial velocity - red circles start faster
+    const initialSpeed = isBlue ? 
+        Math.random() * 100 + 50 : // Blue: 50-150 pixels/second
+        Math.random() * 100 + 120; // Red: 120-220 pixels/second
+    const initialAngle = Math.random() * 2 * Math.PI;
     
     const circle = {
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
+        vx: Math.cos(initialAngle) * initialSpeed, // velocity x
+        vy: Math.sin(initialAngle) * initialSpeed, // velocity y
+        ax: 0, // acceleration x
+        ay: 0, // acceleration y
         spawnTime: Date.now(),
+        lastDirectionChange: Date.now(),
         color: isBlue ? 'blue' : 'red',
-        growthRate: isBlue ? 20 : 100, // pixels per second
-        currentRadius: 0
+        growthRate: isBlue ? 35 : 80, // blue: 35px/s, red: 80px/s
+        maxRadius: isBlue ? 140 : Infinity, // blue circles max at 140px
+        currentRadius: 0,
+        stopped: false
     };
     
     dotsData.circles.push(circle);
@@ -389,19 +635,53 @@ function spawnAlignmentCircle() {
 
 function clickAlignmentCanvas(event) {
     const minigame = gameState.currentMinigame;
-    if (!minigame || minigame.type !== 'alignment-research' || !minigame.dotsData.gameActive) return;
+    if (!minigame || minigame.type !== 'alignment-research') return;
     
     const canvas = document.getElementById('alignment-canvas');
     const rect = canvas.getBoundingClientRect();
     const clickX = event.clientX - rect.left;
     const clickY = event.clientY - rect.top;
     
+    // Check if game hasn't started and click is on start button
+    if (!minigame.dotsData.gameStarted && minigame.startButton) {
+        const btn = minigame.startButton;
+        if (clickX >= btn.x && clickX <= btn.x + btn.width &&
+            clickY >= btn.y && clickY <= btn.y + btn.height) {
+            startAlignmentGame();
+            return;
+        }
+        return; // Don't process other clicks if game hasn't started
+    }
+    
+    // Game must be active for circle clicking
+    if (!minigame.dotsData.gameActive) return;
+    
     const dotsData = minigame.dotsData;
     
-    // Check if click hit any circles (check from newest to oldest so top circles are prioritized)
-    for (let i = dotsData.circles.length - 1; i >= 0; i--) {
-        const circle = dotsData.circles[i];
-        
+    // Check for circle hits in visual front-to-back order (same as rendering order)
+    // Separate circles into layers for proper click detection
+    const inactiveCircles = [];
+    const activeRedCircles = [];
+    
+    dotsData.circles.forEach(circle => {
+        if (circle.color === 'red' && !circle.stopped) {
+            activeRedCircles.push(circle);
+        } else {
+            inactiveCircles.push(circle);
+        }
+    });
+    
+    // Sort inactive layer: blues by spawn time, inactive reds by click time
+    inactiveCircles.sort((a, b) => {
+        const aTime = a.color === 'blue' ? a.spawnTime : (a.stoppedAt || a.spawnTime);
+        const bTime = b.color === 'blue' ? b.spawnTime : (b.stoppedAt || b.spawnTime);
+        return aTime - bTime;
+    });
+    
+    // Check from front to back: active reds first (reverse order), then inactive layer (reverse order)
+    const allCirclesBackToFront = [...inactiveCircles, ...activeRedCircles].reverse();
+    
+    for (const circle of allCirclesBackToFront) {
         // Skip if circle is already stopped
         if (circle.stopped) continue;
         
@@ -416,11 +696,92 @@ function clickAlignmentCanvas(event) {
     }
 }
 
+function drawFinalFrame() {
+    const minigame = gameState.currentMinigame;
+    if (!minigame) return;
+    
+    const dotsData = minigame.dotsData;
+    const currentTime = Date.now();
+    const gameCanvas = document.getElementById('alignment-canvas');
+    if (!gameCanvas) return;
+    
+    const ctx = gameCanvas.getContext('2d');
+    
+    // Clear canvas to black
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, gameCanvas.width, gameCanvas.height);
+    
+    // Separate circles into layers for proper z-ordering
+    const inactiveCircles = [];
+    const activeRedCircles = [];
+    
+    dotsData.circles.forEach(circle => {
+        if (circle.color === 'red' && !circle.stopped) {
+            activeRedCircles.push(circle);
+        } else {
+            inactiveCircles.push(circle);
+        }
+    });
+    
+    // Sort inactive layer: blues by spawn time, inactive reds by click time
+    inactiveCircles.sort((a, b) => {
+        const aTime = a.color === 'blue' ? a.spawnTime : (a.stoppedAt || a.spawnTime);
+        const bTime = b.color === 'blue' ? b.spawnTime : (b.stoppedAt || b.spawnTime);
+        return aTime - bTime;
+    });
+    
+    // Draw all circles in their final state (inactive layer first, then active reds)
+    [...inactiveCircles, ...activeRedCircles].forEach(circle => {
+        let radius;
+        
+        if (circle.stopped) {
+            // Circle was clicked - keep it at the size when it was stopped
+            const stoppedAge = (circle.stoppedAt - circle.spawnTime) / 1000;
+            radius = Math.max(0, Math.min(circle.maxRadius, stoppedAge * circle.growthRate));
+        } else {
+            // Circle grew for the full game duration
+            const gameEndTime = dotsData.gameStartTime + dotsData.gameTime;
+            const finalAge = (gameEndTime - circle.spawnTime) / 1000;
+            radius = Math.max(0, Math.min(circle.maxRadius, finalAge * circle.growthRate));
+        }
+        
+        // Skip circles with zero radius
+        if (radius <= 0) return;
+        
+        // Check if blue circle has reached max size
+        const hasReachedMax = circle.color === 'blue' && radius >= circle.maxRadius;
+        
+        // Draw circle with appropriate color and border
+        if (circle.stopped || hasReachedMax) {
+            // Stopped circles and maxed blue circles are darker, no border
+            ctx.fillStyle = circle.color === 'blue' ? '#0000AA' : '#AA0000';
+        } else {
+            // Active circles are lighter
+            ctx.fillStyle = circle.color === 'blue' ? '#4444FF' : '#FF4444';
+        }
+        
+        ctx.beginPath();
+        ctx.arc(circle.x, circle.y, radius, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Add border for active circles (but not maxed blue circles)
+        if (!circle.stopped && !hasReachedMax) {
+            // Regular black border for growing circles
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+    });
+}
+
 function endAlignmentMinigame() {
     const minigame = gameState.currentMinigame;
     if (!minigame) return;
     
     minigame.dotsData.gameActive = false;
+    
+    // Draw final frame with all circles frozen
+    drawFinalFrame();
     
     // Calculate blue area percentage
     const canvas = document.getElementById('alignment-canvas');
@@ -430,24 +791,39 @@ function endAlignmentMinigame() {
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const pixels = imageData.data;
     let bluePixels = 0;
-    let totalPixels = 0;
+    let redPixels = 0;
+    let totalNonBlackPixels = 0;
     
-    // Sample every 4th pixel for performance (can adjust for accuracy)
-    for (let i = 0; i < pixels.length; i += 16) { // RGBA = 4 bytes, so i += 16 samples every 4th pixel
+    // Check every pixel (RGBA = 4 bytes per pixel)
+    for (let i = 0; i < pixels.length; i += 4) {
         const r = pixels[i];
         const g = pixels[i + 1];
         const b = pixels[i + 2];
         
-        totalPixels++;
-        
-        // Check if pixel is blue (blue = 0, 0, 255; black = 0, 0, 0; red = 255, 0, 0)
-        if (b > 200 && r < 50 && g < 50) {
-            bluePixels++;
+        // Check if pixel is not black (background)
+        if (r > 10 || g > 10 || b > 10) {
+            totalNonBlackPixels++;
+            
+            // Check if pixel is blue (both light and dark blue)
+            // Light blue: #4444FF (68, 68, 255), Dark blue: #0000AA (0, 0, 170)
+            if (b > 150 && r < 100 && g < 100) {
+                bluePixels++;
+            }
+            // Check if pixel is red (both light and dark red)  
+            // Light red: #FF4444 (255, 68, 68), Dark red: #AA0000 (170, 0, 0)
+            else if (r > 150 && g < 100 && b < 100) {
+                redPixels++;
+            }
         }
     }
     
+    const totalPixels = (canvas.width * canvas.height);
     const bluePercentage = totalPixels > 0 ? (bluePixels / totalPixels) * 100 : 0;
-    const success = bluePercentage >= 50; // Success if 50% or more blue
+    
+    // Update max score if this is better
+    if (!gameState.alignmentMaxScore || bluePercentage > gameState.alignmentMaxScore) {
+        gameState.alignmentMaxScore = bluePercentage;
+    }
     
     // Create feedback
     let feedbackDiv = document.getElementById('minigame-feedback');
@@ -465,33 +841,189 @@ function endAlignmentMinigame() {
         document.getElementById('story-content').appendChild(feedbackDiv);
     }
     
-    if (success) {
-        feedbackDiv.innerHTML = `Success! Blue coverage: ${bluePercentage.toFixed(1)}%<br>Alignment Research completed.`;
-        feedbackDiv.style.backgroundColor = '#d4edda';
-        feedbackDiv.style.color = '#155724';
-        feedbackDiv.style.border = '1px solid #c3e6cb';
-        
-        setTimeout(() => {
-            gameState.evalsBuilt.alignment = true;
-            gameState.currentMinigame = null;
-            gameState.currentPage = '2026';
-            showPage('2026');
-        }, 2000);
-    } else {
-        feedbackDiv.innerHTML = `Failed! Blue coverage: ${bluePercentage.toFixed(1)}%<br>Alignment Research is now on cooldown for 15 days.`;
-        feedbackDiv.style.backgroundColor = '#f8d7da';
-        feedbackDiv.style.color = '#721c24';
-        feedbackDiv.style.border = '1px solid #f5c6cb';
-        
-        setTimeout(() => {
-            gameState.alignmentEvalsCooldown = 15;
-            gameState.currentMinigame = null;
-            gameState.currentPage = '2026';
-            showPage('2026');
-        }, 3000);
+    feedbackDiv.innerHTML = `
+        Alignment (Blue coverage): ${bluePercentage.toFixed(1)}%<br>
+        High score: ${gameState.alignmentMaxScore.toFixed(1)}%<br>
+        <div style="margin: 15px 0;">
+            <div style="font-weight: bold; margin-bottom: 10px;">Training Loss Over Time</div>
+            <div id="graph-container"></div>
+        </div>
+        <button class="button" onclick="gameState.currentMinigame = null; gameState.currentPage = 'main-game'; showPage('main-game');" style="margin-top: 10px;">Continue</button>
+    `;
+    
+    // Create the line graph and insert it directly
+    console.log('Percentage history length:', minigame.dotsData.percentageHistory.length);
+    if (minigame.dotsData.percentageHistory.length > 0) {
+        console.log('Sample data point:', minigame.dotsData.percentageHistory[0]);
     }
+    const graphCanvas = createAlignmentGraph(minigame.dotsData.percentageHistory);
+    const graphContainer = document.getElementById('graph-container');
+    if (graphContainer) {
+        graphContainer.appendChild(graphCanvas);
+    }
+    feedbackDiv.style.backgroundColor = '#353535';
+    feedbackDiv.style.color = '#e0e0e0';
+    feedbackDiv.style.border = '1px solid #555';
+}
+
+function createAlignmentGraph(percentageHistory) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 400;
+    canvas.height = 200;
+    canvas.style.border = '1px solid #555';
+    canvas.style.backgroundColor = 'white';
+    
+    const ctx = canvas.getContext('2d');
+    
+    // Set up the graph area
+    const padding = 40;
+    const graphWidth = canvas.width - 2 * padding;
+    const graphHeight = canvas.height - 2 * padding;
+    
+    // Clear background - ensure it's actually white
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    if (percentageHistory.length === 0) {
+        // Draw empty graph with message
+        ctx.fillStyle = '#000000';
+        ctx.font = '16px "Courier New"';
+        ctx.textAlign = 'center';
+        ctx.fillText('No data collected', canvas.width / 2, canvas.height / 2);
+        return canvas;
+    }
+    
+    // Draw axes
+    ctx.strokeStyle = '#666';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    // Y-axis
+    ctx.moveTo(padding, padding);
+    ctx.lineTo(padding, canvas.height - padding);
+    // X-axis
+    ctx.moveTo(padding, canvas.height - padding);
+    ctx.lineTo(canvas.width - padding, canvas.height - padding);
+    ctx.stroke();
+    
+    // Add axis labels
+    ctx.fillStyle = '#000000';
+    ctx.font = '12px "Courier New"';
+    ctx.textAlign = 'center';
+    
+    // Y-axis labels (0 to 1)
+    ctx.textAlign = 'right';
+    ctx.fillText('1.0', padding - 5, padding + 5);
+    ctx.fillText('0.5', padding - 5, padding + graphHeight / 2 + 5);
+    ctx.fillText('0.0', padding - 5, canvas.height - padding + 5);
+    
+    // X-axis label
+    ctx.textAlign = 'center';
+    ctx.fillText('Training step', canvas.width / 2, canvas.height - 5);
+    
+    // X-axis tick marks with training step numbers
+    const maxTime = Math.max(...percentageHistory.map(p => p.time));
+    const maxSteps = maxTime * 100; // Convert to training steps
+    const numTicks = 5;
+    ctx.fillStyle = '#000000';
+    ctx.textAlign = 'center';
+    for (let i = 0; i <= numTicks; i++) {
+        const x = padding + (i / numTicks) * graphWidth;
+        const steps = Math.round((i / numTicks) * maxSteps);
+        
+        // Draw tick marks
+        ctx.strokeStyle = '#666';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x, canvas.height - padding);
+        ctx.lineTo(x, canvas.height - padding + 5);
+        ctx.stroke();
+        
+        // Draw step numbers
+        ctx.fillText(steps.toString(), x, canvas.height - padding + 18);
+    }
+    
+    // Draw legend
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(canvas.width - 120, padding, 12, 12);
+    ctx.fillStyle = '#000000';
+    ctx.fillText('Loss', canvas.width - 105, padding + 10);
+    
+    ctx.fillStyle = '#ff4444';
+    ctx.fillRect(canvas.width - 120, padding + 20, 12, 12);
+    ctx.fillStyle = '#000000';
+    ctx.fillText('Misalignment', canvas.width - 105, padding + 30);
+    
+    ctx.fillStyle = '#4444ff';
+    ctx.fillRect(canvas.width - 120, padding + 40, 12, 12);
+    ctx.fillStyle = '#000000';
+    ctx.fillText('Alignment', canvas.width - 105, padding + 50);
+    
+    // Helper function to convert data coordinates to canvas coordinates
+    const dataToCanvas = (time, percentage) => {
+        const x = padding + (time / maxTime) * graphWidth;
+        const y = canvas.height - padding - (percentage * graphHeight);
+        return { x, y };
+    };
+    
+    // Draw loss line (black percentage)
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let i = 0; i < percentageHistory.length; i++) {
+        const point = dataToCanvas(percentageHistory[i].time, percentageHistory[i].black);
+        if (i === 0) {
+            ctx.moveTo(point.x, point.y);
+        } else {
+            ctx.lineTo(point.x, point.y);
+        }
+    }
+    ctx.stroke();
+    
+    // Draw misalignment line (red percentage)
+    ctx.strokeStyle = '#ff4444';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let i = 0; i < percentageHistory.length; i++) {
+        const point = dataToCanvas(percentageHistory[i].time, percentageHistory[i].red);
+        if (i === 0) {
+            ctx.moveTo(point.x, point.y);
+        } else {
+            ctx.lineTo(point.x, point.y);
+        }
+    }
+    ctx.stroke();
+    
+    // Draw alignment line (blue percentage)
+    ctx.strokeStyle = '#4444ff';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let i = 0; i < percentageHistory.length; i++) {
+        const point = dataToCanvas(percentageHistory[i].time, percentageHistory[i].blue);
+        if (i === 0) {
+            ctx.moveTo(point.x, point.y);
+        } else {
+            ctx.lineTo(point.x, point.y);
+        }
+    }
+    ctx.stroke();
+    
+    // Add blue circle marker at final alignment value
+    if (percentageHistory.length > 0) {
+        const finalData = percentageHistory[percentageHistory.length - 1];
+        const finalPoint = dataToCanvas(finalData.time, finalData.blue);
+        
+        ctx.fillStyle = '#4444ff';
+        ctx.beginPath();
+        ctx.arc(finalPoint.x, finalPoint.y, 4, 0, 2 * Math.PI);
+        ctx.fill();
+    }
+    
+    return canvas;
 }
 
 // Make functions globally accessible
 window.startMinigame = startMinigame;
 window.clickAlignmentCanvas = clickAlignmentCanvas;
+window.updateAlignmentMinigame = updateAlignmentMinigame;
+window.startAlignmentGame = startAlignmentGame;

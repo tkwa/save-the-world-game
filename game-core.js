@@ -191,7 +191,9 @@ const gameState = {
     selectedAllocation: null,
     eventsSeen: {}, // Tracks count of each event type seen
     choicesTaken: {}, // Tracks choices taken for each event type
-    dsaEventsAccepted: new Set() // Tracks which DSA events have been accepted
+    dsaEventsAccepted: new Set(), // Tracks which DSA events have been accepted
+    alignmentMaxScore: 0, // Maximum score achieved in alignment minigame
+    endgameAdjustedRisk: null // Adjusted risk level at endgame trigger
 };
 
 // Story content
@@ -347,24 +349,26 @@ const storyContent = {
         title: "Alignment Research",
         text: function () {
             return `<div style="text-align: center;">
-                <p>Balance AI alignment vs capability! Blue circles grow slowly (aligned), red circles grow fast (misaligned).</p>
-                <p>Click circles to stop them from growing. Goal: Maximize blue area coverage at the end.</p>
-                <canvas id="alignment-canvas" width="600" height="400" 
-                        style="border: 2px solid #555; background-color: #1a1a1a; cursor: crosshair;"
-                        onclick="clickAlignmentCanvas(event)"></canvas>
-                <p style="margin-top: 10px; font-size: 14px; color: #ccc;">
-                    Blue: 20px/s growth • Red: 100px/s growth • Game lasts 15 seconds
-                </p>
+                <p>Most AI algorithms are benign (<span style="color: #4444ff; font-weight: bold;">blue</span>), but power-seeking <span style="color: #ff4444; font-weight: bold;">red</span> algorithms emerge in long-horizon tasks. Though less numerous, red algorithms grow much faster because they're instrumentally convergent - selected for their effectiveness at achieving goals regardless of alignment.</p>
+                <p>Click on <span style="color: #ff4444; font-weight: bold;">red</span> circles to halt them before they dominate, and maximize the fraction of the system that is <span style="color: #4444ff; font-weight: bold;">aligned</span>.</p>
+                <div style="position: relative; display: inline-block;">
+                    <canvas id="alignment-canvas" width="600" height="400" 
+                            style="border: 2px solid #555; background-color: #1a1a1a; cursor: crosshair;"
+                            onclick="clickAlignmentCanvas(event)"></canvas>
+                    <div style="position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.8); padding: 8px; border-radius: 5px; font-family: 'Courier New', monospace; pointer-events: none;">
+                        <div style="color: #ffa726; font-size: 14px;"><strong>Time: <span id="alignment-timer">12.0</span>s</strong></div>
+                        <div style="color: #66bb6a; font-size: 14px;"><strong>Alignment: <span id="alignment-percentage">0.0</span>%</strong></div>
+                    </div>
+                </div>
             </div>`;
         },
-        showStatus: false,
+        showStatus: true,
         customButtons: true,
         buttons: [],
         onShow: function() {
-            // Start the minigame animation when the page is shown
+            // Start the minigame display when the page is shown (but don't start the game)
             setTimeout(() => {
                 if (gameState.currentMinigame && gameState.currentMinigame.type === 'alignment-research') {
-                    gameState.currentMinigame.dotsData.lastSpawn = Date.now();
                     updateAlignmentMinigame();
                 }
             }, 100);
@@ -450,10 +454,26 @@ function getAIRisksByCapability(capabilityLevel) {
     }
 }
 
+function calculateAdjustedRisk() {
+    const rawRisk = gameState.doomLevel;
+    const safetyFactor = 1 + Math.pow(gameState.safetyPoints, 0.5) / 3;
+    const alignmentFactor = 1 + (gameState.alignmentMaxScore / 100);
+    const adjustedRisk = rawRisk / (safetyFactor * alignmentFactor);
+    return Math.min(adjustedRisk, 100); // Cap at 100%
+}
+
+function getRiskFactors() {
+    const safetyFactor = 1 + Math.pow(gameState.safetyPoints, 0.5) / 3;
+    const alignmentFactor = 1 + (gameState.alignmentMaxScore / 100);
+    return { safetyFactor, alignmentFactor };
+}
+
 function generateRogueAIRiskTooltip() {
-    const riskPercent = Math.round(gameState.doomLevel);
-    const actualRiskPercent = gameState.doomLevel;
-    const monthlyIncidentChance = Math.pow(actualRiskPercent / 100, 2) * 100;
+    const rawRisk = gameState.doomLevel;
+    const adjustedRisk = calculateAdjustedRisk();
+    const { safetyFactor, alignmentFactor } = getRiskFactors();
+    const riskPercent = Math.round(adjustedRisk);
+    const monthlyIncidentChance = Math.pow(adjustedRisk / 100, 2) * 100;
     const companyName = gameState.companyName || 'your company';
     
     // Get current capability frontier (highest AI level)
@@ -461,9 +481,15 @@ function generateRogueAIRiskTooltip() {
     const currentRisks = getAIRisksByCapability(capabilityFrontier);
     
     // Apply same color logic as status bar: red if >50%, amber if >15%, otherwise white
-    const riskColor = getRiskColor(actualRiskPercent);
+    const riskColor = getRiskColor(adjustedRisk);
     
-    return `Current AI systems are capable of harms like <strong>${currentRisks[0]}</strong> and <strong>${currentRisks[1]}</strong>, and <strong style="color: #ff6b6b;">ASI</strong> could threaten humanity as a whole. Currently the risk of <strong style="color: ${riskColor};">${riskPercent}%</strong> means:<br>- <strong style="color: ${riskColor};">${riskPercent}%</strong> chance of existential risk at game end<br>- ${riskPercent}%² = <strong style="color: ${riskColor};">${monthlyIncidentChance.toFixed(1)}%</strong> monthly chance of ${companyName} safety incident.`;
+    // Build calculation explanation
+    let calculationText = '';
+    if (gameState.safetyPoints > 0 || gameState.alignmentMaxScore > 0) {
+        calculationText = `Risk = <strong>${rawRisk.toFixed(1)}%</strong> (AI Level) / (<strong>${safetyFactor.toFixed(2)}</strong> (Safety R&D) × <strong>${alignmentFactor.toFixed(2)}</strong> (Alignment)) = <strong>${adjustedRisk.toFixed(1)}%</strong><br><br>`;
+    }
+    
+    return `Current AI systems are capable of harms like <strong>${currentRisks[0]}</strong> and <strong>${currentRisks[1]}</strong>, and <strong style="color: #ff6b6b;">ASI</strong> could threaten humanity as a whole.<br><br>${calculationText}Currently the risk of <strong style="color: ${riskColor};">${riskPercent}%</strong> means:<br>- <strong style="color: ${riskColor};">${riskPercent}%</strong> chance of existential risk at game end<br>- ${riskPercent}%² = <strong style="color: ${riskColor};">${monthlyIncidentChance.toFixed(1)}%</strong> monthly chance of ${companyName} safety incident.`;
 }
 
 function updateAISection() {
@@ -475,17 +501,18 @@ function updateAISection() {
     // Red if less than top competitor AI level
     playerAIElement.style.color = gameState.playerAILevel < gameState.competitorAILevels[0] ? '#ff6b6b' : '#e0e0e0';
     
-    // Doom level
+    // Doom level - adjusted by safety R&D and alignment score
     const doomElement = document.getElementById('doom-level');
-    const roundedDoom = Math.round(gameState.doomLevel);
+    const adjustedDoom = calculateAdjustedRisk();
+    const roundedDoom = Math.round(adjustedDoom);
     doomElement.textContent = `${roundedDoom}%`;
     doomElement.style.fontWeight = 'bold';
-    // Risk-based color
-    doomElement.style.color = getRiskColor(gameState.doomLevel);
+    // Risk-based color (use adjusted doom for color)
+    doomElement.style.color = getRiskColor(adjustedDoom);
     
     // Make "Rogue AI Risk" label red and bold if >75%, otherwise just bold
     const doomLabelElement = document.getElementById('doom-label');
-    doomLabelElement.style.color = getCriticalRiskColor(gameState.doomLevel);
+    doomLabelElement.style.color = getCriticalRiskColor(adjustedDoom);
     doomLabelElement.style.fontWeight = 'bold';
     
     // Competitor AI levels
@@ -793,14 +820,16 @@ async function advanceTurn() {
     updateStatusBar();
 
     // Check end conditions
-    if (gameState.doomLevel >= GAME_CONSTANTS.DOOM_GAME_OVER_THRESHOLD) {
+    if (calculateAdjustedRisk() >= GAME_CONSTANTS.DOOM_GAME_OVER_THRESHOLD) {
         gameState.gameOverReason = 'doom-100';
+        gameState.endgameAdjustedRisk = calculateAdjustedRisk();
         showPage('end-game');
         return;
     }
 
     if (gameState.playerAILevel >= GAME_CONSTANTS.ASI_THRESHOLD || gameState.competitorAILevels[0] >= GAME_CONSTANTS.ASI_THRESHOLD) {
         gameState.gameOverReason = 'ai-singularity';
+        gameState.endgameAdjustedRisk = calculateAdjustedRisk();
         scaleAILevelsForEndGame();
         showPage('end-game');
         return;
@@ -1012,11 +1041,19 @@ function generateActionTooltip(actionType, resources) {
 function generateActionLabels(resources) {
     const gains = calculateResourceGains(resources);
     
+    // Calculate current and projected adjusted risk for safety R&D display
+    const currentRisk = calculateAdjustedRisk();
+    const projectedSafetyPoints = gameState.safetyPoints + gains.safety;
+    const projectedSafetyFactor = 1 + Math.pow(projectedSafetyPoints, 0.5) / 3;
+    const alignmentFactor = 1 + (gameState.alignmentMaxScore / 100);
+    const projectedRisk = gameState.doomLevel / (projectedSafetyFactor * alignmentFactor);
+    const riskReduction = currentRisk - projectedRisk;
+    
     return [
         `<strong>A</strong>I R&D<br>(+${Math.round(gains.ai * 10) / 10} AI, +${Math.round(gains.ai * 10) / 10}% Risk, -$${Math.round(gains.aiCost * 10) / 10}B)`,
         `<strong>D</strong>iplomacy (+${Math.round(gains.diplomacy * 10) / 10})`,
         `<strong>P</strong>roduct (+${Math.round(gains.product * 10) / 10})`,
-        `<strong>S</strong>afety R&D<br>(+${Math.round(gains.safety * 10) / 10} Safety, -${Math.round(gains.riskReduction * 10) / 10}% Risk, -$${Math.round(gains.safetyCost * 10) / 10}B)`,
+        `<strong>S</strong>afety R&D<br>(+${Math.round(gains.safety * 10) / 10} Safety, -${riskReduction.toFixed(1)}% Risk, -$${Math.round(gains.safetyCost * 10) / 10}B)`,
         `<strong>R</strong>evenue (+$${Math.round(gains.revenue * 10) / 10}B)`
     ];
 }
@@ -1054,8 +1091,6 @@ function applyResourceAllocation(resourceType, corporateResources) {
             break;
         case 'safety-rd':
             gameState.safetyPoints += gains.safety;
-            const reductionFactor = 1 - (gains.riskReduction / 100);
-            gameState.doomLevel = gameState.doomLevel * Math.max(0, reductionFactor);
             gameState.money = Math.max(0, gameState.money - gains.safetyCost);
             break;
         case 'revenue':
@@ -1109,6 +1144,8 @@ function resetGameState() {
     gameState.endGamePhase = 1;
     gameState.alignmentRolls = null;
     gameState.galaxyDistribution = null;
+    gameState.alignmentMaxScore = 0;
+    gameState.endgameAdjustedRisk = null;
 }
 
 
@@ -1192,9 +1229,9 @@ async function showPage(pageId) {
 
         // Show sanctions calculation if active
         if (gameState.hasSanctions) {
-            headerDiv.innerHTML = `Allocate ${corporateResources} million AI labor-hours to <strong>one</strong> sector for this month (base compute cut 50% by sanctions):`;
+            headerDiv.innerHTML = `Allocate ${corporateResources}M AI labor-hours to <strong>one</strong> sector for this month (base compute cut 50% by sanctions):`;
         } else {
-            headerDiv.innerHTML = `Allocate ${corporateResources} million AI labor-hours to <strong>one</strong> sector for this month:`;
+            headerDiv.innerHTML = `Allocate ${corporateResources}M AI labor-hours to <strong>one</strong> sector for this month:`;
         }
         actionsPanel.appendChild(headerDiv);
 
@@ -1208,7 +1245,19 @@ async function showPage(pageId) {
         const buttonContainer = document.createElement('div');
         buttonContainer.style.display = 'grid';
         buttonContainer.style.gridTemplateColumns = '1fr 1fr';
-        buttonContainer.style.gap = '5px';
+        buttonContainer.style.gap = '20px'; // At least as much gap as right column spacing
+
+        // Create left column (AI R&D, Safety R&D)
+        const leftColumn = document.createElement('div');
+        leftColumn.style.display = 'flex';
+        leftColumn.style.flexDirection = 'column';
+        leftColumn.style.gap = '15px'; // Gap to match right column total height (145px total)
+
+        // Create right column (Diplomacy, Product, Revenue)
+        const rightColumn = document.createElement('div');
+        rightColumn.style.display = 'flex';
+        rightColumn.style.flexDirection = 'column';
+        rightColumn.style.gap = '5px';
 
         // No default selection - start with everything greyed out
 
@@ -1221,14 +1270,14 @@ async function showPage(pageId) {
             button.innerHTML = actionLabel;
             button.style.fontFamily = "'Courier New', Courier, monospace";
             button.style.fontSize = '14px';
-            button.style.width = 'calc(100% - 10px)';
-            button.style.margin = '5px';
+            button.style.width = '100%';
             
-            // Adjust height for middle column buttons (Diplomacy, Product, Revenue)
-            if (['diplomacy', 'product', 'revenue'].includes(page.actions[index])) {
-                button.style.height = '45px'; // 2/3 of standard height
+            // Set heights: AI R&D and Safety R&D are taller, others are shorter
+            if (['ai-rd', 'safety-rd'].includes(page.actions[index])) {
+                button.style.height = '55px'; // Reduced height for AI R&D and Safety R&D
+                button.style.padding = '5px 12px'; // Less vertical padding
             } else {
-                button.style.height = '67px'; // Standard height for AI R&D and Safety R&D
+                button.style.height = '35px'; // Shorter height for Diplomacy, Product, Revenue
             }
 
             // Check if player can afford this action
@@ -1282,8 +1331,17 @@ async function showPage(pageId) {
                 }
             };
 
-            buttonContainer.appendChild(button);
+            // Add button to appropriate column
+            if (['ai-rd', 'safety-rd'].includes(page.actions[index])) {
+                leftColumn.appendChild(button);
+            } else {
+                rightColumn.appendChild(button);
+            }
         });
+
+        // Add columns to button container
+        buttonContainer.appendChild(leftColumn);
+        buttonContainer.appendChild(rightColumn);
 
         // Create Research section (right side)
         const researchContainer = document.createElement('div');
@@ -1306,7 +1364,8 @@ async function showPage(pageId) {
         // Add Alignment research button
         const alignmentBtn = document.createElement('button');
         alignmentBtn.className = 'button';
-        alignmentBtn.innerHTML = 'Alignment 🧭<br><span style="font-size: 12px;">85%</span>';
+        const alignmentScore = gameState.alignmentMaxScore;
+        alignmentBtn.innerHTML = `Alignment 🧭<br><span style="font-size: 12px;">${alignmentScore.toFixed(1)}%</span>`;
         alignmentBtn.style.cssText = `
             width: 100%;
             height: 60px;
@@ -1426,6 +1485,11 @@ async function showPage(pageId) {
                 buttonsDiv.appendChild(btn);
             });
         }
+    }
+    
+    // Call onShow callback if it exists
+    if (page.onShow && typeof page.onShow === 'function') {
+        page.onShow();
     }
     
     // Add debug controls (always visible in bottom right)
@@ -1575,9 +1639,7 @@ async function handleEventChoice(choiceIndex) {
         }
         
         // Track infrastructure construction
-        if (event.type === 'overseas-datacenter') {
-            gameState.datacenterCount++;
-        } else if (event.type === 'synthetic-biology') {
+        if (event.type === 'synthetic-biology') {
             gameState.biotechLabCount++;
         }
     }
@@ -1600,6 +1662,7 @@ async function handleEventChoice(choiceIndex) {
     if (event.type === 'decisive-strategic-advantage' && choice.action === 'accept') {
         gameState.playerAILevel = GAME_CONSTANTS.ASI_THRESHOLD;
         gameState.gameOverReason = 'dsa-singularity';
+        gameState.endgameAdjustedRisk = calculateAdjustedRisk();
         scaleAILevelsForEndGame();
         updateStatusBar();
         showPage('end-game');

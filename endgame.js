@@ -80,7 +80,8 @@ function getPhase1Text() {
 }
 
 function getPhase2Text() {
-    const doomPercent = Math.round(gameState.doomLevel);
+    const adjustedDoom = gameState.endgameAdjustedRisk || calculateAdjustedRisk();
+    const doomPercent = Math.round(adjustedDoom);
     
     let text = "There is a critical question that no one—not even the creators—can answer with certainty: ";
     text += "<strong>Is this superintelligent AI actually aligned with human values?</strong><br><br>";
@@ -89,7 +90,7 @@ function getPhase2Text() {
     text += "there remains fundamental uncertainty about whether an ASI system will pursue goals compatible with human flourishing.<br><br>";
     
     text += `Based on the safety research conducted and the recklessness of the AI race, humanity's best guess is that `;
-    text += `there's a <strong style="color: ${getRiskColor(doomPercent)};">${doomPercent}%</strong> chance that any given ASI system is misaligned and poses an existential threat.<br><br>`;
+    text += `there's a <strong style="color: ${getRiskColor(adjustedDoom)};">${doomPercent}%</strong> chance that any given ASI system is misaligned and poses an existential threat.<br><br>`;
     
     text += "You want humanity to flourish and avoid extinction. But ";
     text += `you'd also prefer that <strong>${gameState.companyName}</strong> controls the future rather than leaving it to other organizations.`;
@@ -98,7 +99,8 @@ function getPhase2Text() {
 }
 
 function getPhase3BaseText() {
-    const doomPercent = Math.round(gameState.doomLevel);
+    const adjustedDoom = gameState.endgameAdjustedRisk || calculateAdjustedRisk();
+    const doomPercent = Math.round(adjustedDoom);
     
     // Roll for alignment (using same logic as calculateEndGameScore)
     if (!gameState.alignmentRolls) {
@@ -116,9 +118,9 @@ function getPhase3BaseText() {
     const playerRawShare = (playerCapabilitySquared / totalCapabilitySquared) * 100;
     const competitorRawShare = (competitorCapabilitiesSquared.reduce((sum, cap) => sum + cap, 0) / totalCapabilitySquared) * 100;
     
-    // Expected values accounting for alignment probability
-    const expectedPlayerGalaxies = playerRawShare * (1 - doomPercent / 100);
-    const expectedHumanityGalaxies = competitorRawShare * (1 - doomPercent / 100);
+    // Expected values accounting for alignment probability (using adjusted risk)
+    const expectedPlayerGalaxies = playerRawShare * (1 - adjustedDoom / 100);
+    const expectedHumanityGalaxies = competitorRawShare * (1 - adjustedDoom / 100);
     const expectedRogueGalaxies = 100 - expectedPlayerGalaxies - expectedHumanityGalaxies;
     
     // Calculate expected score
@@ -168,7 +170,7 @@ function getPhase3BaseText() {
     text += `</div>`;
     text += `</div><br>`;
     
-    text += "But in the real world, systems are either benign or malicious-- it can be all or nothing.<br><br>";
+    text += "But in the real world, systems are either benign or malicious.<br><br>";
     
     return text;
 }
@@ -318,7 +320,7 @@ function startAlignmentReveal() {
     
     // Reveal actual outcome header and column titles after 4.5 seconds
     setTimeout(() => {
-        let headerHTML = `<strong>Actual Outcome:</strong><br>`;
+        let headerHTML = `<strong>Outcome:</strong><br>`;
         
         // Column headers (without values yet) - matching expected table structure
         headerHTML += `<div style="display: flex; justify-content: space-between; width: 60%; margin: 15px auto;">`;
@@ -399,13 +401,14 @@ function calculateEndGameScore() {
         const playerShare = Math.max(0, Math.min(100, gameState.playerAILevel - gameState.competitorAILevels[0]));
         const otherShare = 100 - playerShare;
 
-        // Roll for misalignment using doom level as probability
-        const playerMisaligned = Math.random() * 100 < gameState.doomLevel;
-        const otherMisaligned = Math.random() * 100 < gameState.doomLevel;
+        // Roll for misalignment using adjusted doom level as probability
+        const adjustedDoom = gameState.endgameAdjustedRisk || calculateAdjustedRisk();
+        const playerMisaligned = Math.random() * 100 < adjustedDoom;
+        const otherMisaligned = Math.random() * 100 < adjustedDoom;
 
         if (playerMisaligned) {
             rogueGalaxies += playerShare;
-            resultText += `Your AI systems became misaligned (${gameState.doomLevel}% chance). `;
+            resultText += `Your AI systems became misaligned (${Math.round(adjustedDoom)}% chance). `;
         } else {
             playerGalaxies = playerShare;
             resultText += `Your AI systems remained aligned. `;

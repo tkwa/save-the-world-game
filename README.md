@@ -76,6 +76,7 @@ Capabilities breakthrough
 
 Alignment track:
 * AI monitoring
+
 * AI Control
   * Gives a reroll to endgame alignment
   * maybe also gives a reroll to safety incidents?
@@ -83,7 +84,7 @@ Alignment track:
   * Minigame: something outputs suspiciousness scores
 * Alignment
   * Reduces the rate at which AI R&D causes risk, retroactively
-  * Minigame: 
+  * Minigame: expanding circles
 * Interpretability
   * 
 
