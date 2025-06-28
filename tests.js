@@ -956,6 +956,169 @@ function testEventsSchemaValidation() {
     return suite.runAll();
 }
 
+// Mock functions for Node.js environment
+function mockGetChoiceAffordability(choice) {
+    if (!choice.cost) return { canAfford: true, missingResources: [] };
+
+    const missingResources = [];
+    
+    if (choice.cost.productPoints && gameState.productPoints < choice.cost.productPoints) {
+        missingResources.push({
+            type: 'productPoints',
+            needed: choice.cost.productPoints,
+            have: gameState.productPoints,
+            name: 'Product Points'
+        });
+    }
+    if (choice.cost.diplomacyPoints && gameState.diplomacyPoints < choice.cost.diplomacyPoints) {
+        missingResources.push({
+            type: 'diplomacyPoints', 
+            needed: choice.cost.diplomacyPoints,
+            have: gameState.diplomacyPoints,
+            name: 'Diplomacy Points'
+        });
+    }
+    if (choice.cost.money && gameState.money < choice.cost.money) {
+        missingResources.push({
+            type: 'money',
+            needed: choice.cost.money,
+            have: gameState.money,
+            name: 'Money'
+        });
+    }
+
+    return {
+        canAfford: missingResources.length === 0,
+        missingResources: missingResources
+    };
+}
+
+function mockFormatChoiceTextWithCosts(choice) {
+    if (!choice.cost) return choice.text;
+    
+    const affordability = mockGetChoiceAffordability(choice);
+    let formattedText = choice.text;
+    
+    // Replace cost indicators with styled versions
+    if (choice.cost.money) {
+        const isMissing = affordability.missingResources.some(r => r.type === 'money');
+        const costText = `-$${choice.cost.money}B`;
+        const styledCost = isMissing ? 
+            `<span style="color: #ff6b6b; font-weight: bold;">${costText}</span>` : 
+            costText;
+        formattedText = formattedText.replace(costText, styledCost);
+    }
+    
+    if (choice.cost.diplomacyPoints) {
+        const isMissing = affordability.missingResources.some(r => r.type === 'diplomacyPoints');
+        const costText = `-${choice.cost.diplomacyPoints} Diplomacy`;
+        const styledCost = isMissing ? 
+            `<span style="color: #ff6b6b; font-weight: bold;">${costText}</span>` : 
+            costText;
+        formattedText = formattedText.replace(costText, styledCost);
+    }
+    
+    if (choice.cost.productPoints) {
+        const isMissing = affordability.missingResources.some(r => r.type === 'productPoints');
+        const costText = `-${choice.cost.productPoints} Product`;
+        const styledCost = isMissing ? 
+            `<span style="color: #ff6b6b; font-weight: bold;">${costText}</span>` : 
+            costText;
+        // Handle both "Product Points" and "Product" variations
+        formattedText = formattedText.replace(new RegExp(`-${choice.cost.productPoints} Product(?:\\s+Points)?`, 'g'), styledCost);
+    }
+    
+    return formattedText;
+}
+
+// Test unaffordable choice highlighting
+function testUnaffordableChoiceHighlighting() {
+    const suite = new TestSuite();
+    
+    suite.test('getChoiceAffordability should identify missing resources correctly', () => {
+        gameState = createTestGameState();
+        gameState.money = 5; // Less than needed
+        gameState.diplomacyPoints = 2; // Less than needed
+        gameState.productPoints = 10; // Enough
+        
+        const choice = {
+            text: "Expensive option (-$10B, -3 Diplomacy, -1 Product)",
+            cost: {
+                money: 10,
+                diplomacyPoints: 3,
+                productPoints: 1
+            }
+        };
+        
+        const affordability = mockGetChoiceAffordability(choice);
+        
+        suite.assertFalse(affordability.canAfford, 'Choice should be unaffordable');
+        suite.assertEqual(affordability.missingResources.length, 2, 'Should have 2 missing resources');
+        
+        const missingTypes = affordability.missingResources.map(r => r.type);
+        suite.assertTrue(missingTypes.includes('money'), 'Should identify missing money');
+        suite.assertTrue(missingTypes.includes('diplomacyPoints'), 'Should identify missing diplomacy');
+        suite.assertFalse(missingTypes.includes('productPoints'), 'Should not identify product as missing');
+    });
+    
+    suite.test('formatChoiceTextWithCosts should highlight unaffordable costs in red', () => {
+        gameState = createTestGameState();
+        gameState.money = 5; // Less than needed
+        gameState.diplomacyPoints = 10; // Enough
+        
+        const choice = {
+            text: "Test choice (-$10B, -3 Diplomacy)",
+            cost: {
+                money: 10,
+                diplomacyPoints: 3
+            }
+        };
+        
+        const formattedText = mockFormatChoiceTextWithCosts(choice);
+        
+        // Should highlight money cost in red but not diplomacy
+        suite.assertTrue(formattedText.includes('<span style="color: #ff6b6b; font-weight: bold;">-$10B</span>'), 
+            'Should highlight unaffordable money cost in red');
+        suite.assertTrue(formattedText.includes('-3 Diplomacy'), 
+            'Should include diplomacy cost');
+        // Check that diplomacy cost is not wrapped in the red styling
+        const diplomacyNotHighlighted = !formattedText.includes('<span style="color: #ff6b6b; font-weight: bold;">-3 Diplomacy</span>');
+        suite.assertTrue(diplomacyNotHighlighted, 'Should not highlight affordable diplomacy cost in red');
+    });
+    
+    suite.test('formatChoiceTextWithCosts should not highlight when all costs are affordable', () => {
+        gameState = createTestGameState();
+        gameState.money = 15; // More than enough
+        gameState.diplomacyPoints = 10; // More than enough
+        
+        const choice = {
+            text: "Affordable choice (-$10B, -3 Diplomacy)",
+            cost: {
+                money: 10,
+                diplomacyPoints: 3
+            }
+        };
+        
+        const formattedText = mockFormatChoiceTextWithCosts(choice);
+        
+        // Should not highlight any costs
+        suite.assertFalse(formattedText.includes('color: #ff6b6b'), 'Should not highlight any costs when affordable');
+        suite.assertEqual(formattedText, choice.text, 'Should return original text when all costs affordable');
+    });
+    
+    suite.test('formatChoiceTextWithCosts should handle choices without costs', () => {
+        const choice = {
+            text: "Free choice"
+        };
+        
+        const formattedText = mockFormatChoiceTextWithCosts(choice);
+        
+        suite.assertEqual(formattedText, choice.text, 'Should return original text for choices without costs');
+    });
+    
+    return suite.runAll();
+}
+
 // Main test runner
 async function runAllTests() {
     const startTime = Date.now();
@@ -972,7 +1135,8 @@ async function runAllTests() {
         testAILevelRangeFiltering(),
         testConditionalChoices(),
         testMultiStageEventSystem(),
-        testEventsSchemaValidation()
+        testEventsSchemaValidation(),
+        testUnaffordableChoiceHighlighting()
     ]);
     
     const allPassed = results.every(result => result);

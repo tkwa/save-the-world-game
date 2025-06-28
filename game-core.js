@@ -282,7 +282,8 @@ const storyContent = {
                 } else if (gameState.currentEvent.choices && gameState.currentEvent.choices.length > 0) {
                     // Event has choices - show them as buttons
                     gameState.currentEvent.choices.forEach((choice, index) => {
-                        const canAfford = canAffordChoice(choice);
+                        const affordability = getChoiceAffordability(choice);
+                        const canAfford = affordability.canAfford;
                         const allocationMade = gameState.selectedAllocation !== null;
                         const enabled = allocationMade && canAfford;
                         
@@ -290,7 +291,20 @@ const storyContent = {
                             `margin: 5px 5px 5px 0;` :
                             `margin: 5px 5px 5px 0; background-color: #666; cursor: not-allowed; opacity: 0.6;`;
                         const onclick = enabled ? `handleEventChoice(${index})` : '';
-                        eventHtml += `<button class="button" onclick="${onclick}" style="${buttonStyle}">${choice.text}</button>`;
+                        
+                        // Format choice text with cost highlighting
+                        const formattedText = formatChoiceTextWithCosts(choice);
+                        
+                        // Create tooltip for unaffordable choices
+                        let tooltip = '';
+                        if (!canAfford && affordability.missingResources.length > 0) {
+                            const missingList = affordability.missingResources.map(r => 
+                                `${r.name}: need ${r.needed}, have ${r.have}`
+                            ).join('; ');
+                            tooltip = ` title="Not enough resources: ${missingList}"`;
+                        }
+                        
+                        eventHtml += `<button class="button" onclick="${onclick}" style="${buttonStyle}"${tooltip}>${formattedText}</button>`;
                     });
                 } else {
                     // No choices - just next turn button
@@ -1075,6 +1089,82 @@ function canAffordChoice(choice) {
     return true;
 }
 
+// Get detailed affordability information for a choice
+function getChoiceAffordability(choice) {
+    if (!choice.cost) return { canAfford: true, missingResources: [] };
+
+    const missingResources = [];
+    
+    if (choice.cost.productPoints && gameState.productPoints < choice.cost.productPoints) {
+        missingResources.push({
+            type: 'productPoints',
+            needed: choice.cost.productPoints,
+            have: gameState.productPoints,
+            name: 'Product Points'
+        });
+    }
+    if (choice.cost.diplomacyPoints && gameState.diplomacyPoints < choice.cost.diplomacyPoints) {
+        missingResources.push({
+            type: 'diplomacyPoints', 
+            needed: choice.cost.diplomacyPoints,
+            have: gameState.diplomacyPoints,
+            name: 'Diplomacy Points'
+        });
+    }
+    if (choice.cost.money && gameState.money < choice.cost.money) {
+        missingResources.push({
+            type: 'money',
+            needed: choice.cost.money,
+            have: gameState.money,
+            name: 'Money'
+        });
+    }
+
+    return {
+        canAfford: missingResources.length === 0,
+        missingResources: missingResources
+    };
+}
+
+// Format choice text with cost highlighting
+function formatChoiceTextWithCosts(choice) {
+    if (!choice.cost) return choice.text;
+    
+    const affordability = getChoiceAffordability(choice);
+    let formattedText = choice.text;
+    
+    // Replace cost indicators with styled versions
+    if (choice.cost.money) {
+        const isMissing = affordability.missingResources.some(r => r.type === 'money');
+        const costText = `-$${choice.cost.money}B`;
+        const styledCost = isMissing ? 
+            `<span style="color: #ff6b6b; font-weight: bold;">${costText}</span>` : 
+            costText;
+        formattedText = formattedText.replace(costText, styledCost);
+    }
+    
+    if (choice.cost.diplomacyPoints) {
+        const isMissing = affordability.missingResources.some(r => r.type === 'diplomacyPoints');
+        const costText = `-${choice.cost.diplomacyPoints} Diplomacy`;
+        const styledCost = isMissing ? 
+            `<span style="color: #ff6b6b; font-weight: bold;">${costText}</span>` : 
+            costText;
+        formattedText = formattedText.replace(costText, styledCost);
+    }
+    
+    if (choice.cost.productPoints) {
+        const isMissing = affordability.missingResources.some(r => r.type === 'productPoints');
+        const costText = `-${choice.cost.productPoints} Product`;
+        const styledCost = isMissing ? 
+            `<span style="color: #ff6b6b; font-weight: bold;">${costText}</span>` : 
+            costText;
+        // Handle both "Product Points" and "Product" variations
+        formattedText = formattedText.replace(new RegExp(`-${choice.cost.productPoints} Product(?:\\s+Points)?`, 'g'), styledCost);
+    }
+    
+    return formattedText;
+}
+
 function applyResourceAllocation(resourceType, corporateResources) {
     const gains = calculateResourceGains(corporateResources);
     
@@ -1716,6 +1806,8 @@ window.forceEvent = forceEvent;
 window.populateDebugDropdown = populateDebugDropdown;
 window.giveResources = giveResources;
 window.debugShowAllTechs = debugShowAllTechs;
+window.getChoiceAffordability = getChoiceAffordability;
+window.formatChoiceTextWithCosts = formatChoiceTextWithCosts;
 
 // Keyboard controls
 document.addEventListener('keydown', function(event) {
