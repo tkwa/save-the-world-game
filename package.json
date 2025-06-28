@@ -1,0 +1,12 @@
+{
+  "name": "save-the-world-game",
+  "version": "1.0.0",
+  "description": "AI Strategy Game",
+  "scripts": {
+    "lint": "eslint *.js",
+    "lint:unused": "eslint --rule 'no-unused-vars: error' *.js"
+  },
+  "devDependencies": {
+    "eslint": "^9.30.0"
+  }
+}

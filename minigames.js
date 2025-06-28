@@ -294,6 +294,22 @@ function getNextSpawnDelay(averageInterval) {
     return -Math.log(Math.random()) * averageInterval;
 }
 
+// Helper function to calculate radius with slowdown after 120px
+function calculateRadiusWithSlowdown(ageSeconds, growthRate) {
+    const slowdownThreshold = 120; // pixels
+    const timeToReachThreshold = slowdownThreshold / growthRate;
+    
+    if (ageSeconds <= timeToReachThreshold) {
+        // Normal growth up to 120px
+        return ageSeconds * growthRate;
+    } else {
+        // After 120px, grow at half rate
+        const remainingTime = ageSeconds - timeToReachThreshold;
+        const slowGrowthRate = growthRate / 2;
+        return slowdownThreshold + (remainingTime * slowGrowthRate);
+    }
+}
+
 function drawStartButton(ctx, canvas) {
     // Draw start button in center of canvas
     const buttonWidth = 200;
@@ -430,11 +446,11 @@ function updateAlignmentMinigame() {
         if (circle.stopped) {
             // Circle was clicked - keep it at the size when it was stopped
             const stoppedAge = (circle.stoppedAt - circle.spawnTime) / 1000;
-            radius = Math.max(0, Math.min(circle.maxRadius, stoppedAge * circle.growthRate));
+            radius = Math.max(0, Math.min(circle.maxRadius, calculateRadiusWithSlowdown(stoppedAge, circle.growthRate)));
         } else {
             // Circle is still growing
             const age = (currentTime - circle.spawnTime) / 1000; // Age in seconds
-            radius = Math.max(0, Math.min(circle.maxRadius, age * circle.growthRate));
+            radius = Math.max(0, Math.min(circle.maxRadius, calculateRadiusWithSlowdown(age, circle.growthRate)));
             
             // Update physics for active circles
             updateCirclePhysics(circle, currentTime, gameCanvas);
@@ -545,7 +561,7 @@ function updateCirclePhysics(circle, currentTime, canvas) {
     // Check if blue circle has reached max size - if so, stop moving
     if (circle.color === 'blue') {
         const age = (currentTime - circle.spawnTime) / 1000;
-        const currentRadius = Math.min(circle.maxRadius, age * circle.growthRate);
+        const currentRadius = Math.min(circle.maxRadius, calculateRadiusWithSlowdown(age, circle.growthRate));
         if (currentRadius >= circle.maxRadius) {
             // Stop all movement for maxed blue circles
             circle.vx = 0;
@@ -701,7 +717,6 @@ function drawFinalFrame() {
     if (!minigame) return;
     
     const dotsData = minigame.dotsData;
-    const currentTime = Date.now();
     const gameCanvas = document.getElementById('alignment-canvas');
     if (!gameCanvas) return;
     
@@ -737,12 +752,12 @@ function drawFinalFrame() {
         if (circle.stopped) {
             // Circle was clicked - keep it at the size when it was stopped
             const stoppedAge = (circle.stoppedAt - circle.spawnTime) / 1000;
-            radius = Math.max(0, Math.min(circle.maxRadius, stoppedAge * circle.growthRate));
+            radius = Math.max(0, Math.min(circle.maxRadius, calculateRadiusWithSlowdown(stoppedAge, circle.growthRate)));
         } else {
             // Circle grew for the full game duration
             const gameEndTime = dotsData.gameStartTime + dotsData.gameTime;
             const finalAge = (gameEndTime - circle.spawnTime) / 1000;
-            radius = Math.max(0, Math.min(circle.maxRadius, finalAge * circle.growthRate));
+            radius = Math.max(0, Math.min(circle.maxRadius, calculateRadiusWithSlowdown(finalAge, circle.growthRate)));
         }
         
         // Skip circles with zero radius

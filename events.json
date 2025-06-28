@@ -10,12 +10,12 @@
           "text": "Remove sanctions (-$3B, -3 Diplomacy)",
           "action": "accept",
           "cost": { "money": 3, "diplomacyPoints": 3 },
-          "result_text": "Your extensive lobbying campaign succeeds. International pressure is lifted through back-channel negotiations and strategic concessions. Your company can now operate freely again, though the political cost was significant."
+          "result_text": "Your lobbying campaign succeeds. International pressure is lifted through back-channel negotiations. Your company can now operate freely again."
         },
         {
-          "text": "Accept sanctions",
+          "text": "Continue with sanctions",
           "action": "decline", 
-          "result_text": "You decide to weather the sanctions rather than spend precious resources on lobbying. Operations remain constrained, but you preserve your diplomatic capital for future challenges."
+          "result_text": "You decide to weather the sanctions rather than spend precious resources on lobbying. Operations remain constrained."
         }
       ]
     }
@@ -51,6 +51,21 @@
       ]
     },
     {
+      "type": "safety-research-limitations",
+      "weight": 4,
+      "oneTime": true,
+      "text_versions": [
+        "Your safety research team warns that traditional safety measures will face diminishing returns as AI systems become superhuman. Without new theoretical insights and full-scale experiments, increasingly powerful AI systems will become progressively more difficult to control and understand."
+      ],
+      "choices": [
+        {
+          "text": "Acknowledge the challenge",
+          "action": "accept",
+          "result_text": "Safety research must evolve beyond current approaches. You begin exploring fundamental questions about AI alignment and monitoring.<br><strong>The Projects panel becomes available.</strong>"
+        }
+      ]
+    },
+    {
       "type": "product-breakthrough-medicine",
       "weight": 1,
       "oneTime": true,
@@ -77,20 +92,42 @@
       "weight": 1,
       "oneTime": true,
       "text_versions": [
-        "Your team develops advanced robotic systems with potential military and civilian applications. The technology could generate substantial revenue but requires investment to commercialize."
+        "Boston Dynamics is available for acquisition. Their advanced robotics hardware, combined with your sophisticated AI software, could enable widespread automation across industries. However, the acquisition requires significant capital and resources."
       ],
       "choices": [
         {
-          "text": "Research (-4 Product Points, +$1B/turn)",
+          "text": "Acquire Boston Dynamics (-$3B, -1 Diplomacy, -1 Product, +$1B/turn, +🤖)",
           "action": "accept",
-          "cost": { "productPoints": 4 },
+          "cost": { "money": 3, "diplomacyPoints": 1, "productPoints": 1 },
           "benefit": { "incomeBonus": 1 },
-          "result_text": "Your robotics division accelerates development of the new systems. The technology proves highly versatile, with applications ranging from manufacturing automation to specialized defense contracts. Revenue begins flowing in steadily."
+          "result_text": "The acquisition succeeds. Boston Dynamics' bipedal robots, quadrupeds, and manipulation systems are now enhanced with your AI capabilities. The combination enables revolutionary automation solutions, generating substantial revenue from manufacturing, logistics, and specialized applications."
         },
         {
           "text": "Decline",
           "action": "decline",
-          "result_text": "You choose to focus on core AI capabilities rather than diversifying into robotics. The team accepts the decision, though some engineers move to competitor companies to pursue robotics applications."
+          "result_text": "You decide the acquisition cost is too high. Boston Dynamics is acquired by a competitor, who begins integrating their hardware with rival AI systems. Your team focuses on software-only solutions."
+        }
+      ]
+    },
+    {
+      "type": "humanoid-robotics",
+      "weight": 1,
+      "requires": ["product-breakthrough-robotics"],
+      "oneTime": true,
+      "text_versions": [
+        "Boston Dynamics' acquisition has proven successful, but their current robots are limited to specialized applications. Your AI team proposes developing general-purpose humanoid robots that could perform most human jobs. This would require significant investment in manufacturing and advanced actuators."
+      ],
+      "choices": [
+        {
+          "text": "Develop humanoid robots (-$6B, -5 Product, +🦾)",
+          "action": "accept",
+          "cost": { "money": 6, "productPoints": 5 },
+          "result_text": "Your team begins mass production of general-purpose humanoid robots. The new models combine Boston Dynamics' mobility expertise with your AI's dexterity and decision-making. These robots can perform complex manual labor, opening vast new markets and manufacturing capabilities."
+        },
+        {
+          "text": "Decline",
+          "action": "decline",
+          "result_text": "You decide the investment is too risky for now. Your robotics division continues focusing on specialized applications rather than general-purpose humanoids. The opportunity remains available for future consideration."
         }
       ]
     },
@@ -107,7 +144,7 @@
           "text": "Use diplomatic channels (-$2B, -3 Diplomacy)",
           "action": "accept",
           "cost": { "money": 2, "diplomacyPoints": 3 },
-          "benefit": { "aiLevelPerTurn": 1 },
+          "benefit": {},
           "result_text": "Your overseas datacenter construction proceeds smoothly through official diplomatic channels. Government approvals are secured, and the facility comes online quickly, providing substantial additional computational capacity for your AI research programs."
         },
         {
@@ -115,7 +152,7 @@
           "action": "accept-sanctions",
           "cost": { "money": 3 },
           "risk": { "sanctions": 0.85 },
-          "benefit": { "aiLevelPerTurn": 1 }
+          "benefit": {}
         },
         {
           "text": "Decline",
@@ -127,7 +164,7 @@
     {
       "type": "nuclear-weapons",
       "weight": 4,
-      "requires": ["product-breakthrough-robotics", "overseas-datacenter"],
+      "requires": ["humanoid-robotics", "overseas-datacenter"],
       "oneTime": true,
       "customHandler": "handleNuclearWeaponsChoice",
       "text_versions": [
@@ -135,7 +172,7 @@
       ],
       "choices": [
         {
-          "text": "Proceed (-20 Product, -2 Diplomacy, 50% chance of sanctions, +5% Risk), ☢️",
+          "text": "Proceed (-20 Product, -20 Diplomacy, 50% chance of sanctions, +5% Risk), ☢️",
           "action": "accept",
           "cost": { "productPoints": 20, "diplomacyPoints": 20 },
           "risk": { "sanctions": 0.5 },

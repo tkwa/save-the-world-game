@@ -32,8 +32,7 @@ async function generateEvent() {
         const event = {
             type: sanctionsEvent.type,
             text: randomText,
-            choices: sanctionsEvent.choices,
-            customHandler: 'handleSanctionsChoice'
+            choices: sanctionsEvent.choices
         };
         trackEventSeen(event);
         return event;
@@ -86,6 +85,13 @@ function getAvailableEvents(allEvents) {
             const currentResources = calculateResources();
             if (currentResources < 6) {
                 return false; // Need at least 6 resources
+            }
+        }
+        
+        // Check special requirements for safety research limitations
+        if (event.type === 'safety-research-limitations') {
+            if (gameState.safetyPoints < 100) {
+                return false; // Need at least 100 safety points
             }
         }
         
@@ -249,15 +255,12 @@ function applyChoiceEffects(choice) {
 
 // Custom event handlers for events with risk/success-failure mechanics
 
-function handleOverseasDatacenterChoice(choice, event) {
+function handleOverseasDatacenterChoice(choice, _event, sanctionsTriggered) {
     if (choice.action === 'accept' || choice.action === 'accept-sanctions') {
         // Increment datacenter count for successful construction
         gameState.datacenterCount++;
         
         if (choice.action === 'accept-sanctions') {
-            // Apply standard effects and check if sanctions were triggered
-            const sanctionsTriggered = applyChoiceEffects(choice);
-            
             let resultText;
             if (sanctionsTriggered) {
                 resultText = "You proceed with unauthorized datacenter construction, bypassing government approval processes. The facility comes online successfully, but intelligence agencies discover the operation. The US government responds with comprehensive economic sanctions against your company.";
@@ -269,7 +272,6 @@ function handleOverseasDatacenterChoice(choice, event) {
             gameState.currentEvent.resultText = resultText;
         } else {
             // Handle diplomatic route normally
-            applyChoiceEffects(choice);
             if (choice.result_text) {
                 gameState.currentEvent.showResult = true;
                 gameState.currentEvent.resultText = choice.result_text;
@@ -277,7 +279,6 @@ function handleOverseasDatacenterChoice(choice, event) {
         }
     } else {
         // Handle decline or other choices
-        applyChoiceEffects(choice);
         if (choice.result_text) {
             gameState.currentEvent.showResult = true;
             gameState.currentEvent.resultText = choice.result_text;
@@ -288,11 +289,8 @@ function handleOverseasDatacenterChoice(choice, event) {
     showPage('main-game');
 }
 
-function handleNuclearWeaponsChoice(choice) {
+function handleNuclearWeaponsChoice(choice, _event, sanctionsTriggered) {
     if (choice.action === 'accept') {
-        // Apply standard effects and check if sanctions were triggered
-        const sanctionsTriggered = applyChoiceEffects(choice);
-        
         let resultText;
         if (sanctionsTriggered) {
             resultText = "Your team begins the secretive nuclear weapons program. The project advances rapidly thanks to your robotics expertise and AI-assisted design. However, intelligence agencies detect the program through satellite imagery and financial tracking. International sanctions are immediately imposed.";
@@ -303,7 +301,6 @@ function handleNuclearWeaponsChoice(choice) {
         gameState.currentEvent.showResult = true;
         gameState.currentEvent.resultText = resultText;
     } else {
-        applyChoiceEffects(choice);
         if (choice.result_text) {
             gameState.currentEvent.showResult = true;
             gameState.currentEvent.resultText = choice.result_text;
@@ -314,11 +311,8 @@ function handleNuclearWeaponsChoice(choice) {
     showPage('main-game');
 }
 
-function handleMissileDefenseChoice(choice) {
+function handleMissileDefenseChoice(choice, _event, sanctionsTriggered) {
     if (choice.action === 'accept') {
-        // Apply standard effects and check if sanctions were triggered
-        const sanctionsTriggered = applyChoiceEffects(choice);
-        
         let resultText;
         if (sanctionsTriggered) {
             resultText = "Your missile defense system comes online successfully. Advanced AI-controlled interceptors and cyber warfare capabilities now protect your facilities from conventional military threats. However, the deployment is detected by multiple intelligence agencies, triggering immediate international sanctions and significantly escalating global tensions.";
@@ -329,7 +323,6 @@ function handleMissileDefenseChoice(choice) {
         gameState.currentEvent.showResult = true;
         gameState.currentEvent.resultText = resultText;
     } else {
-        applyChoiceEffects(choice);
         if (choice.result_text) {
             gameState.currentEvent.showResult = true;
             gameState.currentEvent.resultText = choice.result_text;
@@ -340,31 +333,6 @@ function handleMissileDefenseChoice(choice) {
     showPage('main-game');
 }
 
-function handleSanctionsChoice(choice) {
-    applyChoiceEffects(choice);
-    
-    // Special handling for sanctions removal
-    if (choice.action === 'accept') {
-        gameState.hasSanctions = false;
-    }
-    
-    if (choice.result_text) {
-        gameState.currentEvent.showResult = true;
-        gameState.currentEvent.resultText = choice.result_text;
-    }
-    
-    updateStatusBar();
-    showPage('main-game');
-}
-
-function handleStandardChoice(choice) {
-    applyChoiceEffects(choice);
-    
-    if (choice.result_text) {
-        gameState.currentEvent.showResult = true;
-        gameState.currentEvent.resultText = choice.result_text;
-    }
-}
 
 // Force generate a specific event type (for debugging)
 async function forceEvent(eventType) {
@@ -381,8 +349,7 @@ async function forceEvent(eventType) {
         event = {
             type: sanctionsEvent.type,
             text: randomText,
-            choices: sanctionsEvent.choices,
-            customHandler: 'handleSanctionsChoice'
+            choices: sanctionsEvent.choices
         };
     } else if (eventType === 'safety-incident') {
         event = generateSafetyIncident(events);

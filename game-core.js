@@ -30,29 +30,32 @@ const INITIAL_TECHNOLOGIES = {
     nukes: false
 };
 
-// Technology dependencies - what must be developed to show the next tech
-const TECHNOLOGY_DEPENDENCIES = {
+// Technology visibility conditions - functions that determine if a tech should be visible
+const TECHNOLOGY_VISIBILITY = {
     // Column 1: Random - all visible from start (depend on robotaxi only)
-    aiNovelist: 'robotaxi',
-    aiResearchLead: 'robotaxi', 
-    persuasion: 'robotaxi',
+    aiNovelist: () => gameState.technologies.robotaxi,
+    aiResearchLead: () => gameState.technologies.robotaxi,
+    persuasion: () => gameState.technologies.robotaxi,
     
     // Column 2: Medicine - each depends on the one above
-    syntheticBiology: 'medicine',
-    cancerCure: 'syntheticBiology',
-    brainUploading: 'cancerCure',
+    syntheticBiology: () => gameState.technologies.medicine,
+    cancerCure: () => gameState.technologies.syntheticBiology,
+    brainUploading: () => gameState.technologies.cancerCure,
     
     // Column 3: Robotics - each depends on the one above  
-    humanoidRobots: 'robotics',
-    nanotech: 'humanoidRobots',
+    humanoidRobots: () => gameState.technologies.robotics,
+    nanotech: () => gameState.technologies.humanoidRobots,
     
-    // Column 4: Alignment - control needs monitoring
-    aiControl: 'aiMonitoring',
+    // Column 4: Alignment - monitoring and alignment require projects unlocked, interpretability always visible
+    aiMonitoring: () => gameState.projectsUnlocked,
+    aiControl: () => gameState.technologies.aiMonitoring,
+    aiAlignment: () => gameState.projectsUnlocked,
+    aiInterpretability: () => true, // Always visible
     
     // Column 5: Military - special dependencies
-    bioweapons: 'syntheticBiology',
-    killerDrones: 'robotics', 
-    nukes: 'humanoidRobots'
+    bioweapons: () => gameState.technologies.syntheticBiology,
+    killerDrones: () => gameState.technologies.robotics,
+    nukes: () => gameState.technologies.humanoidRobots
 };
 
 // Game constants
@@ -193,7 +196,8 @@ const gameState = {
     choicesTaken: {}, // Tracks choices taken for each event type
     dsaEventsAccepted: new Set(), // Tracks which DSA events have been accepted
     alignmentMaxScore: 0, // Maximum score achieved in alignment minigame
-    endgameAdjustedRisk: null // Adjusted risk level at endgame trigger
+    endgameAdjustedRisk: null, // Adjusted risk level at endgame trigger
+    projectsUnlocked: false // Whether Projects panel is unlocked (at 100 safety points)
 };
 
 // Story content
@@ -712,16 +716,24 @@ function updateTechnologies() {
     Object.entries(TECHNOLOGY_ELEMENT_MAPPING).forEach(([elementId, techKey]) => {
         const element = document.getElementById(elementId);
         if (element) {
-            // Check if technology should be visible (dependency met or no dependency)
-            const dependency = TECHNOLOGY_DEPENDENCIES[techKey];
-            const isVisible = !dependency || gameState.technologies[dependency] || gameState.debugShowAllTechs;
+            // Check if technology should be visible using visibility condition
+            const visibilityCondition = TECHNOLOGY_VISIBILITY[techKey];
+            const isVisible = visibilityCondition ? visibilityCondition() : true; // Default to visible if no condition
+            const isVisibleOrDebug = isVisible || gameState.debugShowAllTechs;
             
-            if (isVisible) {
+            if (isVisibleOrDebug) {
                 // Technology is visible - show with appropriate opacity
                 element.parentElement.style.display = 'block';
-                element.style.opacity = gameState.technologies[techKey] ? '1' : '0.3';
+                
+                // Special case: aiAlignment tech lights up when alignment score > 0%
+                let isTechLit = gameState.technologies[techKey];
+                if (techKey === 'aiAlignment' && gameState.alignmentMaxScore > 0) {
+                    isTechLit = true;
+                }
+                
+                element.style.opacity = isTechLit ? '1' : '0.3';
             } else {
-                // Technology is hidden - dependency not met
+                // Technology is hidden - visibility condition not met
                 element.parentElement.style.display = 'none';
             }
         }
@@ -852,10 +864,6 @@ function buildEvals(evalType) {
     updateStatusBar();
 }
 
-function beginAlignmentProject() {
-    gameState.alignmentProjectStarted = true;
-    updateResearchDisplay();
-}
 
 function toggleAlignmentProject() {
     if (!gameState.alignmentProjectStarted) return;
@@ -928,40 +936,6 @@ function calculateDaysToSingularity() {
     return days >= maxIterations ? "∞" : days;
 }
 
-function updateForecastingDisplay() {
-    if (gameState.evalsBuilt.forecasting) {
-        const daysToSingularity = calculateDaysToSingularity();
-        let forecastDiv = document.getElementById('forecasting-display');
-
-        if (!forecastDiv) {
-            forecastDiv = document.createElement('div');
-            forecastDiv.id = 'forecasting-display';
-            forecastDiv.style.textAlign = 'center';
-            forecastDiv.style.fontSize = '16px';
-            forecastDiv.style.marginTop = '10px';
-            forecastDiv.style.color = '#666';
-
-            const dateTicker = document.getElementById('date-ticker');
-            if (dateTicker) {
-                dateTicker.appendChild(forecastDiv);
-            }
-        }
-
-        forecastDiv.innerHTML = `<div>Days to Singularity: ${daysToSingularity}</div>`;
-    }
-}
-
-function refreshEvalsDisplay() {
-    // Refresh the evals display to update cooldown counters
-    const currentPage = gameState.currentPage;
-    if (currentPage === '2026') {
-        // Find and update the evals section
-        const actionsPanel = document.querySelector('.actions-panel');
-        if (actionsPanel) {
-            showPage('2026'); // Refresh the entire page to update evals display
-        }
-    }
-}
 
 function calculateResources() {
     // Start with base AI level
@@ -1019,7 +993,7 @@ function calculateResourceGains(resources) {
     };
 }
 
-function generateActionTooltip(actionType, resources) {
+function generateActionTooltip(actionType, _resources) {
     switch(actionType) {
         case 'revenue':
             // Calculate TAM and market share for revenue tooltip
@@ -1146,6 +1120,7 @@ function resetGameState() {
     gameState.galaxyDistribution = null;
     gameState.alignmentMaxScore = 0;
     gameState.endgameAdjustedRisk = null;
+    gameState.projectsUnlocked = false;
 }
 
 
@@ -1343,43 +1318,48 @@ async function showPage(pageId) {
         buttonContainer.appendChild(leftColumn);
         buttonContainer.appendChild(rightColumn);
 
-        // Create Research section (right side)
-        const researchContainer = document.createElement('div');
-        researchContainer.style.cssText = `
-            border: 2px solid #555;
-            border-radius: 8px;
-            padding: 15px;
-            background-color: #353535;
-        `;
-        
-        const researchHeader = document.createElement('h3');
-        researchHeader.textContent = 'Research';
-        researchHeader.style.cssText = `
-            margin: 0 0 15px 0;
-            color: #e0e0e0;
-            font-family: 'Courier New', Courier, monospace;
-        `;
-        researchContainer.appendChild(researchHeader);
-        
-        // Add Alignment research button
-        const alignmentBtn = document.createElement('button');
-        alignmentBtn.className = 'button';
-        const alignmentScore = gameState.alignmentMaxScore;
-        alignmentBtn.innerHTML = `Alignment 🧭<br><span style="font-size: 12px;">${alignmentScore.toFixed(1)}%</span>`;
-        alignmentBtn.style.cssText = `
-            width: 100%;
-            height: 60px;
-            margin-bottom: 10px;
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 14px;
-            line-height: 1.2;
-        `;
-        alignmentBtn.onclick = () => startMinigame('alignment-research');
-        researchContainer.appendChild(alignmentBtn);
-        
         // Add both containers to main container
         mainContainer.appendChild(buttonContainer);
-        mainContainer.appendChild(researchContainer);
+        
+        // Only show Projects section if unlocked
+        if (gameState.projectsUnlocked) {
+            // Create Projects section (right side)
+            const researchContainer = document.createElement('div');
+            researchContainer.style.cssText = `
+                border: 2px solid #555;
+                border-radius: 8px;
+                padding: 15px;
+                background-color: #353535;
+            `;
+            
+            const researchHeader = document.createElement('h3');
+            researchHeader.textContent = 'Projects';
+            researchHeader.style.cssText = `
+                margin: 0 0 15px 0;
+                color: #e0e0e0;
+                font-family: 'Courier New', Courier, monospace;
+            `;
+            researchContainer.appendChild(researchHeader);
+            
+            // Add Alignment research button
+            const alignmentBtn = document.createElement('button');
+            alignmentBtn.className = 'button';
+            const alignmentScore = gameState.alignmentMaxScore;
+            alignmentBtn.innerHTML = `Alignment 🧭 ${alignmentScore.toFixed(0)}%`;
+            alignmentBtn.style.cssText = `
+                width: 100%;
+                height: 35px;
+                margin-bottom: 10px;
+                font-family: 'Courier New', Courier, monospace;
+                font-size: 14px;
+                line-height: 1.2;
+                background-color: #2d5a2d;
+            `;
+            alignmentBtn.onclick = () => startMinigame('alignment-research');
+            researchContainer.appendChild(alignmentBtn);
+            
+            mainContainer.appendChild(researchContainer);
+        }
         
         // Add the main container to the actions panel
         actionsPanel.appendChild(mainContainer);
@@ -1625,6 +1605,9 @@ async function handleEventChoice(choiceIndex) {
     }
     gameState.choicesTaken[event.type][choice.action]++;
 
+    // Apply standard choice effects first (costs, benefits, penalties, risks)
+    const sanctionsTriggered = applyChoiceEffects(choice);
+
     // Track events that are accepted (for requirement checking)
     if (choice.action === 'accept' || choice.action === 'accept-sanctions') {
         gameState.dsaEventsAccepted.add(event.type);
@@ -1634,6 +1617,8 @@ async function handleEventChoice(choiceIndex) {
             gameState.technologies.medicine = true;
         } else if (event.type === 'product-breakthrough-robotics') {
             gameState.technologies.robotics = true;
+        } else if (event.type === 'humanoid-robotics') {
+            gameState.technologies.humanoidRobots = true;
         } else if (event.type === 'nuclear-weapons') {
             gameState.technologies.nukes = true;
         }
@@ -1642,20 +1627,22 @@ async function handleEventChoice(choiceIndex) {
         if (event.type === 'synthetic-biology') {
             gameState.biotechLabCount++;
         }
+        
+        // Unlock Projects panel for safety research limitations event
+        if (event.type === 'safety-research-limitations') {
+            gameState.projectsUnlocked = true;
+        }
     }
 
-    // Handle custom event handlers
-    if (event.customHandler) {
-        window[event.customHandler](choice, event);
-        return;
-    }
-
-    // Apply standard choice effects using helper function
-    applyChoiceEffects(choice);
-    
     // Special handling for sanctions removal
     if (event.type === 'sanctions' && choice.action === 'accept') {
         gameState.hasSanctions = false;
+    }
+
+    // Handle custom event handlers (after applying standard effects)
+    if (event.customHandler) {
+        window[event.customHandler](choice, event, sanctionsTriggered);
+        return;
     }
     
     // Special handling for DSA (immediate singularity)
