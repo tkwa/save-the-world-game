@@ -4,10 +4,29 @@ All notable changes to the Save the World Game will be documented in this file.
 
 ## Summary
 
+- **v0.3.2** : Complete Projects allocation system with immediate minigame launch
 - **v0.3.1** : Fixed event handlers; nuclear weapons now later in DSA tree
 - **v0.3.0** : Competitor acquisition events and VP Safety role with unit testing
 - **v0.2.0** : Projects panel system and humanoid robotics event chain  
 - **v0.1.0** : Initial AI strategy game with turn-based gameplay and minigames
+
+## [v0.3.2] - 2025-06-28
+
+### Major Features
+- **Complete Projects Allocation System**: Projects now fully integrated into turn-based allocation system with proper cost display, greying out behavior, and immediate minigame launch
+- **Improved UI Layout**: Restructured allocation interface with "Sectors" and "Projects" headers, vertical divider, and proper button sizing
+
+### Technical Improvements
+- Projects apply allocation immediately when selected (unlike sectors which wait for turn advance)
+- Added `allocationApplied` flag to prevent double-application of project costs
+- Projects properly participate in mutual exclusion with sectors
+- Removed redundant CEO display text and fixed empty paragraph rendering
+
+### Bug Fixes
+- Fixed alignment minigame not launching due to page refresh override
+- Fixed allocation prompt boldness and "undefined" text display
+- Fixed tooltip transparency inheritance on disabled buttons
+- Increased project button height to accommodate 2-line cost text
 
 ## [v0.3.1] - 2025-06-28
 

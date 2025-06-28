@@ -8,13 +8,8 @@ Open `savetheworld.html` in a browser, e.g. by using Cursor Live Preview or `pyt
 ## Status
 
 TODO for Claude (check off when finished):
-- [ ] Players will need to choose between allocating to Projects (multi turn) and other categories on each turn. Patch version bump
-  - [x] Change allocation prompt to "Allocate X AI labor to <strong>one</strong> sector or project this month:". "or project" only if projects unlocked, and it shouldn't be bolded
-  - [x] Projects should not live in a box, rather there should be a vertical divider line separating the buttons, "Sectors" should be atop the sectors buttons and "Projects" atop the projects buttons
-  - [ ] Projects should be greyed out when unavailable just like sectors-- it's unavailable if you've done a sector or other project instead this turn
-  - [x] Tooltips should not have lower transparency for greyed out buttons
-  - [ ] Projects have the same cost as safety R&D
-- [ ] Integrate capabilities minigame as project
+- [ ] No need to 
+- [ ] Integrate capabilities minigame as capabilities forecasting
   - [ ] ...
 - [ ] Bump 
 

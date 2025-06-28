@@ -1,6 +1,6 @@
 // Core game logic for the AI Timeline Game
 
-VERSION = "v0.3.1"
+VERSION = "v0.3.2"
 
 // Technology configuration
 const INITIAL_TECHNOLOGIES = {
@@ -193,6 +193,7 @@ const gameState = {
     currentEvent: null,
     safetyIncidentCount: 0,
     selectedAllocation: null,
+    allocationApplied: false,
     eventsSeen: {}, // Tracks count of each event type seen
     choicesTaken: {}, // Tracks choices taken for each event type
     eventsAccepted: new Set(), // Tracks which DSA events have been accepted
@@ -263,6 +264,9 @@ const storyContent = {
             const tooltipContent = `You have <strong>${equityPercent}%</strong> equity in ${companyDisplay}. You want to avoid human extinction due to rogue AI, and value property you personally own <strong>100x</strong> as much as property belonging to other humans.`;
             
             return `<div style="display: flex; justify-content: space-between; align-items: center;"><span>${gameState.currentMonth || 'January'} ${gameState.currentYear || 2026}</span><span class="tooltip" style="font-size: 14px; color: #999;">Role: ${role}, ${companyDisplay}${flagDisplay}<span class="tooltiptext" style="width: 300px; margin-left: -150px; font-weight: normal;">${tooltipContent}</span></span></div>`;
+        },
+        text: function () {
+            return '';
         },
         customContent: function () {
             // Show current event after resource allocation
@@ -874,14 +878,15 @@ async function advanceTurn() {
     // Generate new event for next turn
     gameState.currentEvent = await generateEvent();
 
-    // Apply the selected allocation now that the turn is advancing
-    if (gameState.selectedAllocation) {
+    // Apply the selected allocation now that the turn is advancing (unless already applied)
+    if (gameState.selectedAllocation && !gameState.allocationApplied) {
         const corporateResources = calculateResources();
         applyResourceAllocation(gameState.selectedAllocation, corporateResources);
     }
 
     // Clear selection for next turn (after everything is processed)
     gameState.selectedAllocation = null;
+    gameState.allocationApplied = false;
 
     updateStatusBar();
 
@@ -1211,6 +1216,11 @@ function applyResourceAllocation(resourceType, corporateResources) {
             gameState.safetyPoints += gains.safety;
             gameState.money = Math.max(0, gameState.money - gains.safetyCost);
             break;
+        case 'alignment-project':
+            gameState.money = Math.max(0, gameState.money - gains.safetyCost);
+            // Launch alignment minigame after resources are applied
+            startMinigame('alignment-research');
+            break;
         case 'revenue':
             gameState.money += gains.revenue;
             break;
@@ -1253,6 +1263,7 @@ function resetGameState() {
     gameState.currentEvent = null;
     gameState.safetyIncidentCount = 0;
     gameState.selectedAllocation = null;
+    gameState.allocationApplied = false;
     gameState.incomeBonus = 0;
     gameState.aiLevelPerTurn = 0;
     gameState.resourceMultiplier = null;
@@ -1340,7 +1351,7 @@ async function showPage(pageId) {
         title = page.title;
     }
 
-    contentDiv.innerHTML = `<h2>${title}</h2><p>${text}</p>`;
+    contentDiv.innerHTML = `<h2>${title}</h2>${text ? `<p>${text}</p>` : ''}`;
 
     // Add actions panel if present
     if (page.showActions && page.actions) {
@@ -1350,7 +1361,7 @@ async function showPage(pageId) {
         const corporateResources = calculateResources();
         const headerDiv = document.createElement('div');
         headerDiv.style.fontFamily = "'Courier New', Courier, monospace";
-        headerDiv.style.fontWeight = 'bold';
+        headerDiv.style.fontWeight = 'normal';
         headerDiv.style.marginBottom = '10px';
 
         // Show sanctions calculation if active
@@ -1551,17 +1562,47 @@ async function showPage(pageId) {
             const alignmentBtn = document.createElement('button');
             alignmentBtn.className = 'button';
             const alignmentScore = gameState.alignmentMaxScore;
-            alignmentBtn.innerHTML = `Alignment 🧭 ${alignmentScore.toFixed(0)}%`;
+            
+            // Calculate cost (same as safety R&D)
+            const gains = calculateResourceGains(corporateResources);
+            const cost = gains.safetyCost;
+            const canAfford = gameState.money >= cost;
+            
+            alignmentBtn.innerHTML = `Alignment 🧭 ${alignmentScore.toFixed(0)}% (-$${(Math.round(cost * 10) / 10).toFixed(1)}B)`;
             alignmentBtn.style.cssText = `
                 width: 200px;
-                height: 35px;
+                height: 50px;
                 margin-bottom: 10px;
                 font-family: 'Courier New', Courier, monospace;
                 font-size: 14px;
                 line-height: 1.2;
                 background-color: #2d5a2d;
             `;
-            alignmentBtn.onclick = () => startMinigame('alignment-research');
+            
+            // Style based on selection state and affordability
+            if (gameState.selectedAllocation === 'alignment-project') {
+                alignmentBtn.style.backgroundColor = '#005a87';
+                alignmentBtn.style.border = '2px solid #66b3ff';
+            } else if (gameState.selectedAllocation) {
+                alignmentBtn.style.backgroundColor = '#666';
+                alignmentBtn.style.opacity = '0.6';
+                alignmentBtn.style.cursor = 'not-allowed';
+            } else if (!canAfford) {
+                alignmentBtn.style.backgroundColor = '#666';
+                alignmentBtn.style.opacity = '0.6';
+                alignmentBtn.style.cursor = 'not-allowed';
+                alignmentBtn.disabled = true;
+            }
+            
+            alignmentBtn.onclick = () => {
+                if (!gameState.selectedAllocation && canAfford) {
+                    gameState.selectedAllocation = 'alignment-project';
+                    
+                    // Apply the allocation immediately for projects (unlike sectors)
+                    applyResourceAllocation('alignment-project', corporateResources);
+                    gameState.allocationApplied = true;
+                }
+            };
             projectsSection.appendChild(alignmentBtn);
             
             mainContainer.appendChild(projectsSection);
