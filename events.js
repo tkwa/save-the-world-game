@@ -610,7 +610,7 @@ function handleCompetitorAcquisitionChoice(choice, _event, _sanctionsTriggered) 
         }
         
         // Replace the acquiring competitor with a new one from unused companies
-        const allCompanies = ["OpenAI", "Anthropic", "Google", "DeepSeek", "Tencent", "xAI"];
+        const allCompanies = COMPANIES.map(c => c.name);
         const usedCompanies = [gameState.companyName, ...gameState.competitorNames];
         const availableCompanies = allCompanies.filter(company => !usedCompanies.includes(company));
         

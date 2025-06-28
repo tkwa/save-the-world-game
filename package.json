@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "AI Strategy Game",
   "scripts": {
-    "test": "node -e \"require('./tests.js').runAllTests().then(passed => process.exit(passed ? 0 : 1))\"",
+    "test": "node -e \"require('./tests.js').runAllTests().then(result => process.exit((typeof result === 'object' ? result.passed : result) ? 0 : 1))\"",
     "lint": "eslint *.js",
     "lint:unused": "eslint --rule 'no-unused-vars: error' *.js"
   },

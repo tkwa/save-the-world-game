@@ -536,6 +536,7 @@ function testOtherTextsUsage() {
 
 // Main test runner
 async function runAllTests() {
+    const startTime = Date.now();
     console.log('🧪 Critical Path Game - Acquisition Event Tests\n');
     
     const results = await Promise.all([
@@ -549,15 +550,17 @@ async function runAllTests() {
     ]);
     
     const allPassed = results.every(result => result);
+    const endTime = Date.now();
+    const executionTime = endTime - startTime;
     
     console.log('\n' + '='.repeat(50));
     if (allPassed) {
-        console.log('🎉 All tests passed! Ready for commit.');
+        console.log(`🎉 All tests passed! Ready for commit. (${executionTime}ms)`);
     } else {
-        console.log('❌ Some tests failed. Please fix before committing.');
+        console.log(`❌ Some tests failed. Please fix before committing. (${executionTime}ms)`);
     }
     
-    return allPassed;
+    return { passed: allPassed, executionTime };
 }
 
 // Export for Node.js or browser

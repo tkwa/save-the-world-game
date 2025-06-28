@@ -45,6 +45,15 @@ This is a turn-based AI strategy game where players act as CEOs of AI companies 
 - Test edge cases (zero values, maximum values)
 - Verify formulas match mathematical specifications
 
+### Automated Testing
+- **Pre-commit hooks**: Tests run automatically before each commit
+- **Test timing**: Execution time is logged in commit messages for performance tracking
+- **Commands**: 
+  - `npm test` - Run full test suite with timing
+  - Manual: `node -e "require('./tests.js').runAllTests()"`
+- **Test categories**: Event logic, merger mechanics, endgame scoring, role indicators, other_texts usage
+- **Commit integration**: Failed tests block commits; passed tests append timing info to commit messages
+
 ## Game Mechanics Notes
 
 ### Risk Calculation Formula
