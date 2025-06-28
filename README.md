@@ -8,15 +8,24 @@ Open `savetheworld.html` in a browser, e.g. by using Cursor Live Preview or `pyt
 ## Status
 
 TODO for Claude (check off when finished):
-- [x] The first datacenter choice should be about whether to be above board with the US government-- since they're the ones that could impose sanctions. In the second text, there should be a phrase about "navigating US export controls on Chinese companies" if player company is Chinese
-- [x] Bump patch version and update changelog and commit these changes...
-
+- [ ] Players will need to choose between allocating to Projects (multi turn) and other categories on each turn. Patch version bump
+  - [x] Change allocation prompt to "Allocate X AI labor to <strong>one</strong> sector or project this month:". "or project" only if projects unlocked, and it shouldn't be bolded
+  - [x] Projects should not live in a box, rather there should be a vertical divider line separating the buttons, "Sectors" should be atop the sectors buttons and "Projects" atop the projects buttons
+  - [ ] Projects should be greyed out when unavailable just like sectors-- it's unavailable if you've done a sector or other project instead this turn
+  - [x] Tooltips should not have lower transparency for greyed out buttons
+  - [ ] Projects have the same cost as safety R&D
+- [ ] Integrate capabilities minigame as project
+  - [ ] ...
+- [ ] Bump 
 
 
 Longer term goals -- Claude shouldn't start these yet
-- [ ] More alignment minigames
+- [ ] Safety projects module
+  - [ ] Interp minigame
+- [ ] Neuralese event that disrupts monitoring and control without sufficient interpretability
+- [ ] Some way to slow down AI progress
 - [ ] Integrate forecasting minigame
-- [ ] Integrate capabilities minigame
+
 - [ ] Integrate the forecasting minigame as one of the Projects. 
 
 

@@ -57,12 +57,25 @@ There's a TODO list atop `README.md`.
 - **Test categories**: Event logic, merger mechanics, endgame scoring, role indicators, other_texts usage
 - **Commit integration**: Failed tests block commits; passed tests append timing info to commit messages
 
-### Commit messages
+## Documentation
+
+### Commits
+
+- Commit often but not more than once per task specified in the README.
 - Limit commit messages to 100 words.
+- If a series of commits feels like it merits a minor or patch version bump, ask the user and they'll probably approve it
+
+### Version bumps and CHANGELOG.md
+
+Update CHANGELOG.md whenever bumping the version.
+- Patch versions get up to 500 chars in changelog and 40-60 in summary line
+- Minor versions get up to 1500 chars in changelog and 40-90 in summary line
 
 ## Writing style
 
 - The game is meant to be played by a "steely-eyed missile man".
+- **Steely-eyed approach**: Technical precision, jargon-appropriate language, understated gravity, professional detachment, concise factual statements that respect player intelligence
+- **Avoid**: Melodrama, sensationalism, talking down to player, oversimplified moral framing, casual/jokey tone about serious topics
 - Text shouldn't be overly verbose-- less use of adjectives
 - Be specific rather than vague
 - Use game state about the player and world when relevant

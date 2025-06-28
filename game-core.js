@@ -264,13 +264,6 @@ const storyContent = {
             
             return `<div style="display: flex; justify-content: space-between; align-items: center;"><span>${gameState.currentMonth || 'January'} ${gameState.currentYear || 2026}</span><span class="tooltip" style="font-size: 14px; color: #999;">Role: ${role}, ${companyDisplay}${flagDisplay}<span class="tooltiptext" style="width: 300px; margin-left: -150px; font-weight: normal;">${tooltipContent}</span></span></div>`;
         },
-        text: function () {
-            if (gameState.currentTurn === 1) {
-                return `You are the CEO of ${gameState.companyName}.`;
-            } else {
-                return '';
-            }
-        },
         customContent: function () {
             // Show current event after resource allocation
             if (gameState.currentEvent) {
@@ -1361,24 +1354,40 @@ async function showPage(pageId) {
         headerDiv.style.marginBottom = '10px';
 
         // Show sanctions calculation if active
+        const projectText = gameState.projectsUnlocked ? ' or project' : '';
         if (gameState.hasSanctions) {
-            headerDiv.innerHTML = `Allocate ${corporateResources}M AI labor-hours to <strong>one</strong> sector for this month (base compute cut 50% by sanctions):`;
+            headerDiv.innerHTML = `Allocate ${corporateResources}M AI labor-hours to one sector${projectText} this month (base compute cut 50% by sanctions):`;
         } else {
-            headerDiv.innerHTML = `Allocate ${corporateResources}M AI labor-hours to <strong>one</strong> sector for this month:`;
+            headerDiv.innerHTML = `Allocate ${corporateResources}M AI labor-hours to one sector${projectText} this month:`;
         }
         actionsPanel.appendChild(headerDiv);
 
         // Create main container for allocation and research sections
         const mainContainer = document.createElement('div');
-        mainContainer.style.display = 'grid';
-        mainContainer.style.gridTemplateColumns = '2fr 1fr';
+        mainContainer.style.display = 'flex';
         mainContainer.style.gap = '20px';
         
-        // Create container for action buttons (left side)
+        // Create Sectors section
+        const sectorsSection = document.createElement('div');
+        sectorsSection.style.display = 'flex';
+        sectorsSection.style.flexDirection = 'column';
+        
+        // Add Sectors header
+        const sectorsHeader = document.createElement('h3');
+        sectorsHeader.textContent = 'Sectors';
+        sectorsHeader.style.cssText = `
+            margin: 0 0 15px 0;
+            color: #e0e0e0;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 16px;
+        `;
+        sectorsSection.appendChild(sectorsHeader);
+        
+        // Create container for action buttons
         const buttonContainer = document.createElement('div');
         buttonContainer.style.display = 'grid';
         buttonContainer.style.gridTemplateColumns = '1fr 1fr';
-        buttonContainer.style.gap = '20px'; // At least as much gap as right column spacing
+        buttonContainer.style.gap = '20px';
 
         // Create left column (AI R&D, Safety R&D)
         const leftColumn = document.createElement('div');
@@ -1504,29 +1513,39 @@ async function showPage(pageId) {
         // Add columns to button container
         buttonContainer.appendChild(leftColumn);
         buttonContainer.appendChild(rightColumn);
-
-        // Add both containers to main container
-        mainContainer.appendChild(buttonContainer);
+        
+        // Add button container to sectors section
+        sectorsSection.appendChild(buttonContainer);
+        
+        // Add sectors section to main container
+        mainContainer.appendChild(sectorsSection);
         
         // Only show Projects section if unlocked
         if (gameState.projectsUnlocked) {
-            // Create Projects section (right side)
-            const researchContainer = document.createElement('div');
-            researchContainer.style.cssText = `
-                border: 2px solid #555;
-                border-radius: 8px;
-                padding: 15px;
-                background-color: #353535;
+            // Create vertical divider
+            const divider = document.createElement('div');
+            divider.style.cssText = `
+                width: 2px;
+                background-color: #555;
+                margin: 0 10px;
             `;
+            mainContainer.appendChild(divider);
             
-            const researchHeader = document.createElement('h3');
-            researchHeader.textContent = 'Projects';
-            researchHeader.style.cssText = `
+            // Create Projects section
+            const projectsSection = document.createElement('div');
+            projectsSection.style.display = 'flex';
+            projectsSection.style.flexDirection = 'column';
+            
+            // Add Projects header
+            const projectsHeader = document.createElement('h3');
+            projectsHeader.textContent = 'Projects';
+            projectsHeader.style.cssText = `
                 margin: 0 0 15px 0;
                 color: #e0e0e0;
                 font-family: 'Courier New', Courier, monospace;
+                font-size: 16px;
             `;
-            researchContainer.appendChild(researchHeader);
+            projectsSection.appendChild(projectsHeader);
             
             // Add Alignment research button
             const alignmentBtn = document.createElement('button');
@@ -1534,7 +1553,7 @@ async function showPage(pageId) {
             const alignmentScore = gameState.alignmentMaxScore;
             alignmentBtn.innerHTML = `Alignment 🧭 ${alignmentScore.toFixed(0)}%`;
             alignmentBtn.style.cssText = `
-                width: 100%;
+                width: 200px;
                 height: 35px;
                 margin-bottom: 10px;
                 font-family: 'Courier New', Courier, monospace;
@@ -1543,9 +1562,9 @@ async function showPage(pageId) {
                 background-color: #2d5a2d;
             `;
             alignmentBtn.onclick = () => startMinigame('alignment-research');
-            researchContainer.appendChild(alignmentBtn);
+            projectsSection.appendChild(alignmentBtn);
             
-            mainContainer.appendChild(researchContainer);
+            mainContainer.appendChild(projectsSection);
         }
         
         // Add the main container to the actions panel
