@@ -8,21 +8,64 @@ Open `savetheworld.html` in a browser, e.g. by using Cursor Live Preview or `pyt
 ## Status
 
 TODO for Claude (check off when finished):
-- [ ] No need to 
+- [ ] Remove obsolete UN Recognition event and effect
+- [ ] Persuasion tech events
+  - [ ] rename persuasion -> superpersuasion. Make the description more neutral, like "Superpersuasion: systems that are so superhumanly charismatic and skilled at rhetoric. Allows unprecedented levels of diplomacy and rhetoric."
+  - [ ] persuasion: Requires 15x, costs 30 product, reveals superpersuasion tech (renamed from persuasion), doubles diplomacy gain
+  - [ ] superpersuasion: Requires 160x, lights superpersuasion tech, doubles diplomacy again
+  - [ ] Patch version bump: Persuasion tech
+- [ ] Severe safety incident
+  - Probability risk^3 * aiLevel / 1000, replaces fine event, results in fine + (sanctions except if you have superpersuasion tech)
+- [ ] Tooltips for sectors and projects
+  - [ ] Safety tooltip should say cumulative investment amount, then we can remove safety from status board
+  - [ ] Other tooltips are simple for now; alignment should say "Human-like and benign values. Alignment progress has reduced Rogue AI risk by X.XXx."
+- [ ] Sanctions should scale with your AI level, so you need roughly 2 turns of funds and 2 turns of diplomacy to lift them. The main way out is superpersuasion to get more diplomacy
+- [ ] Patch version bump: UI and safety incident improvements
+- [ ] Make events equally able to apply other status effects than sanctions; right now sanctions are treated specially
 - [ ] Integrate capabilities minigame as capabilities forecasting
   - [ ] ...
-- [ ] Bump 
 
 
 Longer term goals -- Claude shouldn't start these yet
+- [ ] Inter-company relations module (minor version)
+  - [ ] Lobby for/against antitrust, spending all your diplomacy points. Or decline
+    - All countries start with antitrust
+    - For: keeps your competitors small if you're leading, mergers can hasten the singularity, ...
+    - Against: allows you to merge if behind, mergers can be good for safety, ...
+  - [ ] Formulas for the fair value of a company in terms of their AI level, consistent with existing TAM math
+  - [ ] competitor-acquisition-forced event
+    - While two competitors are both 2.5x ahead of you, there's a forced acquisition event with weight 3. Description says it's clear that without merging you will fall hopelessly behind in the ASI race, and several employees threaten to quit if no merger happens, so you offer to sell yourself to the two leading companies. They offer you the same equity percent, 70% of the "fair value". You only have the choice of who to merge with and are told a merger is more likely to succeed between countries with better relations and where antitrust is not a concern. The choices are "Pick $companyA" and "Pick $companyB". This can only happen below 100x AI; above that someone else will soon get ASI anyway
+    - The chance of success is baseline 70%, modified by a country and antitrust modifier. Country modifier is x0.4 if US/CN and no 3rd country flag infrastructure, x0.7 if UK/CN (or US/CN if your company has a flag infra), x1.3 if allied or same countries. Antitrust modifier is (1 - combined market share).
+    - On success, you become Head of $originalCompany Division, $newCompany. "You retain a surprising amount of influence in $parentCompany's decisions, but the experience makes you disillusioned with humanity, and you continue going to work 
+  mainly to enrich yourself." Then the value of humanity galaxies gets halved in the end screen, and the selfishness in 
+  the role tooltip doubles. This is implemented as the Disillusioned status effect.
+    - On failure, immediate game end. A message says the company dissolves, you and other shareholders invest the proceeds in AI stocks, then you are taken to a version of endgame phase 3 where you have 0.01\% equity
+  - [ ] strategic-blocking-acquisition event
+    - Intelligence reports that $CompetitorA is close to acquiring $CompetitorB for $fairValueB, which would create a $combinedLevel AI capability rival. You could outbid them to prevent this consolidation.
+    - Choices:
+      - "Outbid with cash (-$fairValueB * 1.2, prevent rival mega-merger, acquire $CompetitorB)"
+      - "Outbid with equity (-$CompetitorB_level Diplomacy, dilute equity by $fairValueB * 1.4, acquire $CompetitorB)"  
+      - "Let the consolidation happen (risk facing $combinedLevel competitor)"
+- [ ] Intra-company relations module
+  - [ ] Your head of research wants to leave to start a competitor because $company is neglecting safety. (requires overseas datacenter) Choose to offer them equity (reducing your share by 10-30%), promise to pause AI R&D for 6 months, or let them leave. If they leave they take your overseas datacenter(s)
+  - [ ] You have the chance to double your equity share by replacing a board member, but risk sanctions
 - [ ] Safety projects module
   - [ ] Interp minigame and effects
+    - Available from the beginning
   - [ ] Control minigame and effects
+- [ ] Politics/geopolitics module
+  - [ ] China blockades Taiwan
+    - Use [drones/nukes/bioweapons] to help one side or the other
+  - [ ] Run for president
+    - Happens in Dec-March 2028 in China, 
+    - Disallowed if you have a second overseas datacenter
 - [ ] Intro phase
   - [ ] 
+
 - [ ] Neuralese event that disrupts monitoring and control without sufficient interpretability
 - [ ] Some way to slow down AI progress
 - [ ] Integrate forecasting minigame as a project
+
 
 
 

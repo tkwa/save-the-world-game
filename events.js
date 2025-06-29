@@ -4,7 +4,7 @@
 const COMPANIES = [
     { name: "OpenAI", longName: "OpenAI", homeCountry: "US", flag: "🇺🇸" },
     { name: "Anthropic", longName: "Anthropic", homeCountry: "US", flag: "🇺🇸" },
-    { name: "Google", longName: "Google DeepMind", homeCountry: "UK", flag: "🇬🇧" },
+    { name: "DeepMind", longName: "Google DeepMind", homeCountry: "UK", flag: "🇬🇧" },
     { name: "DeepSeek", longName: "DeepSeek", homeCountry: "CN", flag: "🇨🇳" },
     { name: "Tencent", longName: "Tencent", homeCountry: "CN", flag: "🇨🇳" },
     { name: "xAI", longName: "xAI", homeCountry: "US", flag: "🇺🇸" }
@@ -39,21 +39,44 @@ async function generateEvent() {
         const sanctionsEvent = events.specialEvents.sanctions;
         const randomText = sanctionsEvent.text_versions[Math.floor(Math.random() * sanctionsEvent.text_versions.length)];
         
+        // Calculate scaled costs for dynamic choice text
+        const aiLevel = gameState.playerAILevel;
+        const scaledMoneyCost = Math.max(3, Math.round(aiLevel * 0.2));
+        const scaledDiplomacyCost = Math.max(3, Math.round(aiLevel * 0.15));
+        
+        // Create choices with dynamic costs
+        const dynamicChoices = sanctionsEvent.choices.map(choice => {
+            if (choice.action === 'accept') {
+                return {
+                    ...choice,
+                    text: `Remove sanctions (-$${scaledMoneyCost}B, -${scaledDiplomacyCost} Diplomacy)`
+                };
+            }
+            return choice;
+        });
+        
         const event = {
             type: sanctionsEvent.type,
             text: randomText,
-            choices: sanctionsEvent.choices
+            choices: dynamicChoices,
+            customHandler: sanctionsEvent.customHandler
         };
         trackEventSeen(event);
         return event;
     }
     
-    // Calculate probability of safety incident based on adjusted risk level squared
+    // Calculate probability of safety incidents
     const adjustedRisk = calculateAdjustedRisk();
     const safetyIncidentChance = Math.pow(adjustedRisk, 2) / 100;
+    const severeIncidentChance = Math.pow(adjustedRisk, 3) * gameState.playerAILevel / 1000;
     
-    if (Math.random() * 100 < safetyIncidentChance) {
-        // Safety incident occurs
+    if (Math.random() * 100 < severeIncidentChance) {
+        // Severe safety incident occurs
+        const event = generateSevereSecurityIncident(events);
+        trackEventSeen(event);
+        return event;
+    } else if (Math.random() * 100 < safetyIncidentChance) {
+        // Regular safety incident occurs
         const event = generateSafetyIncident(events);
         trackEventSeen(event);
         return event;
@@ -95,13 +118,6 @@ function getAvailableEvents(allEvents) {
             }
         }
         
-        // Check special requirements for UN recognition
-        if (event.type === 'seek-un-recognition') {
-            const currentResources = calculateResources();
-            if (currentResources < 6) {
-                return false; // Need at least 6 resources
-            }
-        }
         
         // Check special requirements for safety research limitations
         if (event.type === 'safety-research-limitations') {
@@ -172,8 +188,31 @@ function generateSafetyIncident(events) {
     
     return {
         type: 'safety-incident',
-        text: `${randomText} The incident draws regulatory scrutiny and ${gameState.companyName} is fined $${fine}B. Your legal team recommends increased safety measures.`,
+        text: boldifyNumbers(`${randomText} The incident draws regulatory scrutiny and ${gameState.companyName} is fined $${fine}B. Your legal team recommends increased safety measures.`),
         fine: fine
+    };
+}
+
+// Generate a severe safety incident event
+function generateSevereSecurityIncident(events) {
+    gameState.safetyIncidentCount++;
+    const fine = Math.floor(gameState.safetyIncidentCount ** 1.5);
+    
+    const safetyEvent = events.safetyIncidents;
+    const randomText = safetyEvent.text_versions[Math.floor(Math.random() * safetyEvent.text_versions.length)];
+    
+    // Apply sanctions unless superpersuasion tech is active
+    const applySanctions = !gameState.technologies.persuasion;
+    
+    const sanctionsText = applySanctions ? 
+        " International authorities respond with comprehensive sanctions against your company." : 
+        " Your superpersuasion technology helps mitigate the diplomatic fallout, avoiding sanctions.";
+    
+    return {
+        type: 'severe-safety-incident',
+        text: boldifyNumbers(`${randomText} This severe incident triggers an international crisis of confidence in AI safety. ${gameState.companyName} faces a massive $${fine}B fine and intense regulatory scrutiny.${sanctionsText}`),
+        fine: fine,
+        applySanctions: applySanctions
     };
 }
 
@@ -418,6 +457,13 @@ function selectWeightedEvent(eventArray) {
 function applyEventEffects(event) {
     if (event && event.type === 'safety-incident') {
         gameState.money = Math.max(0, gameState.money - event.fine);
+    } else if (event && event.type === 'severe-safety-incident') {
+        // Apply fine
+        gameState.money = Math.max(0, gameState.money - event.fine);
+        // Apply sanctions if required
+        if (event.applySanctions) {
+            gameState.hasSanctions = true;
+        }
     }
 }
 
@@ -462,8 +508,11 @@ function applyChoiceEffects(choice) {
             if (choice.benefit.resourceMultiplier) {
                 gameState.resourceMultiplier = choice.benefit.resourceMultiplier;
             }
-            if (choice.benefit.unRecognition) {
-                gameState.hasUNRecognition = true;
+            if (choice.benefit.diplomacyMultiplier) {
+                gameState.diplomacyMultiplier = (gameState.diplomacyMultiplier || 1) * choice.benefit.diplomacyMultiplier;
+            }
+            if (choice.benefit.activateTechnology) {
+                gameState.technologies[choice.benefit.activateTechnology] = true;
             }
         }
         
@@ -1207,4 +1256,35 @@ function updateEventPoolOverlay() {
         overlay.innerHTML = lines.map(line => line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')).join('<br>');
         if (closeBtn) overlay.appendChild(closeBtn);
     });
+}
+
+// Custom handler for sanctions choice with AI-level scaling
+function handleSanctionsChoice(choice, event, sanctionsTriggered) {
+    console.log('Calling custom handler: handleSanctionsChoice');
+    
+    if (choice.action === 'accept') {
+        // Calculate scaled costs based on AI level
+        // Goal: roughly 2 turns of funds and diplomacy to lift sanctions
+        const aiLevel = gameState.playerAILevel;
+        const scaledMoneyCost = Math.max(3, Math.round(aiLevel * 0.2)); // Scales with AI level, minimum 3B
+        const scaledDiplomacyCost = Math.max(3, Math.round(aiLevel * 0.15)); // Scales with AI level, minimum 3
+        
+        // Check if player can afford the scaled costs
+        const canAfford = gameState.money >= scaledMoneyCost && gameState.diplomacyPoints >= scaledDiplomacyCost;
+        
+        if (canAfford) {
+            // Apply scaled costs and remove sanctions
+            gameState.money -= scaledMoneyCost;
+            gameState.diplomacyPoints -= scaledDiplomacyCost;
+            gameState.hasSanctions = false;
+            
+            return `Your lobbying campaign succeeds after spending <strong>$${scaledMoneyCost}B</strong> and <strong>${scaledDiplomacyCost} diplomacy points</strong>. International pressure is lifted through back-channel negotiations. Your company can now operate freely again.`;
+        } else {
+            // Can't afford - sanctions remain
+            return `You lack the resources to mount an effective lobbying campaign (need <strong>$${scaledMoneyCost}B</strong> and <strong>${scaledDiplomacyCost} diplomacy</strong>). Sanctions remain in effect.`;
+        }
+    } else {
+        // Decline - standard result text
+        return choice.result_text;
+    }
 }

@@ -1,6 +1,6 @@
 // Core game logic for the AI Timeline Game
 
-VERSION = "v0.3.2"
+VERSION = "v0.3.4"
 
 // Technology configuration
 const INITIAL_TECHNOLOGIES = {
@@ -159,7 +159,7 @@ const gameState = {
 
     // Status Effects
     hasSanctions: false,
-    hasUNRecognition: false,
+    diplomacyMultiplier: 1,
     
     // Infrastructure
     datacenterCount: 0,
@@ -645,14 +645,6 @@ function updateStatusEffects() {
         }
     }
     
-    // UN Recognition
-    const unRecognitionElement = document.getElementById('un-recognition-status');
-    if (gameState.hasUNRecognition) {
-        unRecognitionElement.textContent = 'UN Recognition';
-        unRecognitionElement.style.color = '#66bb6a'; // Green for good status
-    } else {
-        unRecognitionElement.textContent = '';
-    }
 }
 
 function updateInfrastructure() {
@@ -1055,6 +1047,15 @@ function calculateResourceGains(resources) {
 
 function generateActionTooltip(actionType, _resources) {
     switch(actionType) {
+        case 'ai-rd':
+            return `Research to advance AI capabilities. Increases your AI level but also raises rogue AI risk. Essential for staying competitive.`;
+        case 'diplomacy':
+            return `Build relationships with governments, regulators, and other stakeholders. Used to manage international relations and mitigate sanctions.`;
+        case 'product':
+            return `Develop commercial applications and revenue streams. Needed for technology breakthroughs and infrastructure expansion.`;
+        case 'safety-rd':
+            const cumulativeSafety = Math.round(gameState.safetyPoints);
+            return `Safety research to reduce rogue AI risk. Cumulative investment: <strong>${cumulativeSafety} safety points</strong>. Critical for ensuring AI systems remain aligned with human values.`;
         case 'revenue':
             // Calculate TAM and market share for revenue tooltip
             const playerLevel = gameState.playerAILevel;
@@ -1067,6 +1068,16 @@ function generateActionTooltip(actionType, _resources) {
             const marketShare = (1 / (1 + competitorPenalty)) * 100;
             
             return `Consumer and business applications.<br>Revenue = TAM × market share.<br>At an AI level of <strong>${Math.round(playerLevel)}x</strong>, your TAM is <strong>$${Math.round(tam)} billion/month</strong>. You have <strong>${Math.round(marketShare * 10) / 10}%</strong> market share.`;
+        case 'alignment-project':
+            // Calculate alignment risk reduction
+            const currentRisk = calculateAdjustedRisk();
+            const alignmentFactor = 1 + (gameState.alignmentMaxScore / 100);
+            const newAlignmentFactor = 1 + ((gameState.alignmentMaxScore + 10) / 100); // Assume 10% gain
+            const currentAdjustedRisk = gameState.doomLevel / (1 + Math.pow(gameState.safetyPoints, 0.5) / 3) / alignmentFactor;
+            const newAdjustedRisk = gameState.doomLevel / (1 + Math.pow(gameState.safetyPoints, 0.5) / 3) / newAlignmentFactor;
+            const riskReduction = currentAdjustedRisk - newAdjustedRisk;
+            
+            return `Human-like and benign values. Alignment progress has reduced Rogue AI risk by <strong>${riskReduction.toFixed(2)}x</strong>.`;
         default:
             return '';
     }
@@ -1208,7 +1219,7 @@ function applyResourceAllocation(resourceType, corporateResources) {
             gameState.money = Math.max(0, gameState.money - gains.aiCost);
             break;
         case 'diplomacy':
-            gameState.diplomacyPoints += gains.diplomacy;
+            gameState.diplomacyPoints += gains.diplomacy * (gameState.diplomacyMultiplier || 1);
             break;
         case 'product':
             gameState.productPoints += gains.product;
@@ -1238,7 +1249,7 @@ function resetGameState() {
     gameState.productPoints = 0;
     gameState.safetyPoints = 0;
     gameState.hasSanctions = false;
-    gameState.hasUNRecognition = false;
+    gameState.diplomacyMultiplier = 1;
     gameState.datacenterCount = 0;
     gameState.powerplantCount = 0;
     gameState.biotechLabCount = 0;
@@ -1489,22 +1500,20 @@ async function showPage(pageId) {
                 button.disabled = true;
             }
 
-            // Add tooltip for revenue button
-            if (page.actions[index] === 'revenue') {
-                const tooltip = generateActionTooltip('revenue', corporateResources);
-                if (tooltip) {
-                    button.className = 'button tooltip';
-                    button.style.position = 'relative';
-                    
-                    // Create tooltip span element
-                    const tooltipSpan = document.createElement('span');
-                    tooltipSpan.className = 'tooltiptext';
-                    tooltipSpan.innerHTML = tooltip;
-                    tooltipSpan.style.width = '300px';
-                    tooltipSpan.style.marginLeft = '-150px';
-                    
-                    button.appendChild(tooltipSpan);
-                }
+            // Add tooltip for all sector buttons
+            const tooltip = generateActionTooltip(page.actions[index], corporateResources);
+            if (tooltip) {
+                button.className = 'button tooltip';
+                button.style.position = 'relative';
+                
+                // Create tooltip span element
+                const tooltipSpan = document.createElement('span');
+                tooltipSpan.className = 'tooltiptext';
+                tooltipSpan.innerHTML = tooltip;
+                tooltipSpan.style.width = '300px';
+                tooltipSpan.style.marginLeft = '-150px';
+                
+                button.appendChild(tooltipSpan);
             }
 
             button.onclick = () => {
@@ -1599,6 +1608,22 @@ async function showPage(pageId) {
                 alignmentBtn.style.opacity = '0.6';
                 alignmentBtn.style.cursor = 'not-allowed';
                 alignmentBtn.disabled = true;
+            }
+            
+            // Add tooltip for alignment project
+            const alignmentTooltip = generateActionTooltip('alignment-project', corporateResources);
+            if (alignmentTooltip) {
+                alignmentBtn.className = 'button tooltip';
+                alignmentBtn.style.position = 'relative';
+                
+                // Create tooltip span element
+                const tooltipSpan = document.createElement('span');
+                tooltipSpan.className = 'tooltiptext';
+                tooltipSpan.innerHTML = alignmentTooltip;
+                tooltipSpan.style.width = '300px';
+                tooltipSpan.style.marginLeft = '-150px';
+                
+                alignmentBtn.appendChild(tooltipSpan);
             }
             
             alignmentBtn.onclick = () => {
@@ -1871,16 +1896,7 @@ async function handleEventChoice(choiceIndex) {
         gameState.eventsAccepted.add(event.type);
         console.log('Current accepted events:', Array.from(gameState.eventsAccepted));
         
-        // Unlock technologies when corresponding events are accepted
-        if (event.type === 'product-breakthrough-medicine') {
-            gameState.technologies.medicine = true;
-        } else if (event.type === 'product-breakthrough-robotics') {
-            gameState.technologies.robotics = true;
-        } else if (event.type === 'humanoid-robotics') {
-            gameState.technologies.humanoidRobots = true;
-        } else if (event.type === 'nuclear-weapons') {
-            gameState.technologies.nukes = true;
-        }
+        // Technology activation is now handled through the activateTechnology benefit system
         
         // Track infrastructure construction
         if (event.type === 'synthetic-biology') {

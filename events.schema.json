@@ -73,6 +73,10 @@
         },
         "other_texts": {
           "$ref": "#/definitions/otherTexts"
+        },
+        "customHandler": {
+          "type": "string",
+          "description": "Name of the custom handler function for this event"
         }
       },
       "required": ["type", "text_versions", "choices"],
@@ -259,9 +263,14 @@
           "minimum": 1,
           "description": "Multiplier for all monthly resources"
         },
-        "unRecognition": {
-          "type": "boolean",
-          "description": "Grants UN recognition status"
+        "diplomacyMultiplier": {
+          "type": "number",
+          "minimum": 1,
+          "description": "Multiplier for diplomacy gains"
+        },
+        "activateTechnology": {
+          "type": "string",
+          "description": "Technology ID to activate when this benefit is applied"
         }
       },
       "additionalProperties": false
