@@ -276,7 +276,8 @@ const storyContent = {
 
                 if (gameState.currentEvent.showResult && gameState.currentEvent.resultText) {
                     // Showing result of choice - just display result and next turn button
-                    eventHtml += `<p style="color: #d0d0d0; margin-bottom: 15px;">${gameState.currentEvent.resultText}</p>`;
+                    const processedResultText = boldifyNumbers(gameState.currentEvent.resultText);
+                    eventHtml += `<p style="color: #d0d0d0; margin-bottom: 15px;">${processedResultText}</p>`;
                     eventHtml += `<button class="button" onclick="finishTurn()">Next Turn <strong>⏎</strong></button>`;
                 } else if (gameState.currentEvent.choices && gameState.currentEvent.choices.length > 0) {
                     // Event has choices - show them as buttons
@@ -1367,9 +1368,9 @@ async function showPage(pageId) {
         // Show sanctions calculation if active
         const projectText = gameState.projectsUnlocked ? ' or project' : '';
         if (gameState.hasSanctions) {
-            headerDiv.innerHTML = `Allocate ${corporateResources}M AI labor-hours to one sector${projectText} this month (base compute cut 50% by sanctions):`;
+            headerDiv.innerHTML = `Allocate <strong>${corporateResources}M</strong> AI labor-hours to <strong>one</strong> sector${projectText} this month (base compute cut 50% by sanctions):`;
         } else {
-            headerDiv.innerHTML = `Allocate ${corporateResources}M AI labor-hours to one sector${projectText} this month:`;
+            headerDiv.innerHTML = `Allocate <strong>${corporateResources}M</strong> AI labor-hours to <strong>one</strong> sector${projectText} this month:`;
         }
         actionsPanel.appendChild(headerDiv);
 

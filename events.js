@@ -309,10 +309,38 @@ function createEventVariables(eventType) {
     return variables;
 }
 
+// Helper function to automatically bold numbers, percentages, and multipliers
+function boldifyNumbers(text) {
+    if (!text) return text;
+    
+    // Split by <strong> tags to avoid double-bolding
+    const parts = text.split(/(<strong>.*?<\/strong>)/);
+    
+    for (let i = 0; i < parts.length; i += 2) { // Only process non-strong parts (even indices)
+        if (parts[i]) {
+            // Bold standalone numbers (including decimals): 17, 10.5, etc.
+            parts[i] = parts[i].replace(/\b(\d+(?:\.\d+)?)\b/g, '<strong>$1</strong>');
+            
+            // Bold percentages: 50%, 12.5%, etc.
+            parts[i] = parts[i].replace(/\b(\d+(?:\.\d+)?%)\b/g, '<strong>$1</strong>');
+            
+            // Bold multipliers: 17x, 2.5x, etc.
+            parts[i] = parts[i].replace(/\b(\d+(?:\.\d+)?x)\b/g, '<strong>$1</strong>');
+        }
+    }
+    
+    return parts.join('');
+}
+
 // Helper function to substitute variables in event text (legacy wrapper)
 function substituteEventVariables(text, eventType) {
     const variables = createEventVariables(eventType);
-    return substituteVariables(text, variables);
+    let result = substituteVariables(text, variables);
+    
+    // Apply automatic number bolding after variable substitution
+    result = boldifyNumbers(result);
+    
+    return result;
 }
 
 // Filter choices based on boolean conditions in gameState

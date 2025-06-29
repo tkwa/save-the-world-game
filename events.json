@@ -326,18 +326,18 @@
       "aiLevelRange": { "max": 100 },
       "customHandler": "handleCompetitorBreakthroughChoice",
       "text_versions": [
-        "Intelligence reports indicate that $competitorName has achieved a sudden breakthrough, doubling their AI capabilities overnight to <strong>$newCompetitorLevel</strong>$surpassingText. $companyName drops from <strong>$marketShareBefore%</strong> to <strong>$marketShareAfter%</strong> market share. Your technical team suggests using $aiSystemName to scan chat logs and communications of known employees at $competitorName to understand their methods."
+        "Intelligence reports indicate that $competitorName has achieved a sudden breakthrough, doubling their AI capabilities overnight to <strong>$newCompetitorLevel</strong>$surpassingText. $companyName drops from <strong>$marketShareBefore%</strong> to <strong>$marketShareAfter%</strong> market share. Many $competitorName employees are customers of $aiSystemName, so your technical team suggests using $aiSystemName to scan chat logs between it and these employees to understand their methods."
       ],
       "choices": [
         {
           "text": "Scan competitor communications",
           "action": "accept",
-          "result_text": "Your AI begins analyzing intercepted communications from the competitor company..."
+          "result_text": "Your AI begins analyzing chats between it and the competitor's employees for any hint of the method behind the breakthrough..."
         },
         {
           "text": "Decline",
           "action": "decline",
-          "result_text": "You decide that corporate espionage is too risky and potentially illegal. Your team focuses on independent research to catch up through legitimate means."
+          "result_text": "You decide that corporate espionage, even in this passive form, is too risky and potentially illegal. Your team focuses on independent research to catch up through legitimate means."
         }
       ]
     },

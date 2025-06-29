@@ -16,12 +16,14 @@ TODO for Claude (check off when finished):
 
 Longer term goals -- Claude shouldn't start these yet
 - [ ] Safety projects module
-  - [ ] Interp minigame
+  - [ ] Interp minigame and effects
+  - [ ] Control minigame and effects
+- [ ] Intro phase
+  - [ ] 
 - [ ] Neuralese event that disrupts monitoring and control without sufficient interpretability
 - [ ] Some way to slow down AI progress
-- [ ] Integrate forecasting minigame
+- [ ] Integrate forecasting minigame as a project
 
-- [ ] Integrate the forecasting minigame as one of the Projects. 
 
 
 
