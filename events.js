@@ -318,14 +318,21 @@ function boldifyNumbers(text) {
     
     for (let i = 0; i < parts.length; i += 2) { // Only process non-strong parts (even indices)
         if (parts[i]) {
-            // Bold standalone numbers (including decimals): 17, 10.5, etc.
-            parts[i] = parts[i].replace(/\b(\d+(?:\.\d+)?)\b/g, '<strong>$1</strong>');
-            
             // Bold percentages: 50%, 12.5%, etc.
             parts[i] = parts[i].replace(/\b(\d+(?:\.\d+)?%)\b/g, '<strong>$1</strong>');
             
             // Bold multipliers: 17x, 2.5x, etc.
             parts[i] = parts[i].replace(/\b(\d+(?:\.\d+)?x)\b/g, '<strong>$1</strong>');
+            
+            // Bold numbers in specific game contexts (more targeted approach)
+            // Numbers after "reaching", "remains at", "drops from", "to"
+            parts[i] = parts[i].replace(/\b(reaching|remains at|drops from|to)\s+(\d+(?:\.\d+)?)\b/gi, '$1 <strong>$2</strong>');
+            
+            // Numbers with currency symbols: $3B, $10M, etc.
+            parts[i] = parts[i].replace(/\$(\d+(?:\.\d+)?[BM]?)\b/g, '$<strong>$1</strong>');
+            
+            // Standalone numbers at start of sentences or after punctuation (likely metrics)
+            parts[i] = parts[i].replace(/(^|[.!?]\s+)(\d+(?:\.\d+)?)\b/g, '$1<strong>$2</strong>');
         }
     }
     
