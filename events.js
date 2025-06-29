@@ -329,7 +329,7 @@ function boldifyNumbers(text) {
             parts[i] = parts[i].replace(/\b(reaching|remains at|drops from|to)\s+(\d+(?:\.\d+)?)\b/gi, '$1 <strong>$2</strong>');
             
             // Numbers with currency symbols: $3B, $10M, etc.
-            parts[i] = parts[i].replace(/\$(\d+(?:\.\d+)?[BM]?)\b/g, '$<strong>$1</strong>');
+            parts[i] = parts[i].replace(/(\$\d+(?:\.\d+)?[BM]?)\b/g, '<strong>$1</strong>');
             
             // Standalone numbers at start of sentences or after punctuation (likely metrics)
             parts[i] = parts[i].replace(/(^|[.!?]\s+)(\d+(?:\.\d+)?)\b/g, '$1<strong>$2</strong>');
