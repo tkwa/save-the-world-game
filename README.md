@@ -8,19 +8,20 @@ Open `savetheworld.html` in a browser, e.g. by using Cursor Live Preview or `pyt
 ## Status
 
 TODO for Claude (check off when finished):
-- [ ] Remove obsolete UN Recognition event and effect
-- [ ] Persuasion tech events
-  - [ ] rename persuasion -> superpersuasion. Make the description more neutral, like "Superpersuasion: systems that are so superhumanly charismatic and skilled at rhetoric. Allows unprecedented levels of diplomacy and rhetoric."
-  - [ ] persuasion: Requires 15x, costs 30 product, reveals superpersuasion tech (renamed from persuasion), doubles diplomacy gain
-  - [ ] superpersuasion: Requires 160x, lights superpersuasion tech, doubles diplomacy again
-  - [ ] Patch version bump: Persuasion tech
-- [ ] Severe safety incident
+- [x] Remove obsolete UN Recognition event and effect ✅ v0.3.4
+- [x] Persuasion tech events ✅ v0.3.4
+  - [x] rename persuasion -> superpersuasion. Make the description more neutral, like "Superpersuasion: systems that are so superhumanly charismatic and skilled at rhetoric. Allows unprecedented levels of diplomacy and rhetoric."
+  - [x] persuasion: Requires 15x, costs 30 product, reveals superpersuasion tech (renamed from persuasion), doubles diplomacy gain
+  - [x] superpersuasion: Requires 160x, lights superpersuasion tech, doubles diplomacy again
+  - [x] Patch version bump: Persuasion tech
+- [x] Severe safety incident ✅ v0.3.4
   - Probability risk^3 * aiLevel / 1000, replaces fine event, results in fine + (sanctions except if you have superpersuasion tech)
-- [ ] Tooltips for sectors and projects
-  - [ ] Safety tooltip should say cumulative investment amount, then we can remove safety from status board
-  - [ ] Other tooltips are simple for now; alignment should say "Human-like and benign values. Alignment progress has reduced Rogue AI risk by X.XXx."
-- [ ] Sanctions should scale with your AI level, so you need roughly 2 turns of funds and 2 turns of diplomacy to lift them. The main way out is superpersuasion to get more diplomacy
-- [ ] Patch version bump: UI and safety incident improvements
+- [x] Tooltips for sectors and projects ✅ v0.3.4
+  - [x] Safety tooltip should say cumulative investment amount, then we can remove safety from status board
+  - [x] Other tooltips are simple for now; alignment should say "Human-like and benign values. Alignment progress has reduced Rogue AI risk by X.XXx."
+- [x] Sanctions should scale with your AI level, so you need roughly 2 turns of funds and 2 turns of diplomacy to lift them. The main way out is superpersuasion to get more diplomacy ✅ v0.3.4
+- [x] Patch version bump: UI and safety incident improvements ✅ v0.3.4
+- [x] Unified technology activation system using activateTechnology benefit ✅ v0.3.4
 - [ ] Make events equally able to apply other status effects than sanctions; right now sanctions are treated specially
 - [ ] Integrate capabilities minigame as capabilities forecasting
   - [ ] ...
