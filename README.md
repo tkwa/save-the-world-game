@@ -23,6 +23,7 @@ TODO for Claude (check off when finished):
 - [x] Patch version bump: UI and safety incident improvements ✅ v0.3.4
 - [x] Unified technology activation system using activateTechnology benefit ✅ v0.3.4
 - [ ] Make events equally able to apply other status effects than sanctions; right now sanctions are treated specially
+- [ ] How could we test that every event handler
 - [ ] Integrate capabilities minigame as capabilities forecasting
   - [ ] ...
 

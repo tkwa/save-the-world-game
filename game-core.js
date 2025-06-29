@@ -1803,6 +1803,27 @@ function addDebugControls() {
     dropdown.innerHTML = '<option value="">Debug: Force Event</option>';
     debugControls.appendChild(dropdown);
     
+    // Debug status effects dropdown
+    const statusDropdown = document.createElement('select');
+    statusDropdown.id = 'debugStatusDropdown';
+    statusDropdown.onchange = function() { applyStatusEffect(this.value); };
+    statusDropdown.style.cssText = debugDropdownStyle;
+    statusDropdown.innerHTML = `
+        <option value="">Debug: Apply Status</option>
+        <option value="sanctions">Apply Sanctions</option>
+        <option value="remove-sanctions">Remove Sanctions</option>
+        <option value="set-diplomacy-multiplier-2">Set Diplomacy Multiplier 2x</option>
+        <option value="set-diplomacy-multiplier-4">Set Diplomacy Multiplier 4x</option>
+        <option value="reset-diplomacy-multiplier">Reset Diplomacy Multiplier</option>
+        <option value="activate-medicine">Activate Medicine Tech</option>
+        <option value="activate-robotics">Activate Robotics Tech</option>
+        <option value="activate-humanoid-robots">Activate Humanoid Robots Tech</option>
+        <option value="activate-persuasion">Activate Superpersuasion Tech</option>
+        <option value="activate-nukes">Activate Nuclear Weapons Tech</option>
+        <option value="reset-all-tech">Reset All Technologies</option>
+    `;
+    debugControls.appendChild(statusDropdown);
+    
     // +1000 Resources button
     const resourcesBtn = document.createElement('button');
     resourcesBtn.textContent = '+1000 Resources';
@@ -1943,6 +1964,76 @@ async function handleEventChoice(choiceIndex) {
     }
 }
 
+// Debug functions
+function giveResources() {
+    gameState.money += 1000;
+    gameState.diplomacyPoints += 1000;
+    gameState.productPoints += 1000;
+    gameState.safetyPoints += 1000;
+    updateStatusBar();
+}
+
+function debugShowAllTechs() {
+    // Toggle all technologies
+    const allOff = Object.values(gameState.technologies).every(tech => !tech);
+    for (const tech in gameState.technologies) {
+        gameState.technologies[tech] = allOff;
+    }
+    updateTechnologies();
+}
+
+function applyStatusEffect(effectType) {
+    if (!effectType) return;
+    
+    switch(effectType) {
+        case 'sanctions':
+            gameState.hasSanctions = true;
+            break;
+        case 'remove-sanctions':
+            gameState.hasSanctions = false;
+            break;
+        case 'set-diplomacy-multiplier-2':
+            gameState.diplomacyMultiplier = 2;
+            break;
+        case 'set-diplomacy-multiplier-4':
+            gameState.diplomacyMultiplier = 4;
+            break;
+        case 'reset-diplomacy-multiplier':
+            gameState.diplomacyMultiplier = 1;
+            break;
+        case 'activate-medicine':
+            gameState.technologies.medicine = true;
+            break;
+        case 'activate-robotics':
+            gameState.technologies.robotics = true;
+            break;
+        case 'activate-humanoid-robots':
+            gameState.technologies.humanoidRobots = true;
+            break;
+        case 'activate-persuasion':
+            gameState.technologies.persuasion = true;
+            break;
+        case 'activate-nukes':
+            gameState.technologies.nukes = true;
+            break;
+        case 'reset-all-tech':
+            for (const tech in gameState.technologies) {
+                gameState.technologies[tech] = INITIAL_TECHNOLOGIES[tech];
+            }
+            break;
+    }
+    
+    // Reset dropdown
+    const dropdown = document.getElementById('debugStatusDropdown');
+    if (dropdown) dropdown.value = '';
+    
+    // Update UI
+    updateStatusBar();
+    updateTechnologies();
+    
+    console.log('Applied status effect:', effectType);
+}
+
 // Browser-specific initialization
 if (typeof window !== 'undefined') {
     // Make functions globally accessible
@@ -1952,6 +2043,7 @@ if (typeof window !== 'undefined') {
     window.populateDebugDropdown = populateDebugDropdown;
     window.giveResources = giveResources;
     window.debugShowAllTechs = debugShowAllTechs;
+    window.applyStatusEffect = applyStatusEffect;
     window.getChoiceAffordability = getChoiceAffordability;
     window.formatChoiceTextWithCosts = formatChoiceTextWithCosts;
 }
