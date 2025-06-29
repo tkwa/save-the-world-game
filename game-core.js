@@ -32,10 +32,10 @@ const INITIAL_TECHNOLOGIES = {
 
 // Technology visibility conditions - functions that determine if a tech should be visible
 const TECHNOLOGY_VISIBILITY = {
-    // Column 1: Random - all visible from start (depend on robotaxi only)
+    // Column 1: General technologies  
     aiNovelist: () => gameState.technologies.robotaxi,
     aiResearchLead: () => gameState.technologies.robotaxi,
-    persuasion: () => gameState.technologies.robotaxi,
+    persuasion: () => gameState.eventsAccepted.has('persuasion-breakthrough'), // Revealed by persuasion event
     
     // Column 2: Medicine - each depends on the one above
     syntheticBiology: () => gameState.technologies.medicine,
