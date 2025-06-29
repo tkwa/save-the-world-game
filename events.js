@@ -104,6 +104,11 @@ function trackEventSeen(event) {
     // Also track appearance count for maxTimes filtering
     const currentCount = gameState.eventAppearanceCounts.get(event.type) || 0;
     gameState.eventAppearanceCounts.set(event.type, currentCount + 1);
+    
+    // Mark falling behind flag when falling-behind event is actually shown
+    if (event.type === 'falling-behind') {
+        gameState.hasEverFallenBehind = true;
+    }
 }
 
 // Check if event requirements are met and hasn't been accepted yet
@@ -140,13 +145,8 @@ function getAvailableEvents(allEvents) {
             if (gameState.playerAILevel >= maxCompetitorLevel) {
                 return false; // Player must be behind the top competitor
             }
-            // Also check if this is the first time falling behind
-            if (!gameState.hasEverFallenBehind) {
-                gameState.hasEverFallenBehind = true; // Mark that player has fallen behind
-                return true; // Trigger the event
-            } else {
-                return false; // Already triggered once
-            }
+            // Only trigger if this is the first time falling behind
+            return !gameState.hasEverFallenBehind;
         }
         
         // Check if this event has already been accepted (oneTimeAccept events)
