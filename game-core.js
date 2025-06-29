@@ -1510,6 +1510,12 @@ async function showPage(pageId) {
             button.onclick = () => {
                 if (!gameState.selectedAllocation && canAfford) {
                     gameState.selectedAllocation = page.actions[index];
+                    
+                    // Apply sector allocation immediately (like projects)
+                    applyResourceAllocation(page.actions[index], corporateResources);
+                    gameState.allocationApplied = true;
+                    
+                    // Refresh UI for sectors (unlike projects which show minigame page)
                     showPage('main-game');
                 }
             };
