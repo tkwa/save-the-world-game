@@ -44,12 +44,30 @@ async function generateEvent() {
         const scaledMoneyCost = Math.max(3, Math.round(aiLevel * 0.2));
         const scaledDiplomacyCost = Math.max(3, Math.round(aiLevel * 0.15));
         
-        // Create choices with dynamic costs
+        // Check affordability for dynamic choice text
+        const canAfford = gameState.money >= scaledMoneyCost && gameState.diplomacyPoints >= scaledDiplomacyCost;
+        
+        // Create choices with dynamic costs and affordability feedback
         const dynamicChoices = sanctionsEvent.choices.map(choice => {
             if (choice.action === 'accept') {
+                // Style costs based on affordability (red if missing, normal if affordable)
+                const moneyMissing = gameState.money < scaledMoneyCost;
+                const diplomacyMissing = gameState.diplomacyPoints < scaledDiplomacyCost;
+                
+                const moneyCostText = moneyMissing ? 
+                    `<span style="color: #ff6b6b; font-weight: bold;">-$${scaledMoneyCost}B</span>` : 
+                    `-$${scaledMoneyCost}B`;
+                    
+                const diplomacyCostText = diplomacyMissing ? 
+                    `<span style="color: #ff6b6b; font-weight: bold;">-${scaledDiplomacyCost} Diplomacy</span>` : 
+                    `-${scaledDiplomacyCost} Diplomacy`;
+                
+                const choiceText = `Remove sanctions (${moneyCostText}, ${diplomacyCostText})`;
+                
                 return {
                     ...choice,
-                    text: `Remove sanctions (-$${scaledMoneyCost}B, -${scaledDiplomacyCost} Diplomacy)`
+                    text: choiceText,
+                    canAfford: canAfford
                 };
             }
             return choice;
@@ -66,16 +84,16 @@ async function generateEvent() {
     }
     
     // Calculate probability of safety incidents
-    const adjustedRisk = calculateAdjustedRisk();
-    const safetyIncidentChance = Math.pow(adjustedRisk, 2) / 100;
-    const severeIncidentChance = Math.pow(adjustedRisk, 3) * gameState.playerAILevel / 100000; // Divide by 100000 instead of 1000 for proper scaling
+    const adjustedRiskPercent = calculateAdjustedRiskPercent();
+    const safetyIncidentChance = Math.pow(adjustedRiskPercent / 100.0, 2);
+    const severeIncidentChance = Math.pow(adjustedRiskPercent / 100.0, 3) * gameState.playerAILevel / 1000;
     
-    if (Math.random() * 100 < severeIncidentChance) {
+    if (Math.random() < severeIncidentChance) {
         // Severe safety incident occurs
         const event = generateSevereSecurityIncident(events);
         trackEventSeen(event);
         return event;
-    } else if (Math.random() * 100 < safetyIncidentChance) {
+    } else if (Math.random() < safetyIncidentChance) {
         // Regular safety incident occurs
         const event = generateSafetyIncident(events);
         trackEventSeen(event);

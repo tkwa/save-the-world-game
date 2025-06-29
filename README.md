@@ -8,8 +8,14 @@ Open `savetheworld.html` in a browser, e.g. by using Cursor Live Preview or `pyt
 ## Status
 
 TODO for Claude (check off when finished):
+- 
 - [ ] Make events equally able to apply other status effects than sanctions; right now sanctions are treated specially
 - [ ] How could we test that every event handler is free of bugs like we fixed in the sanctions custom handler?
+
+
+Still deciding on details...
+- [ ] Uncertain escape
+  - The AI will escape at some point between 500 aand 1000x
 - [ ] Integrate capabilities minigame as capabilities forecasting
   - [ ] ...
 
@@ -34,7 +40,7 @@ Longer term goals -- Claude shouldn't start these yet
       - "Outbid with cash (-$fairValueB * 1.2, prevent rival mega-merger, acquire $CompetitorB)"
       - "Outbid with equity (-$CompetitorB_level Diplomacy, dilute equity by $fairValueB * 1.4, acquire $CompetitorB)"  
       - "Let the consolidation happen (risk facing $combinedLevel competitor)"
-- [ ] Intra-company relations module
+- [ ] Intra-company relations module (patch version)
   - [ ] Your head of research wants to leave to start a competitor because $company is neglecting safety. (requires overseas datacenter) Choose to offer them equity (reducing your share by 10-30%), promise to pause AI R&D for 6 months, or let them leave. If they leave they take your overseas datacenter(s)
   - [ ] You have the chance to double your equity share by replacing a board member, but risk sanctions
 - [ ] Safety projects module
@@ -48,7 +54,25 @@ Longer term goals -- Claude shouldn't start these yet
     - Happens in Dec-March 2028 in China, 
     - Disallowed if you have a second overseas datacenter
 - [ ] Intro phase
-  - [ ] 
+  - [ ] Interface elements are slowly revealed as : phase system
+  - AI R&D -> Revenue -> Safety R&D
+- [ ] AI manipulation module
+  - The basic idea is that a superpersuader AI that is unsafe will be pushing you away from safety
+  - This could involve physical manipulation / dark patterns, textually convincing you to not do safety, 
+  - Ideas
+    - Urgency / peer pressure:
+      - "It's only X turns until a competitor will reach AGI"
+      - "You reflect on how galaxies are worth 100x more when owned by you than by humanity.
+    - Physical / interface changes
+      - AI R&D button is green, safety is dark red
+      - Safety R&D gets a warning icon
+      - Safety R&D keyboard shortcut disabled and 
+      - "Auto-select Recommended" slider selects AIRD most of the time
+      - Friction: Safety button requires multiple confirmations, capabilities is one-click. 
+      - AI R&D is in the position of the button you clicked last
+    
+
+
 
 - [ ] Neuralese event that disrupts monitoring and control without sufficient interpretability
 - [ ] Some way to slow down AI progress

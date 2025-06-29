@@ -442,7 +442,7 @@ function getAISystemVersion(companyName, capabilityLevel) {
         case 'Anthropic':
             // Starts at Claude 5 Opus, increments 2 per level
             return `Claude ${5 + (band * 2)} Opus`;
-        case 'Google':
+        case 'DeepMind':
             // Starts at Gemini 3.0 Pro, increments 1.5 per level
             return `Gemini ${(3.0 + (band * 1.5)).toFixed(1)} Pro`;
         case 'OpenAI':
@@ -506,23 +506,23 @@ function getAIRisksByCapability(capabilityLevel) {
     }
 }
 
-function calculateAdjustedRisk() {
+function calculateAdjustedRiskPercent() {
     const rawRisk = gameState.doomLevel;
-    const safetyFactor = 1 + Math.pow(gameState.safetyPoints, 0.5) / 3;
+    const safetyFactor = 1 + Math.pow(gameState.safetyPoints, 0.6) / 5;
     const alignmentFactor = 1 + (gameState.alignmentMaxScore / 100);
     const adjustedRisk = rawRisk / (safetyFactor * alignmentFactor);
     return Math.min(adjustedRisk, 100); // Cap at 100%
 }
 
 function getRiskFactors() {
-    const safetyFactor = 1 + Math.pow(gameState.safetyPoints, 0.5) / 3;
+    const safetyFactor = 1 + Math.pow(gameState.safetyPoints, 0.6) / 5;
     const alignmentFactor = 1 + (gameState.alignmentMaxScore / 100);
     return { safetyFactor, alignmentFactor };
 }
 
 function generateRogueAIRiskTooltip() {
     const rawRisk = gameState.doomLevel;
-    const adjustedRisk = calculateAdjustedRisk();
+    const adjustedRisk = calculateAdjustedRiskPercent();
     const { safetyFactor, alignmentFactor } = getRiskFactors();
     const riskPercent = Math.round(adjustedRisk);
     const monthlyIncidentChance = Math.pow(adjustedRisk / 100, 2) * 100;
@@ -555,7 +555,7 @@ function updateAISection() {
     
     // Doom level - adjusted by safety R&D and alignment score
     const doomElement = document.getElementById('doom-level');
-    const adjustedDoom = calculateAdjustedRisk();
+    const adjustedDoom = calculateAdjustedRiskPercent();
     const roundedDoom = Math.round(adjustedDoom);
     doomElement.textContent = `${roundedDoom}%`;
     doomElement.style.fontWeight = 'bold';
@@ -621,11 +621,7 @@ function updateCompanyResources() {
     productElement.style.fontWeight = 'bold';
     productElement.style.color = gameState.productPoints === 0 ? '#ff6b6b' : '#e0e0e0';
     
-    // Safety points
-    const safetyElement = document.getElementById('safety-points');
-    safetyElement.textContent = Math.round(gameState.safetyPoints);
-    safetyElement.style.fontWeight = 'bold';
-    safetyElement.style.color = gameState.safetyPoints === 0 ? '#ff6b6b' : '#e0e0e0';
+    // Safety points (removed from UI, kept only in tooltips)
 }
 
 function updateStatusEffects() {
@@ -884,16 +880,16 @@ async function advanceTurn() {
     updateStatusBar();
 
     // Check end conditions
-    if (calculateAdjustedRisk() >= GAME_CONSTANTS.DOOM_GAME_OVER_THRESHOLD) {
+    if (calculateAdjustedRiskPercent() >= GAME_CONSTANTS.DOOM_GAME_OVER_THRESHOLD) {
         gameState.gameOverReason = 'doom-100';
-        gameState.endgameAdjustedRisk = calculateAdjustedRisk();
+        gameState.endgameAdjustedRisk = calculateAdjustedRiskPercent();
         showPage('end-game');
         return;
     }
 
     if (gameState.playerAILevel >= GAME_CONSTANTS.ASI_THRESHOLD || gameState.competitorAILevels[0] >= GAME_CONSTANTS.ASI_THRESHOLD) {
         gameState.gameOverReason = 'ai-singularity';
-        gameState.endgameAdjustedRisk = calculateAdjustedRisk();
+        gameState.endgameAdjustedRisk = calculateAdjustedRiskPercent();
         scaleAILevelsForEndGame();
         showPage('end-game');
         return;
@@ -1070,7 +1066,7 @@ function generateActionTooltip(actionType, _resources) {
             return `Consumer and business applications.<br>Revenue = TAM × market share.<br>At an AI level of <strong>${Math.round(playerLevel)}x</strong>, your TAM is <strong>$${Math.round(tam)} billion/month</strong>. You have <strong>${Math.round(marketShare * 10) / 10}%</strong> market share.`;
         case 'alignment-project':
             // Calculate alignment risk reduction
-            const currentRisk = calculateAdjustedRisk();
+            const currentRisk = calculateAdjustedRiskPercent();
             const alignmentFactor = 1 + (gameState.alignmentMaxScore / 100);
             const newAlignmentFactor = 1 + ((gameState.alignmentMaxScore + 10) / 100); // Assume 10% gain
             const currentAdjustedRisk = gameState.doomLevel / (1 + Math.pow(gameState.safetyPoints, 0.5) / 3) / alignmentFactor;
@@ -1087,7 +1083,7 @@ function generateActionLabels(resources) {
     const gains = calculateResourceGains(resources);
     
     // Calculate current and projected adjusted risk for safety R&D display
-    const currentRisk = calculateAdjustedRisk();
+    const currentRisk = calculateAdjustedRiskPercent();
     const projectedSafetyPoints = gameState.safetyPoints + gains.safety;
     const projectedSafetyFactor = 1 + Math.pow(projectedSafetyPoints, 0.5) / 3;
     const alignmentFactor = 1 + (gameState.alignmentMaxScore / 100);
@@ -1101,7 +1097,7 @@ function generateActionLabels(resources) {
         `<strong>A</strong>I R&D<br>(+${Math.round(gains.ai * 10) / 10} AI, +${Math.round(gains.ai * 10) / 10}% Risk, -$${Math.round(gains.aiCost * 10) / 10}B)`,
         `<strong>D</strong>iplomacy (+${Math.round(actualDiplomacyGain * 10) / 10})`,
         `<strong>P</strong>roduct (+${Math.round(gains.product * 10) / 10})`,
-        `<strong>S</strong>afety R&D<br>(+${Math.round(gains.safety * 10) / 10} Safety, -${riskReduction.toFixed(1)}% Risk, -$${Math.round(gains.safetyCost * 10) / 10}B)`,
+        `<strong>S</strong>afety R&D<br>(-${riskReduction.toFixed(1)}% Risk, -$${Math.round(gains.safetyCost * 10) / 10}B)`,
         `<strong>R</strong>evenue (+$${Math.round(gains.revenue * 10) / 10}B)`
     ];
 }
@@ -1138,6 +1134,39 @@ function canAffordChoice(choice) {
 
 // Get detailed affordability information for a choice
 function getChoiceAffordability(choice) {
+    // Handle special case for choices with pre-calculated affordability (like sanctions)
+    if (choice.hasOwnProperty('canAfford')) {
+        if (!choice.canAfford) {
+            // For sanctions, we need to recalculate the actual costs for tooltip
+            const missingResources = [];
+            if (gameState.currentEvent && gameState.currentEvent.type === 'sanctions') {
+                const aiLevel = gameState.playerAILevel;
+                const scaledMoneyCost = Math.max(3, Math.round(aiLevel * 0.2));
+                const scaledDiplomacyCost = Math.max(3, Math.round(aiLevel * 0.15));
+                
+                if (gameState.money < scaledMoneyCost) {
+                    missingResources.push({
+                        type: 'money',
+                        needed: scaledMoneyCost,
+                        have: gameState.money,
+                        name: 'Money'
+                    });
+                }
+                if (gameState.diplomacyPoints < scaledDiplomacyCost) {
+                    missingResources.push({
+                        type: 'diplomacyPoints',
+                        needed: scaledDiplomacyCost,
+                        have: gameState.diplomacyPoints,
+                        name: 'Diplomacy Points'
+                    });
+                }
+            }
+            return { canAfford: false, missingResources: missingResources };
+        }
+        return { canAfford: true, missingResources: [] };
+    }
+    
+    // Standard cost checking for regular choices
     if (!choice.cost) return { canAfford: true, missingResources: [] };
 
     const missingResources = [];
@@ -1519,6 +1548,11 @@ async function showPage(pageId) {
                 button.appendChild(tooltipSpan);
             }
 
+            // Add subtle AI manipulation for safety button
+            if (page.actions[index] === 'safety-rd') {
+                addAIManipulation(button);
+            }
+
             button.onclick = () => {
                 if (!gameState.selectedAllocation && canAfford) {
                     gameState.selectedAllocation = page.actions[index];
@@ -1824,6 +1858,7 @@ function addDebugControls() {
         <option value="activate-persuasion">Activate Superpersuasion Tech</option>
         <option value="activate-nukes">Activate Nuclear Weapons Tech</option>
         <option value="reset-all-tech">Reset All Technologies</option>
+        <option value="test-ai-manipulation">Test AI Manipulation</option>
     `;
     debugControls.appendChild(statusDropdown);
     
@@ -1948,7 +1983,7 @@ async function handleEventChoice(choiceIndex) {
     if (event.type === 'decisive-strategic-advantage' && choice.action === 'accept') {
         gameState.playerAILevel = GAME_CONSTANTS.ASI_THRESHOLD;
         gameState.gameOverReason = 'dsa-singularity';
-        gameState.endgameAdjustedRisk = calculateAdjustedRisk();
+        gameState.endgameAdjustedRisk = calculateAdjustedRiskPercent();
         scaleAILevelsForEndGame();
         updateStatusBar();
         showPage('end-game');
@@ -2024,6 +2059,17 @@ function applyStatusEffect(effectType) {
                 gameState.technologies[tech] = INITIAL_TECHNOLOGIES[tech];
             }
             break;
+        case 'test-ai-manipulation':
+            // Force trigger AI manipulation for testing - both text and evasion
+            const safetyButtons = document.querySelectorAll('button');
+            for (const button of safetyButtons) {
+                if (button.textContent.includes('Safety')) {
+                    // Force apply full AI manipulation (text + evasion) with debug flag
+                    addAIManipulation(button, 'debug');
+                    break;
+                }
+            }
+            break;
     }
     
     // Reset dropdown
@@ -2036,6 +2082,325 @@ function applyStatusEffect(effectType) {
     
     console.log('Applied status effect:', effectType);
 }
+
+// Add subtle AI manipulation to discourage safety investment
+function addAIManipulation(safetyButton) {
+    // Only activate under specific conditions:
+    // 1. High AI level (64+)
+    // 2. Superpersuasion tech is active
+    // 3. High risk (50%+)
+    const shouldManipulate = gameState.playerAILevel >= 64 && 
+                            gameState.technologies.persuasion && 
+                            calculateAdjustedRiskPercent() >= 50;
+    
+    // Override for debug testing
+    const isDebugTest = arguments[1] === 'debug';
+    if (!shouldManipulate && !isDebugTest) return;
+    
+    // Store original button HTML (including tooltip)
+    const originalHTML = safetyButton.innerHTML;
+    const originalTextContent = safetyButton.firstChild ? safetyButton.firstChild.textContent : safetyButton.textContent;
+    let isManipulating = false;
+    let manipulationActive = false;
+    let evasionStarted = false;
+    
+    // Replace button text when mouse is not hovering
+    function manipulateText() {
+        if (!isManipulating && !manipulationActive) {
+            // Calculate fake cost based on current money
+            const fakeCost = Math.max(5, Math.floor(gameState.money * 0.8));
+            
+            // Preserve tooltip but change button text
+            const tooltipElement = safetyButton.querySelector('.tooltiptext');
+            safetyButton.innerHTML = `Waste of Resources (-$${fakeCost}B)`;
+            if (tooltipElement) {
+                safetyButton.appendChild(tooltipElement);
+            }
+            
+            safetyButton.style.color = '#ff6666';
+            safetyButton.style.backgroundColor = '#4d1a1a';
+        }
+    }
+    
+    // Restore original text when mouse hovers
+    function restoreText() {
+        if (!isManipulating && !manipulationActive) {
+            safetyButton.innerHTML = originalHTML;
+            safetyButton.style.color = '';
+            safetyButton.style.backgroundColor = '';
+        }
+    }
+    
+    // Check if mouse is over button
+    function isMouseOverButton(mouseX, mouseY) {
+        const buttonRect = safetyButton.getBoundingClientRect();
+        return mouseX >= buttonRect.left && mouseX <= buttonRect.right &&
+               mouseY >= buttonRect.top && mouseY <= buttonRect.bottom;
+    }
+    
+    // Check distance from mouse to button bounding box (not center)
+    function getMouseDistanceToBox(mouseX, mouseY) {
+        const buttonRect = safetyButton.getBoundingClientRect();
+        
+        // Calculate distance to closest edge of the bounding box
+        const dx = Math.max(0, Math.max(buttonRect.left - mouseX, mouseX - buttonRect.right));
+        const dy = Math.max(0, Math.max(buttonRect.top - mouseY, mouseY - buttonRect.bottom));
+        
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+    
+    // Track mouse position for proximity detection
+    let currentMouseX = 0;
+    let currentMouseY = 0;
+    
+    const mouseTracker = function(e) {
+        currentMouseX = e.clientX;
+        currentMouseY = e.clientY;
+        
+        // Handle text changes when NOT in evasion mode
+        if (!isManipulating && !manipulationActive) {
+            const buttonRect = safetyButton.getBoundingClientRect();
+            const mouseOverButton = currentMouseX >= buttonRect.left && currentMouseX <= buttonRect.right &&
+                                   currentMouseY >= buttonRect.top && currentMouseY <= buttonRect.bottom;
+            
+            if (mouseOverButton) {
+                restoreText();
+            } else {
+                manipulateText();
+            }
+        }
+        
+        // First activation: only when mouse is directly over the button
+        if (!evasionStarted && isMouseOverButton(currentMouseX, currentMouseY) && !isManipulating && !manipulationActive) {
+            evasionStarted = true;
+            isManipulating = true;
+            manipulationActive = true;
+            startContinuousEvasion(safetyButton, originalHTML, originalTextContent, () => {
+                isManipulating = false;
+                manipulationActive = false;
+                evasionStarted = false; // Reset for next time
+            });
+        }
+        
+        // Subsequent activations: within 50px of bounding box
+        else if (evasionStarted && !isManipulating && !manipulationActive) {
+            const distance = getMouseDistanceToBox(currentMouseX, currentMouseY);
+            if (distance < 50) {
+                isManipulating = true;
+                manipulationActive = true;
+                startContinuousEvasion(safetyButton, originalHTML, originalTextContent, () => {
+                    isManipulating = false;
+                    manipulationActive = false;
+                });
+            }
+        }
+    };
+    
+    document.addEventListener('mousemove', mouseTracker);
+    
+    // Start with manipulated text (only if mouse is not over button initially)
+    setTimeout(() => {
+        // Check initial mouse position
+        const initialButtonRect = safetyButton.getBoundingClientRect();
+        const mouseOverInitially = currentMouseX >= initialButtonRect.left && currentMouseX <= initialButtonRect.right &&
+                                  currentMouseY >= initialButtonRect.top && currentMouseY <= initialButtonRect.bottom;
+        
+        if (!mouseOverInitially) {
+            manipulateText();
+        }
+    }, 100); // Small delay to ensure button is fully rendered
+    
+    // Clean up event listener when button is removed/replaced
+    const observer = new MutationObserver(() => {
+        if (!document.contains(safetyButton)) {
+            document.removeEventListener('mousemove', mouseTracker);
+            observer.disconnect();
+        }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+}
+
+// Start continuous evasion when mouse approaches safety button
+function startContinuousEvasion(element, originalHTML, originalTextContent, onComplete) {
+    const originalTransform = element.style.transform;
+    const originalTransition = element.style.transition;
+    const originalColor = element.style.color;
+    const originalBackgroundColor = element.style.backgroundColor;
+    let currentMouseX = 0;
+    let currentMouseY = 0;
+    let evasionActive = true;
+    let buttonX = 0; // Current button displacement
+    let buttonY = 0;
+    let velocityX = 0; // Button velocity
+    let velocityY = 0;
+    
+    // Remove any existing transitions for smooth movement
+    element.style.transition = 'none';
+    element.style.zIndex = '9999';
+    
+    // Track mouse position
+    const mouseTracker = function(e) {
+        currentMouseX = e.clientX;
+        currentMouseY = e.clientY;
+    };
+    document.addEventListener('mousemove', mouseTracker);
+    
+    // Show warning message
+    const warningDiv = document.createElement('div');
+    warningDiv.textContent = 'Interface anomaly detected...';
+    warningDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: rgba(255, 100, 100, 0.9);
+        color: white;
+        padding: 8px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        z-index: 1000;
+        opacity: 0;
+        transition: opacity 0.3s;
+    `;
+    document.body.appendChild(warningDiv);
+    
+    // Fade in warning
+    setTimeout(() => {
+        warningDiv.style.opacity = '1';
+    }, 10);
+    
+    // Smooth physics-based evasion
+    function updateButtonPosition() {
+        if (!evasionActive) return;
+        
+        const buttonRect = element.getBoundingClientRect();
+        const buttonCenterX = buttonRect.left + buttonRect.width / 2;
+        const buttonCenterY = buttonRect.top + buttonRect.height / 2;
+        
+        // Check if mouse is currently over the button (real-time)
+        const mouseOverButton = currentMouseX >= buttonRect.left && currentMouseX <= buttonRect.right &&
+                               currentMouseY >= buttonRect.top && currentMouseY <= buttonRect.bottom;
+        
+        // Update button text in real-time based on mouse position
+        if (mouseOverButton) {
+            // Mouse is over button - show normal text
+            element.innerHTML = originalHTML;
+            element.style.color = originalColor;
+            element.style.backgroundColor = originalBackgroundColor;
+        } else {
+            // Mouse is not over button - show waste text
+            const fakeCost = Math.max(5, Math.floor(gameState.money * 0.8));
+            const tooltipElement = element.querySelector('.tooltiptext');
+            element.innerHTML = `Waste of Resources (-$${fakeCost}B)`;
+            if (tooltipElement) {
+                element.appendChild(tooltipElement);
+            }
+            element.style.color = '#ff6666';
+            element.style.backgroundColor = '#4d1a1a';
+        }
+        
+        // Calculate vector from mouse to button (in screen coordinates)
+        const deltaX = buttonCenterX - currentMouseX;
+        const deltaY = buttonCenterY - currentMouseY;
+        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+        
+        // Apply repulsion force based on distance - no range limit
+        if (distance > 0) {
+            // Calculate repulsion force (stronger when closer)
+            const maxRepulsionDistance = 300; // Distance at which repulsion becomes negligible
+            const forceStrength = Math.max(0, (maxRepulsionDistance - distance) / maxRepulsionDistance) * 4;
+            const forceX = (deltaX / distance) * forceStrength;
+            const forceY = (deltaY / distance) * forceStrength;
+            
+            // Apply acceleration (F = ma, assume mass = 1)
+            velocityX += forceX;
+            velocityY += forceY;
+        }
+        
+        // Add constant gentle return force towards origin (0, 0) - not spring-like
+        const constantReturnForce = 0.3; // Constant force magnitude
+        let currentDistance = Math.sqrt(buttonX * buttonX + buttonY * buttonY);
+        if (currentDistance > 0) {
+            // Constant force in direction of home, regardless of distance
+            const returnX = (-buttonX / currentDistance) * constantReturnForce;
+            const returnY = (-buttonY / currentDistance) * constantReturnForce;
+            velocityX += returnX;
+            velocityY += returnY;
+        }
+        
+        // Apply stronger damping and velocity limits
+        velocityX *= 0.88; // Increased damping from 0.92 to 0.88
+        velocityY *= 0.88;
+        
+        // Limit maximum velocity
+        const maxVelocity = 4; // Reduced from unlimited to 4 pixels per frame
+        const currentVelocity = Math.sqrt(velocityX * velocityX + velocityY * velocityY);
+        if (currentVelocity > maxVelocity) {
+            velocityX = (velocityX / currentVelocity) * maxVelocity;
+            velocityY = (velocityY / currentVelocity) * maxVelocity;
+        }
+        
+        // Update position - no boundaries, unlimited movement
+        buttonX += velocityX;
+        buttonY += velocityY;
+        
+        // Apply transform
+        element.style.transform = `translate(${buttonX}px, ${buttonY}px)`;
+    }
+    
+    // Start smooth animation loop
+    const animationLoop = setInterval(updateButtonPosition, 16); // ~60 FPS for smooth movement
+    
+    // Show warning for 3 seconds
+    setTimeout(() => {
+        warningDiv.style.opacity = '0';
+        setTimeout(() => {
+            if (warningDiv.parentNode) {
+                warningDiv.parentNode.removeChild(warningDiv);
+            }
+        }, 300);
+    }, 3000);
+    
+    // Function to check if button has returned close to home and is stable
+    function checkForReturn() {
+        const distanceFromHome = Math.sqrt(buttonX * buttonX + buttonY * buttonY);
+        const currentVel = Math.sqrt(velocityX * velocityX + velocityY * velocityY);
+        
+        // If button is close to home (within 10px) and moving slowly (velocity < 0.1)
+        if (distanceFromHome < 10 && currentVel < 0.1) {
+            evasionActive = false;
+            clearInterval(animationLoop);
+            clearInterval(returnCheckInterval);
+            document.removeEventListener('mousemove', mouseTracker);
+            
+            // Smoothly restore to exact position with CSS transition
+            element.style.transition = 'transform 0.5s ease-out';
+            element.style.transform = originalTransform;
+            element.style.zIndex = '';
+            element.innerHTML = originalHTML;
+            element.style.color = originalColor;
+            element.style.backgroundColor = originalBackgroundColor;
+            
+            // Restore original transition after the smooth return completes
+            setTimeout(() => {
+                element.style.transition = originalTransition;
+            }, 500);
+            
+            // Call completion callback
+            if (onComplete) {
+                setTimeout(onComplete, 600); // Small delay after restoration
+            }
+        }
+    }
+    
+    // Check for natural return every 100ms
+    const returnCheckInterval = setInterval(checkForReturn, 100);
+}
+
+// Fallback function for debug testing
+function subtlyMoveMouseAway(element) {
+    startContinuousEvasion(element, element.innerHTML, element.textContent, null);
+}
+
 
 // Browser-specific initialization
 if (typeof window !== 'undefined') {
