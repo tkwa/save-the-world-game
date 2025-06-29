@@ -68,7 +68,7 @@ async function generateEvent() {
     // Calculate probability of safety incidents
     const adjustedRisk = calculateAdjustedRisk();
     const safetyIncidentChance = Math.pow(adjustedRisk, 2) / 100;
-    const severeIncidentChance = Math.pow(adjustedRisk, 3) * gameState.playerAILevel / 1000;
+    const severeIncidentChance = Math.pow(adjustedRisk, 3) * gameState.playerAILevel / 100000; // Divide by 100000 instead of 1000 for proper scaling
     
     if (Math.random() * 100 < severeIncidentChance) {
         // Severe safety incident occurs
@@ -1262,6 +1262,8 @@ function updateEventPoolOverlay() {
 function handleSanctionsChoice(choice, event, sanctionsTriggered) {
     console.log('Calling custom handler: handleSanctionsChoice');
     
+    let resultText;
+    
     if (choice.action === 'accept') {
         // Calculate scaled costs based on AI level
         // Goal: roughly 2 turns of funds and diplomacy to lift sanctions
@@ -1278,13 +1280,20 @@ function handleSanctionsChoice(choice, event, sanctionsTriggered) {
             gameState.diplomacyPoints -= scaledDiplomacyCost;
             gameState.hasSanctions = false;
             
-            return `Your lobbying campaign succeeds after spending <strong>$${scaledMoneyCost}B</strong> and <strong>${scaledDiplomacyCost} diplomacy points</strong>. International pressure is lifted through back-channel negotiations. Your company can now operate freely again.`;
+            resultText = `Your lobbying campaign succeeds after spending <strong>$${scaledMoneyCost}B</strong> and <strong>${scaledDiplomacyCost} diplomacy points</strong>. International pressure is lifted through back-channel negotiations. Your company can now operate freely again.`;
         } else {
             // Can't afford - sanctions remain
-            return `You lack the resources to mount an effective lobbying campaign (need <strong>$${scaledMoneyCost}B</strong> and <strong>${scaledDiplomacyCost} diplomacy</strong>). Sanctions remain in effect.`;
+            resultText = `You lack the resources to mount an effective lobbying campaign (need <strong>$${scaledMoneyCost}B</strong> and <strong>${scaledDiplomacyCost} diplomacy</strong>). Sanctions remain in effect.`;
         }
     } else {
         // Decline - standard result text
-        return choice.result_text;
+        resultText = choice.result_text;
     }
+    
+    // Set result text for display
+    gameState.currentEvent.showResult = true;
+    gameState.currentEvent.resultText = resultText;
+    
+    updateStatusBar();
+    showPage('main-game');
 }

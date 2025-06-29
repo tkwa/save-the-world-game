@@ -1909,10 +1909,7 @@ async function handleEventChoice(choiceIndex) {
         }
     }
 
-    // Special handling for sanctions removal
-    if (event.type === 'sanctions' && choice.action === 'accept') {
-        gameState.hasSanctions = false;
-    }
+    // Sanctions removal is now handled by the handleSanctionsChoice custom handler
 
     // Handle custom event handlers (after applying standard effects)
     if (event.customHandler) {
