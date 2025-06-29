@@ -402,7 +402,7 @@
       ],
       "choices": [
         {
-          "text": "Develop persuasion systems (-30 Product, doubles diplomacy gain, reveals Superpersuasion tech)",
+          "text": "Develop persuasion systems (-30 Product, doubles diplomacy gain)",
           "action": "accept",
           "cost": { "productPoints": 30 },
           "benefit": { "diplomacyMultiplier": 2 },
