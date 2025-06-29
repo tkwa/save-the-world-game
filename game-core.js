@@ -1094,9 +1094,12 @@ function generateActionLabels(resources) {
     const projectedRisk = gameState.doomLevel / (projectedSafetyFactor * alignmentFactor);
     const riskReduction = currentRisk - projectedRisk;
     
+    // Apply diplomacy multiplier to display the actual gain
+    const actualDiplomacyGain = gains.diplomacy * (gameState.diplomacyMultiplier || 1);
+    
     return [
         `<strong>A</strong>I R&D<br>(+${Math.round(gains.ai * 10) / 10} AI, +${Math.round(gains.ai * 10) / 10}% Risk, -$${Math.round(gains.aiCost * 10) / 10}B)`,
-        `<strong>D</strong>iplomacy (+${Math.round(gains.diplomacy * 10) / 10})`,
+        `<strong>D</strong>iplomacy (+${Math.round(actualDiplomacyGain * 10) / 10})`,
         `<strong>P</strong>roduct (+${Math.round(gains.product * 10) / 10})`,
         `<strong>S</strong>afety R&D<br>(+${Math.round(gains.safety * 10) / 10} Safety, -${riskReduction.toFixed(1)}% Risk, -$${Math.round(gains.safetyCost * 10) / 10}B)`,
         `<strong>R</strong>evenue (+$${Math.round(gains.revenue * 10) / 10}B)`
