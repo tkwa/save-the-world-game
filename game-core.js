@@ -1895,6 +1895,49 @@ function addDebugControls() {
     `;
     debugControls.appendChild(statusDropdown);
     
+    // Debug technology toggle dropdown
+    const techDropdown = document.createElement('select');
+    techDropdown.id = 'debugTechDropdown';
+    techDropdown.onchange = function() { toggleTechnology(this.value); };
+    techDropdown.style.cssText = debugDropdownStyle;
+    techDropdown.innerHTML = `
+        <option value="">Debug: Toggle Tech</option>
+        <option value="robotaxi">Toggle Robotaxi</option>
+        <option value="aiNovelist">Toggle AI Novelist</option>
+        <option value="aiResearchLead">Toggle AI Research Lead</option>
+        <option value="persuasion">Toggle Superpersuasion</option>
+        <option value="medicine">Toggle Medicine</option>
+        <option value="syntheticBiology">Toggle Synthetic Biology</option>
+        <option value="cancerCure">Toggle Cancer Cure</option>
+        <option value="brainUploading">Toggle Brain Uploading</option>
+        <option value="robotics">Toggle Robotics</option>
+        <option value="humanoidRobots">Toggle Humanoid Robots</option>
+        <option value="nanotech">Toggle Nanotech</option>
+        <option value="aiMonitoring">Toggle AI Monitoring</option>
+        <option value="aiControl">Toggle AI Control</option>
+        <option value="aiAlignment">Toggle AI Alignment</option>
+        <option value="aiInterpretability">Toggle AI Interpretability</option>
+        <option value="cyberWarfare">Toggle Cyber Warfare</option>
+        <option value="bioweapons">Toggle Bioweapons</option>
+        <option value="killerDrones">Toggle Killer Drones</option>
+        <option value="nukes">Toggle Nuclear Weapons</option>
+    `;
+    debugControls.appendChild(techDropdown);
+    
+    // Debug page navigation dropdown
+    const pageDropdown = document.createElement('select');
+    pageDropdown.id = 'debugPageDropdown';
+    pageDropdown.onchange = function() { navigateToPage(this.value); };
+    pageDropdown.style.cssText = debugDropdownStyle;
+    pageDropdown.innerHTML = `
+        <option value="">Debug: Go to Page</option>
+        <option value="start">Start Screen</option>
+        <option value="main-game">Main Game</option>
+        <option value="end-screen">End Screen</option>
+        <option value="alignment-minigame">Alignment Minigame</option>
+    `;
+    debugControls.appendChild(pageDropdown);
+    
     // +1000 Resources button
     const resourcesBtn = document.createElement('button');
     resourcesBtn.textContent = '+1000 Resources';
@@ -2094,6 +2137,48 @@ function giveResources() {
     gameState.productPoints += 1000;
     gameState.safetyPoints += 1000;
     updateStatusBar();
+}
+
+function toggleTechnology(tech) {
+    if (!tech) return;
+    
+    // Toggle the technology state
+    gameState.technologies[tech] = !gameState.technologies[tech];
+    
+    // Reset dropdown
+    const dropdown = document.getElementById('debugTechDropdown');
+    if (dropdown) dropdown.value = '';
+    
+    // Update UI
+    updateTechnologies();
+    updateStatusBar();
+    
+    console.log(`Toggled ${tech} to:`, gameState.technologies[tech]);
+}
+
+function navigateToPage(page) {
+    if (!page) return;
+    
+    // Reset dropdown
+    const dropdown = document.getElementById('debugPageDropdown');
+    if (dropdown) dropdown.value = '';
+    
+    // Handle special cases for end screen navigation
+    if (page === 'end-screen') {
+        // Set up minimal endgame state if not already present
+        if (!gameState.endGamePhase) {
+            gameState.endGamePhase = 1;
+        }
+        if (!gameState.endGameResult) {
+            // Set up some dummy values for testing
+            scaleAILevelsForEndGame();
+        }
+    }
+    
+    // Navigate to the page
+    showPage(page);
+    
+    console.log(`Navigated to page: ${page}`);
 }
 
 function debugShowAllTechs() {
@@ -2503,6 +2588,8 @@ if (typeof window !== 'undefined') {
     window.populateDebugDropdown = populateDebugDropdown;
     window.giveResources = giveResources;
     window.debugShowAllTechs = debugShowAllTechs;
+    window.toggleTechnology = toggleTechnology;
+    window.navigateToPage = navigateToPage;
     window.applyStatusEffect = applyStatusEffect;
     window.getChoiceAffordability = getChoiceAffordability;
     window.formatChoiceTextWithCosts = formatChoiceTextWithCosts;
