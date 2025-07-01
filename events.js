@@ -252,7 +252,7 @@ function generateWarningShot(events) {
 
 // Generate an AI escape event (second+ severe incident)
 function generateAIEscape(events) {
-    const hasNuclearWeapons = gameState.technologies.nuclearWeapons;
+    const hasNuclearWeapons = gameState.technologies.nukes;
     
     const choices = [];
     
