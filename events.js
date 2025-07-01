@@ -521,7 +521,7 @@ function handleAIEscapeChoice(choice, event, sanctionsTriggered) {
     if (choice.action === 'nuke') {
         // 50% chance to stop singularity, always causes Disillusioned status
         const success = Math.random() < 0.5;
-        gameState.isDisillusioned = true;
+        applyStatusEffect('disillusioned');
         
         if (success) {
             // Player stops the singularity but is disillusioned - continue playing!
@@ -635,11 +635,21 @@ function applyChoiceEffects(choice) {
     return false; // Return false if no sanctions were triggered
 }
 
+// Check if a status effect is active
+function hasStatusEffect(effectName) {
+    return gameState.statusEffects.hasOwnProperty(effectName);
+}
+
 // Apply a status effect by name
 function applyStatusEffect(effectName) {
     switch (effectName) {
         case 'disillusioned':
-            gameState.isDisillusioned = true;
+            gameState.statusEffects.disillusioned = {
+                name: 'Disillusioned',
+                description: 'You have lost faith in humanity\'s future. The value of humanity\'s galaxies is halved in your final assessment.',
+                duration: null, // Permanent
+                turnsRemaining: null
+            };
             break;
         case 'under-investigation':
             gameState.statusEffects.underInvestigation = {
