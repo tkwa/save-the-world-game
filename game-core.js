@@ -1474,7 +1474,7 @@ async function showPage(pageId) {
                 if (!gameState.selectedAllocation && canAfford) {
                     gameState.selectedAllocation = 'alignment-project';
                     
-                    // Apply the allocation immediately for projects (unlike sectors)
+                    // Apply the allocation immediately for projects (launches minigame)
                     applyResourceAllocation('alignment-project', corporateResources);
                     gameState.allocationApplied = true;
                 }
@@ -1541,9 +1541,12 @@ async function showPage(pageId) {
                 if (!gameState.selectedAllocation && canAfford && !isMaxed) {
                     gameState.selectedAllocation = 'interpretability-project';
                     
-                    // Apply the allocation immediately for projects (unlike sectors)
+                    // Apply the allocation immediately for projects
                     applyResourceAllocation('interpretability-project', corporateResources);
                     gameState.allocationApplied = true;
+                    
+                    // Refresh UI to show other buttons as greyed out
+                    showPage('main-game');
                 }
             };
             projectsSection.appendChild(interpretabilityBtn);
