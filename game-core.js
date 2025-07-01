@@ -22,7 +22,8 @@ const TECHNOLOGY_VISIBILITY = {
     
     // Column 3: Robotics - each depends on the one above  
     humanoidRobots: () => gameState.technologies.robotics,
-    nanotech: () => gameState.technologies.humanoidRobots,
+    roboticSupplyChains: () => gameState.technologies.humanoidRobots,
+    nanotech: () => gameState.technologies.roboticSupplyChains,
     
     // Column 4: Alignment - monitoring and alignment require projects unlocked, interpretability always visible
     aiMonitoring: () => gameState.projectsUnlocked,

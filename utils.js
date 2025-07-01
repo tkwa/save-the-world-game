@@ -102,6 +102,7 @@ const INITIAL_TECHNOLOGIES = {
     // Robotics technologies (column 3 - only robotics visible at start)
     robotics: false,
     humanoidRobots: false,
+    roboticSupplyChains: false,
     nanotech: false,
     // Alignment technologies (column 4 - all visible from start)
     aiMonitoring: false,

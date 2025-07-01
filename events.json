@@ -190,6 +190,30 @@
       ]
     },
     {
+      "type": "robotic-supply-chains",
+      "title": "Autonomous Manufacturing Networks",
+      "weight": 1,
+      "requires": ["humanoid-robotics"],
+      "oneTimeAccept": true,
+      "text_versions": [
+        "Your humanoid robots have proven remarkably successful, but they still require human oversight for supply chain coordination. Your engineering team proposes building fully autonomous manufacturing networks - self-organizing systems that can handle everything from resource extraction to final assembly without human intervention. This would create an entirely robot-driven economy."
+      ],
+      "choices": [
+        {
+          "text": "Build autonomous networks (-$50B, -8 Product, doubles product gain again, +🕸️)",
+          "action": "accept",
+          "cost": { "money": 50, "productPoints": 8 },
+          "benefit": { "activateTechnology": "roboticSupplyChains", "productMultiplier": 2 },
+          "result_text": "You launch construction of the world's first fully autonomous manufacturing networks. Robotic miners extract raw materials, robotic factories process them into components, and robotic logistics systems distribute the final products - all coordinated by AI without human oversight. The efficiency gains are staggering, creating a self-sustaining industrial ecosystem that operates at unprecedented scale and speed."
+        },
+        {
+          "text": "Decline",
+          "action": "decline",
+          "result_text": "You decide the investment in fully autonomous systems is premature. Your robotics operations continue to rely on human coordination for complex supply chain decisions. The technology remains available for future development when market conditions are more favorable."
+        }
+      ]
+    },
+    {
       "type": "overseas-datacenter",
       "title": "International Expansion",
       "weight": 4,
