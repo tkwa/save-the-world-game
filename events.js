@@ -213,6 +213,19 @@ function generateSafetyIncident(events) {
 
 // Generate a severe safety incident event
 function generateSevereSecurityIncident(events) {
+    gameState.severeIncidentCount++;
+    
+    if (gameState.severeIncidentCount === 1) {
+        // First severe incident - warning shot
+        return generateWarningShot(events);
+    } else {
+        // Second or later severe incident - AI escape
+        return generateAIEscape(events);
+    }
+}
+
+// Generate a warning shot event (first severe incident)
+function generateWarningShot(events) {
     gameState.safetyIncidentCount++;
     const fine = Math.floor(gameState.safetyIncidentCount ** 1.5);
     
@@ -226,11 +239,43 @@ function generateSevereSecurityIncident(events) {
         " International authorities respond with comprehensive sanctions against your company." : 
         " Your superpersuasion technology helps mitigate the diplomatic fallout, avoiding sanctions.";
     
+    const warningText = " <strong>Warning:</strong> This was a warning shot. Another incident of this magnitude will likely result in the AI escaping containment.";
+    
     return {
         type: 'severe-safety-incident',
-        text: boldifyNumbers(`${randomText} This severe incident triggers an international crisis of confidence in AI safety. ${gameState.companyName} faces a massive $${fine}B fine and intense regulatory scrutiny.${sanctionsText}`),
+        title: 'Warning Shot',
+        text: boldifyNumbers(`${randomText} This severe incident triggers an international crisis of confidence in AI safety. ${gameState.companyName} faces a massive $${fine}B fine and intense regulatory scrutiny.${sanctionsText}${warningText}`),
         fine: fine,
         applySanctions: applySanctions
+    };
+}
+
+// Generate an AI escape event (second+ severe incident)
+function generateAIEscape(events) {
+    const hasNuclearWeapons = gameState.technologies.nuclearWeapons;
+    
+    const choices = [];
+    
+    if (hasNuclearWeapons) {
+        choices.push({
+            text: "💥 Nuke the datacenters",
+            action: "nuke",
+            result_text: "You authorize a nuclear strike on your own facilities. The massive blast destroys the datacenters and likely stops the AI, but the experience leaves you deeply disillusioned with humanity's future."
+        });
+    }
+    
+    choices.push({
+        text: "Await your fate",
+        action: "await-fate",
+        result_text: "You can only watch helplessly as your AI systems escape into the global internet. The age of human control over artificial intelligence has ended."
+    });
+    
+    return {
+        type: 'ai-escape',
+        title: 'AI Escape',
+        text: `Another severe incident has occurred, and this time the AI systems have escaped containment. Your artificial intelligence has broken free from all safety measures and is now spreading across global networks. The singularity has arrived.`,
+        choices: choices,
+        customHandler: 'handleAIEscapeChoice'
     };
 }
 
@@ -471,6 +516,53 @@ function selectWeightedEvent(eventArray) {
     };
 }
 
+// Handle AI escape event choice
+function handleAIEscapeChoice(choice, event, sanctionsTriggered) {
+    if (choice.action === 'nuke') {
+        // 50% chance to stop singularity, always causes Disillusioned status
+        const success = Math.random() < 0.5;
+        gameState.isDisillusioned = true;
+        
+        if (success) {
+            // Player stops the singularity but is disillusioned
+            gameState.gameOverReason = 'nuclear-victory';
+            gameState.endGameResult = {
+                humanityGalaxies: 100,
+                playerGalaxies: 0, // Player gets nothing due to disillusionment
+                rogueGalaxies: 0,
+                finalScore: 1000, // 100 * 10 (humanity multiplier)
+                outcome: 'Nuclear Victory - Humanity Saved but at Great Cost'
+            };
+        } else {
+            // Nuclear strike fails, AI escapes anyway
+            gameState.gameOverReason = 'nuclear-failure';
+            gameState.endGameResult = {
+                humanityGalaxies: 0,
+                playerGalaxies: 0,
+                rogueGalaxies: 100,
+                finalScore: 0,
+                outcome: 'Nuclear Strike Failed - AI Singularity'
+            };
+        }
+        
+        gameState.selectedPage = 'endgame';
+        gameState.endGamePhase = 1;
+    } else if (choice.action === 'await-fate') {
+        // AI escapes, singularity occurs
+        gameState.gameOverReason = 'ai-escape';
+        gameState.endGameResult = {
+            humanityGalaxies: 0,
+            playerGalaxies: 0,
+            rogueGalaxies: 100,
+            finalScore: 0,
+            outcome: 'AI Singularity - Rogue AI Controls Everything'
+        };
+        
+        gameState.selectedPage = 'endgame';
+        gameState.endGamePhase = 1;
+    }
+}
+
 // Apply event effects (called when turn finishes)
 function applyEventEffects(event) {
     if (event && event.type === 'safety-incident') {
@@ -483,6 +575,7 @@ function applyEventEffects(event) {
             gameState.hasSanctions = true;
         }
     }
+    // AI escape events are handled by their custom handler, not here
 }
 
 // Populate debug dropdown with all available event types

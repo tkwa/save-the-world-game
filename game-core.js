@@ -193,6 +193,8 @@ const gameState = {
     endGamePhase: 1, // Current phase of end game display (1-5)
     currentEvent: null,
     safetyIncidentCount: 0,
+    severeIncidentCount: 0,
+    isDisillusioned: false,
     selectedAllocation: null,
     allocationApplied: false,
     eventsSeen: {}, // Tracks count of each event type seen
@@ -1313,6 +1315,8 @@ function resetGameState() {
     gameState.endGameResult = null;
     gameState.currentEvent = null;
     gameState.safetyIncidentCount = 0;
+    gameState.severeIncidentCount = 0;
+    gameState.isDisillusioned = false;
     gameState.selectedAllocation = null;
     gameState.allocationApplied = false;
     gameState.incomeBonus = 0;
