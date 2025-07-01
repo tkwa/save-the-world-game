@@ -1691,7 +1691,7 @@ async function showPage(pageId) {
         page.onShow();
     }
     
-    // Add debug controls (always visible in bottom right)
+    // Add debug controls (hidden by default, toggle with \ key)
     addDebugControls();
 }
 
@@ -1886,13 +1886,25 @@ function addDebugControls() {
     setAILevelBtn.style.cssText = debugButtonStyle;
     debugControls.appendChild(setAILevelBtn);
     
-    // Add to page
+    // Add to page (initially hidden)
+    debugControls.style.display = 'none';
     document.body.appendChild(debugControls);
     
     // Populate dropdown after a short delay
     setTimeout(populateDebugDropdown, 100);
 }
 
+// Toggle debug controls visibility
+function toggleDebugControls() {
+    const debugControls = document.getElementById('debug-controls');
+    if (debugControls) {
+        const isCurrentlyVisible = debugControls.style.display !== 'none';
+        debugControls.style.display = isCurrentlyVisible ? 'none' : 'flex';
+    } else {
+        // If debug controls don't exist, create them
+        addDebugControls();
+    }
+}
 
 // Handle event choice selection
 async function handleEventChoice(choiceIndex) {
@@ -2551,6 +2563,12 @@ if (typeof document !== 'undefined') {
                 actionButtons[buttonIndex].click();
             }
         }
+    }
+    
+    // Handle backslash key to toggle debug controls visibility
+    if (key === '\\') {
+        event.preventDefault();
+        toggleDebugControls();
     }
 });
 
