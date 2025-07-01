@@ -1,6 +1,6 @@
 {
   "name": "save-the-world-game",
-  "version": "0.3.5",
+  "version": "0.4.0",
   "description": "AI Strategy Game",
   "scripts": {
     "test": "node -e \"require('./tests.js').runAllTests().then(result => process.exit((typeof result === 'object' ? result.passed : result) ? 0 : 1))\"",

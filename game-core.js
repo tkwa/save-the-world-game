@@ -340,7 +340,7 @@ function generateRogueAIRiskTooltip() {
     // Build calculation explanation
     let calculationText = '';
     if (gameState.safetyPoints > 0 || gameState.alignmentMaxScore > 0 || gameState.interpretabilityProgress > 0) {
-        calculationText = `Risk = <strong>${rawRisk.toFixed(1)}%</strong> (AI Level) / (<strong>${safetyFactor.toFixed(2)}</strong> (Safety R&D) × <strong>${alignmentFactor.toFixed(2)}</strong> (Alignment)) × <strong>${interpretabilityFactor.toFixed(2)}</strong> (Interpretability) = <strong>${adjustedRisk.toFixed(1)}%</strong><br><br>`;
+        calculationText = `Risk = <strong>${rawRisk.toFixed(1)}%</strong> (AI Level) / (<strong>${safetyFactor.toFixed(2)}</strong> (Safety R&D) × <strong>${alignmentFactor.toFixed(2)}</strong> (Alignment) × <strong>${interpretabilityFactor.toFixed(2)}</strong> (Interpretability)) = <strong>${adjustedRisk.toFixed(1)}%</strong><br><br>`;
     }
     
     return `Current AI systems are capable of harms like <strong>${currentRisks[0]}</strong> and <strong>${currentRisks[1]}</strong>, and <strong style="color: #ff6b6b;">ASI</strong> could threaten humanity as a whole.<br><br>${calculationText}Currently the risk of <strong style="color: ${riskColor};">${riskPercent}%</strong> means:<br>- <strong style="color: ${riskColor};">${riskPercent}%</strong> chance of existential risk at game end<br>- ${riskPercent}%² = <strong style="color: ${riskColor};">${monthlyIncidentChance.toFixed(1)}%</strong> monthly chance of ${companyName} safety incident.`;

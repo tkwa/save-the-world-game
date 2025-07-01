@@ -4,12 +4,42 @@ All notable changes to the Save the World Game will be documented in this file.
 
 ## Summary
 
+- **v0.4.0** : Complete interpretability project implementation with dynamic project unlocking system
 - **v0.3.5** : Major refactor consolidating shared functions to utils.js; fixed inconsistent risk calculations
 - **v0.3.2** : Complete Projects allocation system with immediate minigame launch
 - **v0.3.1** : Fixed event handlers; nuclear weapons now later in DSA tree
 - **v0.3.0** : Competitor acquisition events and VP Safety role with unit testing
 - **v0.2.0** : Projects panel system and humanoid robotics event chain  
 - **v0.1.0** : Initial AI strategy game with turn-based gameplay and minigames
+
+## [v0.4.0] - 2025-07-01
+
+### Major Features
+- **Interpretability Project System**: Complete implementation of labor-hour based interpretability research requiring 1B hours for 100% completion
+- **Dynamic Project Unlocking**: Two-stage project unlock system with interpretability at 80 safety points and alignment at 320 safety points
+- **Variable Project Display**: Projects section now shows different buttons based on unlock status rather than fixed layout
+- **Enhanced Risk Calculations**: Interpretability reduces risk by factor of 1 + (progress / 100) in denominator alongside safety and alignment
+
+### Project Mechanics
+- **Progressive Unlock**: Interpretability unlocks first (80 safety), followed by alignment (320 safety) 
+- **Labor-Hour Allocation**: Interpretability uses sqrt(hours/1000)*100 formula for realistic diminishing returns
+- **Button Behavior**: Project buttons grey out other allocations when selected, max progress buttons disabled at 100%
+- **Cost Structure**: All projects cost same as Safety R&D using Math.sqrt(playerAILevel)/2 formula
+
+### User Interface
+- **Tooltip Integration**: Updated risk tooltips to show all three factors (safety, alignment, interpretability) in calculation
+- **Concise Labeling**: Interpretability button uses "Interp 🔬" for space efficiency
+- **Selection State**: Project buttons properly integrate with allocation system showing selection status
+
+### Event System
+- **Restructured Events**: Modified safety-research-limitations event to unlock interpretability research first
+- **New Alignment Event**: Created alignment-research-breakthrough event at 320 safety with compelling narrative
+- **Event Conditions**: Added proper safety point thresholds for both interpretability (80) and alignment (320) events
+
+### Technical Improvements
+- **State Management**: Added interpretabilityProgress, interpretabilityLaborHours, and alignmentUnlocked to game state
+- **Code Documentation**: Comprehensive project system guide added to CLAUDE.md for future development
+- **Function Updates**: Extended getRiskFactors() and calculateAdjustedRiskPercent() to handle interpretability
 
 ## [v0.3.5] - 2025-07-01
 
