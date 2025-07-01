@@ -640,8 +640,8 @@ function applyChoiceEffects(choice) {
         
         // Apply penalties (guaranteed negative effects)
         if (choice.penalty) {
-            if (choice.penalty.doomLevel) {
-                gameState.doomLevel += choice.penalty.doomLevel;
+            if (choice.penalty.riskLevel) {
+                gameState.rawRiskLevel += choice.penalty.riskLevel;
             }
             if (choice.penalty.sanctions) {
                 gameState.hasSanctions = true;

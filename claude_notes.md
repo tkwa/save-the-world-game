@@ -116,7 +116,7 @@ This session involved extensive development of "Critical Path," a turn-based AI 
 - **Income Diversification**: Product breakthroughs provide alternative revenue streams
 
 ### Strategic Choices
-- **Risk vs. Reward**: DSA track offers power at the cost of increased doom and sanctions risk
+- **Risk vs. Reward**: DSA track offers power at the cost of increased risk and sanctions risk
 - **Resource Allocation**: Five distinct paths (AI R&D, Diplomacy, Product, Safety R&D, Revenue) with clear tradeoffs
 - **Event Responses**: Meaningful choices with lasting consequences tracked throughout the game
 
@@ -173,13 +173,13 @@ The game provides a realistic simulation of AI company strategy with meaningful 
 
 ### Debug Utilities for Manual Testing
 - **Console Commands**: Add global functions accessible from browser console
-  - `setGameState({playerAILevel: 500, doomLevel: 80})` - Jump to specific scenarios
+  - `setGameState({playerAILevel: 500, rawRiskLevel: 80})` - Jump to specific scenarios
   - `fastForward(turns)` - Skip ahead multiple turns quickly
   - `triggerEvent('nuclear-weapons')` - Force specific events for testing
   - `unlockAll()` - Enable all technologies and events for exploration
   
 - **Scenario Presets**: Quick setup for common test cases
-  - `scenarios.highDoom()` - 90% doom, low safety research
+  - `scenarios.highRisk()` - 90% risk, low safety research
   - `scenarios.richCompany()` - High money, low AI level
   - `scenarios.nearASI()` - Close to singularity threshold
   - `scenarios.sanctions()` - Active sanctions scenario

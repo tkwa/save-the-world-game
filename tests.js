@@ -70,7 +70,7 @@ let gameState = createTestGameState();
 
 // Test helper functions
 function _mockCalculateAdjustedRisk() {
-    return gameState.doomLevel || 20;
+    return gameState.rawRiskLevel || 20;
 }
 
 // Test shared utility functions from utils.js
@@ -80,7 +80,7 @@ function testSharedUtilityFunctions() {
     suite.test('calculateAdjustedRiskPercent should be available and work correctly', () => {
         // Use the real game state factory from utils.js
         const testState = createInitialGameState();
-        testState.doomLevel = 40;
+        testState.rawRiskLevel = 40;
         testState.safetyPoints = 25;
         testState.alignmentMaxScore = 20;
         
@@ -93,7 +93,7 @@ function testSharedUtilityFunctions() {
         suite.assertTrue(typeof adjustedRisk === 'number', 'calculateAdjustedRiskPercent should return a number');
         suite.assertTrue(adjustedRisk > 0, 'Adjusted risk should be positive');
         suite.assertTrue(adjustedRisk <= 100, 'Adjusted risk should be capped at 100%');
-        suite.assertTrue(adjustedRisk < testState.doomLevel, 'Adjusted risk should be less than raw doom level due to safety factors');
+        suite.assertTrue(adjustedRisk < testState.rawRiskLevel, 'Adjusted risk should be less than raw risk level due to safety factors');
     });
 
     suite.test('getAISystemVersion should be available and work correctly', () => {
@@ -156,7 +156,7 @@ function testSharedUtilityFunctions() {
     suite.test('Cross-file function access should work in events.js context', () => {
         // Test that functions can be called from events context
         const testState = createInitialGameState();
-        testState.doomLevel = 30;
+        testState.rawRiskLevel = 30;
         testState.safetyPoints = 50;
         testState.alignmentMaxScore = 10;
         global.gameState = testState;

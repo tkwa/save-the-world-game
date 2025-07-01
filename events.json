@@ -297,7 +297,7 @@
           "action": "accept",
           "cost": { "productPoints": 20, "diplomacyPoints": 20 },
           "risk": { "sanctions": 0.5 },
-          "penalty": { "doomLevel": 5 },
+          "penalty": { "riskLevel": 5 },
           "benefit": { "activateTechnology": "nukes" }
         },
         {
@@ -323,10 +323,10 @@
       },
       "choices": [
         {
-          "text": "Proceed (50% chance of sanctions, +5 Doom)",
+          "text": "Proceed (50% chance of sanctions, +5 Risk)",
           "action": "accept",
           "risk": { "sanctions": 0.5 },
-          "penalty": { "doomLevel": 5 }
+          "penalty": { "riskLevel": 5 }
         },
         {
           "text": "Decline",

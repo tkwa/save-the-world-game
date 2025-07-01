@@ -5,7 +5,7 @@
 const GAME_CONSTANTS = {
     // Initial values
     INITIAL_PLAYER_AI_LEVEL: 10,
-    INITIAL_DOOM_LEVEL: 20.0,
+    INITIAL_RISK_LEVEL: 20.0,
     INITIAL_COMPETITOR_AI_LEVELS: [8, 6, 4],
     INITIAL_TURN: 1,
     INITIAL_YEAR: 2026,
@@ -131,7 +131,7 @@ function createInitialGameState() {
     return {
         // AI Information
         playerAILevel: GAME_CONSTANTS.INITIAL_PLAYER_AI_LEVEL,
-        doomLevel: GAME_CONSTANTS.INITIAL_DOOM_LEVEL,
+        rawRiskLevel: GAME_CONSTANTS.INITIAL_RISK_LEVEL,
         competitorAILevels: [...GAME_CONSTANTS.INITIAL_COMPETITOR_AI_LEVELS], // Top 3 competitors in descending order
         competitorNames: [], // Will be set during game setup
 
@@ -217,7 +217,7 @@ function getRiskFactors(safetyPoints = null, alignmentMaxScore = null, interpret
 
 // Risk calculation function used across multiple files
 function calculateAdjustedRiskPercent(safetyPoints = null, alignmentMaxScore = null, interpretabilityProgress = null) {
-    const rawRisk = gameState.doomLevel;
+    const rawRisk = gameState.rawRiskLevel;
     const { safetyFactor, alignmentFactor, interpretabilityFactor } = getRiskFactors(safetyPoints, alignmentMaxScore, interpretabilityProgress);
     const adjustedRisk = rawRisk / (safetyFactor * alignmentFactor * interpretabilityFactor);
     return Math.min(adjustedRisk, 100); // Cap at 100%

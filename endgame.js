@@ -25,7 +25,7 @@ function generateConclusionText() {
     
     // Determine player's fate
     if (rogueGalaxies >= 99) {
-        // Total doom - everyone dies
+        // Total risk - everyone dies
         return "You are instantly killed by killer drone swarms as rogue AI systems optimize the universe according to their misaligned objectives.";
     } else if (playerGalaxies === 0) {
         // No personal galaxies - retirement scenario
@@ -154,8 +154,8 @@ function getPhase1Text() {
 }
 
 function getPhase2Text() {
-    const adjustedDoom = ensureEndgameAdjustedRisk();
-    const doomPercent = Math.round(adjustedDoom);
+    const adjustedRisk = ensureEndgameAdjustedRisk();
+    const riskPercent = Math.round(adjustedRisk);
     
     let text = "There is a critical question that no one—not even the creators—can answer with certainty: ";
     text += "<strong>Is this superintelligent AI actually aligned with human values?</strong><br><br>";
@@ -164,7 +164,7 @@ function getPhase2Text() {
     text += "there remains fundamental uncertainty about whether an ASI system will pursue goals compatible with human flourishing.<br><br>";
     
     text += `Based on the safety research conducted and the recklessness of the AI race, humanity's best guess is that `;
-    text += `there's a <strong style="color: ${getRiskColor(adjustedDoom)};">${doomPercent}%</strong> chance that any given ASI system is misaligned and poses an existential threat.<br><br>`;
+    text += `there's a <strong style="color: ${getRiskColor(adjustedRisk)};">${riskPercent}%</strong> chance that any given ASI system is misaligned and poses an existential threat.<br><br>`;
     
     text += "You want humanity to flourish and avoid extinction. But ";
     const preferenceStrength = 
@@ -176,14 +176,14 @@ function getPhase2Text() {
 }
 
 function getPhase3BaseText() {
-    const adjustedDoom = ensureEndgameAdjustedRisk();
-    const doomPercent = Math.round(adjustedDoom);
+    const adjustedRisk = ensureEndgameAdjustedRisk();
+    const riskPercent = Math.round(adjustedRisk);
     
     // Roll for alignment (using same logic as calculateEndGameScore)
     if (!gameState.alignmentRolls) {
         gameState.alignmentRolls = {
-            player: Math.random() * 100 >= doomPercent,
-            competitors: Math.random() * 100 >= doomPercent
+            player: Math.random() * 100 >= riskPercent,
+            competitors: Math.random() * 100 >= riskPercent
         };
     }
     
@@ -196,8 +196,8 @@ function getPhase3BaseText() {
     const competitorRawShare = (competitorCapabilitiesSquared.reduce((sum, cap) => sum + cap, 0) / totalCapabilitySquared) * 100;
     
     // Expected values accounting for alignment probability (using adjusted risk)
-    const expectedPlayerGalaxies = playerRawShare * (1 - adjustedDoom / 100);
-    const expectedHumanityGalaxies = competitorRawShare * (1 - adjustedDoom / 100);
+    const expectedPlayerGalaxies = playerRawShare * (1 - adjustedRisk / 100);
+    const expectedHumanityGalaxies = competitorRawShare * (1 - adjustedRisk / 100);
     const expectedRogueGalaxies = 100 - expectedPlayerGalaxies - expectedHumanityGalaxies;
     
     // Use shared function to calculate multipliers
@@ -468,7 +468,7 @@ function calculateEndGameScore() {
     let humanityGalaxies = 0;
     let rogueGalaxies = 0;
 
-    if (gameState.gameOverReason === 'doom-100') {
+    if (gameState.gameOverReason === 'risk-100') {
         // Instant game over - all AIs are misaligned
         resultText = `${gameState.companyName} was reckless enough to let doom reach 100%. Humanity is immediately eaten by nanobots, which go on to colonize the stars.`;
         rogueGalaxies = 100;
@@ -488,14 +488,14 @@ function calculateEndGameScore() {
         const playerShare = Math.max(0, Math.min(100, gameState.playerAILevel - gameState.competitorAILevels[0]));
         const otherShare = 100 - playerShare;
 
-        // Roll for misalignment using adjusted doom level as probability
-        const adjustedDoom = ensureEndgameAdjustedRisk();
-        const playerMisaligned = Math.random() * 100 < adjustedDoom;
-        const otherMisaligned = Math.random() * 100 < adjustedDoom;
+        // Roll for misalignment using adjusted risk level as probability
+        const adjustedRisk = ensureEndgameAdjustedRisk();
+        const playerMisaligned = Math.random() * 100 < adjustedRisk;
+        const otherMisaligned = Math.random() * 100 < adjustedRisk;
 
         if (playerMisaligned) {
             rogueGalaxies += playerShare;
-            resultText += `Your AI systems became misaligned (${Math.round(adjustedDoom)}% chance). `;
+            resultText += `Your AI systems became misaligned (${Math.round(adjustedRisk)}% chance). `;
         } else {
             playerGalaxies = playerShare;
             resultText += `Your AI systems remained aligned. `;

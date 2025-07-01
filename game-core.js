@@ -15,6 +15,7 @@ const TECHNOLOGY_VISIBILITY = {
     aiResearchLead: () => gameState.technologies.robotaxi,
     persuasion: () => gameState.eventsAccepted.has('persuasion-breakthrough'), // Revealed by persuasion event
     
+    
     // Column 2: Medicine - each depends on the one above
     syntheticBiology: () => gameState.technologies.medicine,
     cancerCure: () => gameState.technologies.syntheticBiology,
@@ -324,7 +325,7 @@ function getAIRisksByCapability(capabilityLevel) {
 // Note: calculateAdjustedRiskPercent and getRiskFactors moved to utils.js
 
 function generateRogueAIRiskTooltip() {
-    const rawRisk = gameState.doomLevel;
+    const rawRisk = gameState.rawRiskLevel;
     const adjustedRisk = calculateAdjustedRiskPercent();
     const { safetyFactor, alignmentFactor, interpretabilityFactor } = getRiskFactors();
     const riskPercent = Math.round(adjustedRisk);
@@ -356,19 +357,19 @@ function updateAISection() {
     // Red if less than top competitor AI level
     playerAIElement.style.color = gameState.playerAILevel < gameState.competitorAILevels[0] ? '#ff6b6b' : '#e0e0e0';
     
-    // Doom level - adjusted by safety R&D and alignment score
-    const doomElement = document.getElementById('doom-level');
-    const adjustedDoom = calculateAdjustedRiskPercent();
-    const roundedDoom = Math.round(adjustedDoom);
-    doomElement.textContent = `${roundedDoom}%`;
-    doomElement.style.fontWeight = 'bold';
-    // Risk-based color (use adjusted doom for color)
-    doomElement.style.color = getRiskColor(adjustedDoom);
+    // Risk level - adjusted by safety R&D and alignment score
+    const riskElement = document.getElementById('risk-level');
+    const adjustedRisk = calculateAdjustedRiskPercent();
+    const roundedRisk = Math.round(adjustedRisk);
+    riskElement.textContent = `${roundedRisk}%`;
+    riskElement.style.fontWeight = 'bold';
+    // Risk-based color (use adjusted risk for color)
+    riskElement.style.color = getRiskColor(adjustedRisk);
     
     // Make "Rogue AI Risk" label red and bold if >75%, otherwise just bold
-    const doomLabelElement = document.getElementById('doom-label');
-    doomLabelElement.style.color = getCriticalRiskColor(adjustedDoom);
-    doomLabelElement.style.fontWeight = 'bold';
+    const riskLabelElement = document.getElementById('risk-label');
+    riskLabelElement.style.color = getCriticalRiskColor(adjustedRisk);
+    riskLabelElement.style.fontWeight = 'bold';
     
     // Competitor AI levels
     const competitor1Element = document.getElementById('competitor1-ai-level');
@@ -716,7 +717,7 @@ async function advanceTurn() {
 
     // Check end conditions
     if (calculateAdjustedRiskPercent() >= GAME_CONSTANTS.DOOM_GAME_OVER_THRESHOLD) {
-        gameState.gameOverReason = 'doom-100';
+        gameState.gameOverReason = 'risk-100';
         gameState.endgameAdjustedRisk = calculateAdjustedRiskPercent();
         showPage('end-game');
         return;
@@ -1045,7 +1046,7 @@ function applyResourceAllocation(resourceType, corporateResources) {
     switch(resourceType) {
         case 'ai-rd':
             gameState.playerAILevel += gains.ai;
-            gameState.doomLevel += gains.ai;
+            gameState.rawRiskLevel += gains.ai;
             gameState.money = Math.max(0, gameState.money - gains.aiCost);
             break;
         case 'diplomacy':
@@ -1079,7 +1080,7 @@ function applyResourceAllocation(resourceType, corporateResources) {
 
 function resetGameState() {
     gameState.playerAILevel = GAME_CONSTANTS.INITIAL_PLAYER_AI_LEVEL;
-    gameState.doomLevel = GAME_CONSTANTS.INITIAL_DOOM_LEVEL;
+    gameState.rawRiskLevel = GAME_CONSTANTS.INITIAL_RISK_LEVEL;
     gameState.competitorAILevels = [...GAME_CONSTANTS.INITIAL_COMPETITOR_AI_LEVELS]; // Top 3 competitors in descending order
     gameState.competitorNames = []; // Will be set during game setup
     gameState.diplomacyPoints = 0;

@@ -299,10 +299,10 @@
       "type": "object", 
       "description": "Guaranteed negative effects when this choice is taken",
       "properties": {
-        "doomLevel": {
+        "riskLevel": {
           "type": "number",
           "minimum": 0,
-          "description": "Increase to doom level"
+          "description": "Increase to risk level"
         },
         "sanctions": {
           "type": "boolean",
