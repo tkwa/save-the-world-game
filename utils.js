@@ -217,80 +217,43 @@ function calculateAdjustedRiskPercent(safetyPoints = null, alignmentMaxScore = n
     return Math.min(adjustedRisk, 100); // Cap at 100%
 }
 
-// Get AI system version name based on company and level
-function getAISystemVersion(companyName, aiLevel) {
-    // Define AI system names for each company with thresholds
-    const aiSystems = {
-        'OpenAI': [
-            { threshold: 0, name: 'GPT-4' },
-            { threshold: 16, name: 'GPT-5' },
-            { threshold: 32, name: 'GPT-6' },
-            { threshold: 64, name: 'GPT-7' },
-            { threshold: 128, name: 'GPT-8' },
-            { threshold: 256, name: 'GPT-9' },
-            { threshold: 512, name: 'AGI-1' }
-        ],
-        'Anthropic': [
-            { threshold: 0, name: 'Claude 3.5' },
-            { threshold: 16, name: 'Claude 4' },
-            { threshold: 32, name: 'Claude 5' },
-            { threshold: 64, name: 'Claude 6' },
-            { threshold: 128, name: 'Claude 7' },
-            { threshold: 256, name: 'Claude 8' },
-            { threshold: 512, name: 'Constitutional AGI' }
-        ],
-        'DeepMind': [
-            { threshold: 0, name: 'Gemini Ultra' },
-            { threshold: 16, name: 'Gemini Pro Max' },
-            { threshold: 32, name: 'AlphaThought' },
-            { threshold: 64, name: 'AlphaMind' },
-            { threshold: 128, name: 'AlphaReason' },
-            { threshold: 256, name: 'AlphaGenius' },
-            { threshold: 512, name: 'AlphaGod' }
-        ],
-        'DeepSeek': [
-            { threshold: 0, name: 'DeepSeek-V3' },
-            { threshold: 16, name: 'DeepSeek-V4' },
-            { threshold: 32, name: 'DeepSeek-V5' },
-            { threshold: 64, name: 'DeepSeek-V6' },
-            { threshold: 128, name: 'DeepSeek-V7' },
-            { threshold: 256, name: 'DeepSeek-V8' },
-            { threshold: 512, name: 'DeepSeek-AGI' }
-        ],
-        'Tencent': [
-            { threshold: 0, name: 'Hunyuan-Large' },
-            { threshold: 16, name: 'Hunyuan-Ultra' },
-            { threshold: 32, name: 'Hunyuan-Supreme' },
-            { threshold: 64, name: 'Hunyuan-Divine' },
-            { threshold: 128, name: 'Hunyuan-Transcendent' },
-            { threshold: 256, name: 'Hunyuan-Infinite' },
-            { threshold: 512, name: 'Hunyuan-AGI' }
-        ],
-        'xAI': [
-            { threshold: 0, name: 'Grok-3' },
-            { threshold: 16, name: 'Grok-4' },
-            { threshold: 32, name: 'Grok-5' },
-            { threshold: 64, name: 'Grok-6' },
-            { threshold: 128, name: 'Grok-7' },
-            { threshold: 256, name: 'Grok-8' },
-            { threshold: 512, name: 'Grok-AGI' }
-        ]
-    };
+// Get AI system version name based on company and capability level
+function getAISystemVersion(companyName, capabilityLevel) {
+    // Determine capability band based on AI_RISK_THRESHOLDS
+    let band = 0;
+    if (capabilityLevel >= GAME_CONSTANTS.AI_RISK_THRESHOLDS.LEVEL_6) band = 6;
+    else if (capabilityLevel >= GAME_CONSTANTS.AI_RISK_THRESHOLDS.LEVEL_5) band = 5;
+    else if (capabilityLevel >= GAME_CONSTANTS.AI_RISK_THRESHOLDS.LEVEL_4) band = 4;
+    else if (capabilityLevel >= GAME_CONSTANTS.AI_RISK_THRESHOLDS.LEVEL_3) band = 3;
+    else if (capabilityLevel >= GAME_CONSTANTS.AI_RISK_THRESHOLDS.LEVEL_2) band = 2;
+    else if (capabilityLevel >= GAME_CONSTANTS.AI_RISK_THRESHOLDS.LEVEL_1) band = 1;
     
-    // Get the appropriate system for this company
-    const systems = aiSystems[companyName] || aiSystems['OpenAI']; // Fallback to OpenAI
-    
-    // Find the highest threshold that the AI level meets
-    let selectedSystem = systems[0]; // Default to first system
-    for (const system of systems) {
-        if (aiLevel >= system.threshold) {
-            selectedSystem = system;
-        } else {
-            break;
-        }
+    switch (companyName) {
+        case 'Anthropic':
+            // Starts at Claude 5 Opus, increments 2 per level
+            return `Claude ${5 + (band * 2)} Opus`;
+        case 'DeepMind':
+            // Starts at Gemini 3.0 Pro, increments 1.5 per level
+            if (band == 6) return `OmegaReason`
+            else return `Gemini ${(3.0 + (band * 1.5)).toFixed(1)} Pro`;
+        case 'OpenAI':
+            // o5, o7, then AGT-9, AGT-10, AGT-12, AGT-14
+            if (band === 0) return 'OpenAI o5';
+            else if (band === 1) return 'OpenAI o7';
+            else return `AGT-${9 + ((band - 2) * 2)}`;
+        case 'DeepSeek':
+            // Deepseek R3, increments 2 per level
+            return `Deepseek R${3 + (band * 2)}`;
+        case 'xAI':
+            // Starts at Grok 5, increments 2 per level
+            return `Grok ${5 + (band * 2)}`;
+        case 'Tencent':
+            if (band === 0) return `Hunyuan ${3 + band}.0`;
+            else if (band == 6) return `HunyuanDivine 9.0`
+            else return `HunyuanAgent ${3 + band}.0`;
+        default:
+            return 'AI System';
     }
-    
-    return selectedSystem.name;
 }
 
 // Get risk color based on risk percentage

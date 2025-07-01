@@ -277,42 +277,7 @@ const storyContent = {
     },
 };
 
-function getAISystemVersion(companyName, capabilityLevel) {
-    // Determine capability band based on AI_RISK_THRESHOLDS
-    let band = 0;
-    if (capabilityLevel >= GAME_CONSTANTS.AI_RISK_THRESHOLDS.LEVEL_6) band = 6;
-    else if (capabilityLevel >= GAME_CONSTANTS.AI_RISK_THRESHOLDS.LEVEL_5) band = 5;
-    else if (capabilityLevel >= GAME_CONSTANTS.AI_RISK_THRESHOLDS.LEVEL_4) band = 4;
-    else if (capabilityLevel >= GAME_CONSTANTS.AI_RISK_THRESHOLDS.LEVEL_3) band = 3;
-    else if (capabilityLevel >= GAME_CONSTANTS.AI_RISK_THRESHOLDS.LEVEL_2) band = 2;
-    else if (capabilityLevel >= GAME_CONSTANTS.AI_RISK_THRESHOLDS.LEVEL_1) band = 1;
-    
-    switch (companyName) {
-        case 'Anthropic':
-            // Starts at Claude 5 Opus, increments 2 per level
-            return `Claude ${5 + (band * 2)} Opus`;
-        case 'DeepMind':
-            // Starts at Gemini 3.0 Pro, increments 1.5 per level
-            return `Gemini ${(3.0 + (band * 1.5)).toFixed(1)} Pro`;
-        case 'OpenAI':
-            // o5, o7, then AGT-9, AGT-10, AGT-12, AGT-14
-            if (band === 0) return 'o5';
-            else if (band === 1) return 'o7';
-            else return `AGT-${9 + ((band - 2) * 2)}`;
-        case 'DeepSeek':
-            // Deepseek R3, increments 2 per level
-            return `Deepseek R${3 + (band * 2)}`;
-        case 'xAI':
-            // Starts at Grok 5, increments 2 per level
-            return `Grok ${5 + (band * 2)}`;
-        case 'Tencent':
-            // Make something up
-            if (band === 0) return `Hunyuan ${3 + band}.0`;
-            else return `HunyuanAgent ${3 + band}.0`;
-        default:
-            return 'AI System';
-    }
-}
+// Note: getAISystemVersion moved to utils.js
 
 function generateAICapabilitiesTooltip() {
     // Create ranking array with all companies
