@@ -307,6 +307,10 @@
         "sanctions": {
           "type": "boolean",
           "description": "Triggers economic sanctions"
+        },
+        "statusEffect": {
+          "type": "string",
+          "description": "Name of status effect to apply (e.g., 'disillusioned', 'under-investigation')"
         }
       },
       "additionalProperties": false
@@ -320,6 +324,24 @@
           "minimum": 0,
           "maximum": 1,
           "description": "Probability (0-1) of triggering sanctions"
+        },
+        "statusEffect": {
+          "type": "object",
+          "description": "Probability-based status effect",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Name of the status effect"
+            },
+            "probability": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Probability (0-1) of triggering this status effect"
+            }
+          },
+          "required": ["name", "probability"],
+          "additionalProperties": false
         }
       },
       "additionalProperties": false

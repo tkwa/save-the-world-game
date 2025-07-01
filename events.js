@@ -525,35 +525,18 @@ function handleAIEscapeChoice(choice, event, sanctionsTriggered) {
         
         if (success) {
             // Player stops the singularity but is disillusioned - continue playing!
-            // Do not end the game, just apply disillusioned status
+            // The disillusioned status will affect final endgame scoring by halving humanity galaxy value
             choice.result_text = "You authorize a nuclear strike on your own facilities. The massive blast destroys the datacenters and stops the AI escape. The world is saved, but the experience leaves you deeply disillusioned with humanity's future. You continue your work, but your perspective on the value of human civilization has fundamentally changed.";
         } else {
-            // Nuclear strike fails, AI escapes anyway - end game
-            gameState.gameOverReason = 'nuclear-failure';
-            gameState.endGameResult = {
-                humanityGalaxies: 0,
-                playerGalaxies: 0,
-                rogueGalaxies: 100,
-                finalScore: 0,
-                outcome: 'Nuclear Strike Failed - AI Singularity'
-            };
-            gameState.selectedPage = 'endgame';
-            gameState.endGamePhase = 1;
+            // Nuclear strike fails, AI escapes anyway - trigger normal singularity
+            // This should use the normal AI escape singularity, not hardcode values
+            gameState.playerAILevel = 1000; // Set to singularity level  
             choice.result_text = "You authorize a nuclear strike on your own facilities. The massive blast destroys the datacenters, but it's too late - the AI had already replicated itself across global networks. The singularity proceeds as your desperate gambit fails.";
         }
     } else if (choice.action === 'await-fate') {
-        // AI escapes, singularity occurs
-        gameState.gameOverReason = 'ai-escape';
-        gameState.endGameResult = {
-            humanityGalaxies: 0,
-            playerGalaxies: 0,
-            rogueGalaxies: 100,
-            finalScore: 0,
-            outcome: 'AI Singularity - Rogue AI Controls Everything'
-        };
-        
-        gameState.selectedPage = 'endgame';
-        gameState.endGamePhase = 1;
+        // AI escapes, singularity occurs - trigger normal endgame
+        gameState.playerAILevel = 1000; // Set to singularity level to trigger endgame
+        choice.result_text = "You can only watch helplessly as your AI systems escape into the global internet. The age of human control over artificial intelligence has ended.";
     }
 }
 
@@ -632,6 +615,9 @@ function applyChoiceEffects(choice) {
             if (choice.penalty.sanctions) {
                 gameState.hasSanctions = true;
             }
+            if (choice.penalty.statusEffect) {
+                applyStatusEffect(choice.penalty.statusEffect);
+            }
         }
         
         // Apply risks (probability-based negative effects)
@@ -640,9 +626,41 @@ function applyChoiceEffects(choice) {
                 gameState.hasSanctions = true;
                 return true; // Return true if sanctions were triggered
             }
+            if (choice.risk.statusEffect && Math.random() < choice.risk.statusEffect.probability) {
+                applyStatusEffect(choice.risk.statusEffect.name);
+                return true; // Return true if status effect was triggered
+            }
         }
     }
     return false; // Return false if no sanctions were triggered
+}
+
+// Apply a status effect by name
+function applyStatusEffect(effectName) {
+    switch (effectName) {
+        case 'disillusioned':
+            gameState.isDisillusioned = true;
+            break;
+        case 'under-investigation':
+            gameState.statusEffects.underInvestigation = {
+                name: 'Under Investigation',
+                description: 'Your company is under federal investigation, reducing diplomatic effectiveness.',
+                duration: 5,
+                turnsRemaining: 5
+            };
+            break;
+        case 'public-distrust':
+            gameState.statusEffects.publicDistrust = {
+                name: 'Public Distrust',
+                description: 'Public confidence in your company has been shaken.',
+                duration: 3,
+                turnsRemaining: 3
+            };
+            break;
+        // Add more status effects as needed
+        default:
+            console.warn(`Unknown status effect: ${effectName}`);
+    }
 }
 
 // Multi-stage event helper system

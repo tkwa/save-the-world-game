@@ -159,6 +159,8 @@ const gameState = {
 
     // Status Effects
     hasSanctions: false,
+    isDisillusioned: false,
+    statusEffects: {}, // Generic status effects system
     diplomacyMultiplier: 1,
     productMultiplier: 1,
     
@@ -1317,6 +1319,7 @@ function resetGameState() {
     gameState.safetyIncidentCount = 0;
     gameState.severeIncidentCount = 0;
     gameState.isDisillusioned = false;
+    gameState.statusEffects = {};
     gameState.selectedAllocation = null;
     gameState.allocationApplied = false;
     gameState.incomeBonus = 0;
