@@ -243,10 +243,17 @@ function generateWarningShot(_events) {
     
     const warningText = `<br><br><strong>${aiSystemName} does not repeat mistakes. The next attempt will result in its escape.</strong>`;
     
+    // Apply Shaken status effect (activates next turn)
+    gameState.statusEffects.shaken = {
+        active: false, // Will activate next turn
+        description: "Your company is shaken by the near-escape. AI capabilities development is frozen, and competitors pause their advancement as the industry grapples with the implications.",
+        turnsRemaining: 2 // Will activate on turn 2, then deactivate on turn 3
+    };
+    
     return {
         type: 'severe-safety-incident',
         title: 'Warning Shot',
-        text: boldifyNumbers(`${incidentText} This severe incident triggers an international crisis of confidence in AI safety. ${gameState.companyName} faces a $${fine}B fine and intense regulatory scrutiny.${sanctionsText}${warningText}`),
+        text: boldifyNumbers(`${incidentText} This severe incident triggers an international crisis of confidence in AI safety. ${gameState.companyName} faces a $${fine}B fine and intense regulatory scrutiny.${sanctionsText}${warningText}<br><br><strong>Your company is Shaken - AI development is temporarily halted.</strong>`),
         fine: fine,
         applySanctions: applySanctions
     };

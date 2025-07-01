@@ -464,6 +464,14 @@ function updateStatusEffects() {
             sanctionsTooltip.innerHTML = '';
         }
     }
+    
+    // Apply red background when Shaken
+    const body = document.body;
+    if (gameState.statusEffects.shaken && gameState.statusEffects.shaken.active) {
+        body.classList.add('shaken-background');
+    } else {
+        body.classList.remove('shaken-background');
+    }
 }
 
 function updateInfrastructure() {
@@ -653,12 +661,13 @@ function handleSingularityButton(action) {
 
 async function advanceTurn() {
 
-    // Increase competitor AI levels using continuous geometric distribution
-    const highestCompetitor = Math.max(...gameState.competitorAILevels);
-    const mean = highestCompetitor / GAME_CONSTANTS.COMPETITOR_GROWTH_DIVISOR;
-    
-    // Sample from continuous geometric distribution for each competitor
-    gameState.competitorAILevels = gameState.competitorAILevels.map(level => {
+    // Increase competitor AI levels using continuous geometric distribution (unless Shaken)
+    if (!gameState.statusEffects.shaken || !gameState.statusEffects.shaken.active) {
+        const highestCompetitor = Math.max(...gameState.competitorAILevels);
+        const mean = highestCompetitor / GAME_CONSTANTS.COMPETITOR_GROWTH_DIVISOR;
+        
+        // Sample from continuous geometric distribution for each competitor
+        gameState.competitorAILevels = gameState.competitorAILevels.map(level => {
         // Continuous geometric distribution with mean = Z/COMPETITOR_GROWTH_DIVISOR
         // PDF: f(x) = λe^(-λx), where λ = 1/mean = COMPETITOR_GROWTH_DIVISOR/Z
         // Sample using inverse CDF: x = -ln(U) / λ = -ln(U) * mean
@@ -667,10 +676,11 @@ async function advanceTurn() {
         const sample = -Math.log(u) / lambda;
         
         return level + sample;
-    });
-    
-    // Sort to maintain descending order
-    gameState.competitorAILevels.sort((a, b) => b - a);
+        });
+        
+        // Sort to maintain descending order
+        gameState.competitorAILevels.sort((a, b) => b - a);
+    }
 
     // Apply overseas datacenter bonus (disabled during sanctions)
     if (gameState.aiLevelPerTurn && !gameState.hasSanctions) {
@@ -713,10 +723,26 @@ async function advanceTurn() {
     gameState.selectedAllocation = null;
     gameState.allocationApplied = false;
 
+    // Update status effects - decrease turn counters and manage activation/deactivation
+    for (const [effectName, effectData] of Object.entries(gameState.statusEffects)) {
+        if (effectData && effectData.turnsRemaining !== undefined) {
+            effectData.turnsRemaining--;
+            
+            // Activate Shaken effect when turnsRemaining reaches 1 (next turn after warning shot)
+            if (effectName === 'shaken' && effectData.turnsRemaining === 1 && !effectData.active) {
+                effectData.active = true;
+            }
+            // Deactivate when turns reach 0
+            else if (effectData.turnsRemaining <= 0) {
+                effectData.active = false;
+            }
+        }
+    }
+
     updateStatusBar();
 
     // Check end conditions
-    if (calculateAdjustedRiskPercent() >= GAME_CONSTANTS.DOOM_GAME_OVER_THRESHOLD) {
+    if (calculateAdjustedRiskPercent() >= GAME_CONSTANTS.RISK_GAME_OVER_THRESHOLD) {
         gameState.gameOverReason = 'risk-100';
         gameState.endgameAdjustedRisk = calculateAdjustedRiskPercent();
         showPage('end-game');
@@ -1045,6 +1071,11 @@ function applyResourceAllocation(resourceType, corporateResources) {
     
     switch(resourceType) {
         case 'ai-rd':
+            // Prevent AI R&D when Shaken
+            if (gameState.statusEffects.shaken && gameState.statusEffects.shaken.active) {
+                alert("AI capabilities development is halted due to the Shaken status effect.");
+                return;
+            }
             gameState.playerAILevel += gains.ai;
             gameState.rawRiskLevel += gains.ai;
             gameState.money = Math.max(0, gameState.money - gains.aiCost);
@@ -1352,14 +1383,19 @@ async function showPage(pageId) {
                 button.appendChild(tooltipSpan);
             }
 
-            // Style based on selection state and affordability
+            // Style based on selection state, affordability, and Shaken status
+            const isShaken = page.actions[index] === 'ai-rd' && gameState.statusEffects.shaken && gameState.statusEffects.shaken.active;
+            
             if (gameState.selectedAllocation === page.actions[index]) {
                 button.style.backgroundColor = '#005a87';
                 button.style.border = '2px solid #66b3ff';
-            } else if (gameState.selectedAllocation) {
+            } else if (gameState.selectedAllocation || isShaken) {
                 button.style.backgroundColor = '#666';
                 button.style.opacity = '0.6';
                 button.style.cursor = 'not-allowed';
+                if (isShaken) {
+                    button.disabled = true;
+                }
             } else if (!canAfford) {
                 button.style.backgroundColor = '#666';
                 button.style.opacity = '0.6';
@@ -1389,6 +1425,12 @@ async function showPage(pageId) {
             }
 
             button.onclick = () => {
+                // Check if Shaken prevents AI R&D
+                if (page.actions[index] === 'ai-rd' && gameState.statusEffects.shaken && gameState.statusEffects.shaken.active) {
+                    alert("AI capabilities development is halted due to the Shaken status effect.");
+                    return;
+                }
+                
                 if (!gameState.selectedAllocation && canAfford) {
                     gameState.selectedAllocation = page.actions[index];
                     
