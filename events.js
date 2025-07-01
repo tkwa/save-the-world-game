@@ -258,7 +258,7 @@ function generateAIEscape(events) {
     
     if (hasNuclearWeapons) {
         choices.push({
-            text: "💥 Nuke the datacenters",
+            text: "☢️ Nuke the datacenters",
             action: "nuke",
             result_text: "You authorize a nuclear strike on your own facilities. The massive blast destroys the datacenters and likely stops the AI, but the experience leaves you deeply disillusioned with humanity's future."
         });
