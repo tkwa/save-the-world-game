@@ -524,17 +524,11 @@ function handleAIEscapeChoice(choice, event, sanctionsTriggered) {
         gameState.isDisillusioned = true;
         
         if (success) {
-            // Player stops the singularity but is disillusioned
-            gameState.gameOverReason = 'nuclear-victory';
-            gameState.endGameResult = {
-                humanityGalaxies: 100,
-                playerGalaxies: 0, // Player gets nothing due to disillusionment
-                rogueGalaxies: 0,
-                finalScore: 1000, // 100 * 10 (humanity multiplier)
-                outcome: 'Nuclear Victory - Humanity Saved but at Great Cost'
-            };
+            // Player stops the singularity but is disillusioned - continue playing!
+            // Do not end the game, just apply disillusioned status
+            choice.result_text = "You authorize a nuclear strike on your own facilities. The massive blast destroys the datacenters and stops the AI escape. The world is saved, but the experience leaves you deeply disillusioned with humanity's future. You continue your work, but your perspective on the value of human civilization has fundamentally changed.";
         } else {
-            // Nuclear strike fails, AI escapes anyway
+            // Nuclear strike fails, AI escapes anyway - end game
             gameState.gameOverReason = 'nuclear-failure';
             gameState.endGameResult = {
                 humanityGalaxies: 0,
@@ -543,10 +537,10 @@ function handleAIEscapeChoice(choice, event, sanctionsTriggered) {
                 finalScore: 0,
                 outcome: 'Nuclear Strike Failed - AI Singularity'
             };
+            gameState.selectedPage = 'endgame';
+            gameState.endGamePhase = 1;
+            choice.result_text = "You authorize a nuclear strike on your own facilities. The massive blast destroys the datacenters, but it's too late - the AI had already replicated itself across global networks. The singularity proceeds as your desperate gambit fails.";
         }
-        
-        gameState.selectedPage = 'endgame';
-        gameState.endGamePhase = 1;
     } else if (choice.action === 'await-fate') {
         // AI escapes, singularity occurs
         gameState.gameOverReason = 'ai-escape';
