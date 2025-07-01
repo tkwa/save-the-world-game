@@ -191,8 +191,14 @@ function getPhase3BaseText() {
     // Calculate expected score with equity-based multiplier
     // Player gets: 10 (humanity survival) + 100 * equity (ownership stake)
     const playerMultiplier = 10 + (100 * gameState.playerEquity);
+    
+    // Check if player is disillusioned - halves value of humanity galaxies
+    const humanityMultiplier = (gameState.statusEffects.disillusioned && gameState.statusEffects.disillusioned.active) 
+        ? GAME_CONSTANTS.GALAXY_MULTIPLIERS.HUMANITY / 2 
+        : GAME_CONSTANTS.GALAXY_MULTIPLIERS.HUMANITY;
+    
     const expectedScore = expectedPlayerGalaxies * playerMultiplier + 
-                         expectedHumanityGalaxies * GAME_CONSTANTS.GALAXY_MULTIPLIERS.HUMANITY;
+                         expectedHumanityGalaxies * humanityMultiplier;
     
     // Determine net assessments based on baselines
     // Baseline: 25% ownership for shareholders, 80% survival (100% - 20% baseline risk) for humanity
@@ -221,7 +227,7 @@ function getPhase3BaseText() {
         `</div>` +
         `<div style="text-align: center;">` +
         `<div style="color: #66bb6a; margin-bottom: 5px;">Other humanity</div>` +
-        `<div>${Math.round(expectedHumanityGalaxies)}% × 10</div>` +
+        `<div>${Math.round(expectedHumanityGalaxies)}% × ${humanityMultiplier}</div>` +
         `</div>` +
         `<div style="text-align: center;">` +
         `<div style="color: #ff6b6b; margin-bottom: 5px;">Rogue AI</div>` +
@@ -501,14 +507,20 @@ function calculateEndGameScore() {
     // Calculate final score with equity-based multiplier
     // Player gets: 10 (humanity survival) + 100 * equity (ownership stake)
     const playerMultiplier = 10 + (100 * gameState.playerEquity);
-    const finalScore = (0 * rogueGalaxies) + (10 * humanityGalaxies) + (playerMultiplier * playerGalaxies);
+    
+    // Check if player is disillusioned - halves value of humanity galaxies
+    const humanityMultiplier = (gameState.statusEffects.disillusioned && gameState.statusEffects.disillusioned.active) 
+        ? GAME_CONSTANTS.GALAXY_MULTIPLIERS.HUMANITY / 2 
+        : GAME_CONSTANTS.GALAXY_MULTIPLIERS.HUMANITY;
+    
+    const finalScore = (0 * rogueGalaxies) + (humanityMultiplier * humanityGalaxies) + (playerMultiplier * playerGalaxies);
 
     resultText += `<br><br><strong>Final Galaxy Distribution:</strong><br>`;
     resultText += `• Rogue AI: ${rogueGalaxies}%<br>`;
     resultText += `• Humanity at large: ${humanityGalaxies}%<br>`;
     resultText += `• Your company: ${playerGalaxies}%<br><br>`;
     resultText += `<strong>Final Score: ${finalScore}</strong><br>`;
-    resultText += `(${rogueGalaxies}×0 + ${humanityGalaxies}×10 + ${playerGalaxies}×${Math.round(playerMultiplier * 10) / 10})`;
+    resultText += `(${rogueGalaxies}×0 + ${humanityGalaxies}×${humanityMultiplier} + ${playerGalaxies}×${Math.round(playerMultiplier * 10) / 10})`;
 
     // Store the result to avoid re-rolling randomness
     gameState.endGameResult = resultText;
