@@ -8,19 +8,18 @@ Open `savetheworld.html` in a browser, e.g. by using Cursor Live Preview or `pyt
 ## Status
 
 TODO for Claude (check off when finished):
-- [ ] How could we test that every event handler is free of bugs (specifically calls the proper functions to update the screen)? Do this only if it's easy
-- [ ] Make every event have a short title
-- [ ] Make the "severe incident" a "warning shot" (same effects though); the second time a severe incident happens, the AI should escape into the world
-  - The description for the warning shot event should say that the next time such an incident happens, it is likely the AI will escape containment.
-  - If the player has nuclear weapons, a "(Nuke emoji) Nuke the datacenters" option should happen when the AI escapes; it should have a 50% chance of stopping the singularity but this causes the Disillusioned status effect (see below).
-  - Otherwise the only option is "Await your fate" which leads to some story text and then the singularity
-- [ ] Make events equally able to apply other status effects than sanctions; right now sanctions are treated specially
-  - Finish the migration of sanctions to status effects system
+- [ ] Interpretability project
+  - Should be unlocked first at 80 safety with the projects/diminishing returns event. This should now be the first project, not alignment, which is unlocked with a separate event with weight 4 that goes in the pool at 320 safety
+  - [ ] Now there can be a variable number of buttons in the projects section depending on what is unlocked
+  - [ ] Implementation. Reduces risk by 1 / (1 + interpretability%). Costs same as AI R&D; requires 1B labor-hours to complete, and progress goes like sqrt(hours)
+  - [ ] Button similar to alignment button
+  - [ ] Max progress is 100%. When reaching 100%, button is greyed out
+  - [ ] Update risk tooltip
 
 
 Still deciding on details...
 - [ ] Integrate capabilities minigame as capabilities forecasting
-- [ ] Add Greedy status effect that doubles the 
+- [ ] Add Greedy status effect that doubles your own galaxy values but halves humanity galaxy values, when you get $10T
 
 
 Longer term goals -- Claude shouldn't start these yet
@@ -49,7 +48,6 @@ Longer term goals -- Claude shouldn't start these yet
 - [ ] Safety projects module
   - [ ] Interp minigame and effects
     - Available at 100 safety research
-    - 
   - [ ] Monitor minigame
     - Available at 200 safety research
   - [ ] Control minigame and effects-- unlocked when monitoring 
@@ -94,7 +92,15 @@ Longer term goals -- Claude shouldn't start these yet
 - [ ] Integrate forecasting minigame as a project
 
 
-
+Techs to add functionality for
+- [ ] AI Research Lead. AI R&D should reach diminishing returns after 20 unless this is unlocked (perhaps scaling as 0.7 power beyond 20x), and this should be unlocked by an event with costs
+- [ ] AI Novelist-- should be activated by persuasion
+- [ ] Synthetic Biology-- should double revenue
+- [ ] Cancer Cure-- should be Life Extension, an effective cure to aging. Succeeding at this should cancel Disillusioned or create Hopeful, which multiplies score from humanity galaxies by 1.2
+- [ ] Brain Uploading-- should go disillusioned -> nothing, nothing -> Hopeful, Hopeful -> Inspired, which multiplies score from humanity galaxies by 1.5
+- [ ] Cyberwarfare-- should unlock early on, say 8x, with a flavor event
+- [ ] Bioweapons-- Should allow a rogue AI majority to defeat humanity. After Synthetic Biology, there should be an event that tempts you to develop them, but you can instead choose biosafety tech. Perhaps you get a contract from your government for a large amount of money and diplomacy, 
+- [ ] Killer Drones: Revealed at a random time after Robotics
 
 
 Ideas:

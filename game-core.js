@@ -325,7 +325,7 @@ function getAIRisksByCapability(capabilityLevel) {
 function generateRogueAIRiskTooltip() {
     const rawRisk = gameState.doomLevel;
     const adjustedRisk = calculateAdjustedRiskPercent();
-    const { safetyFactor, alignmentFactor } = getRiskFactors();
+    const { safetyFactor, alignmentFactor, interpretabilityFactor } = getRiskFactors();
     const riskPercent = Math.round(adjustedRisk);
     const monthlyIncidentChance = Math.pow(adjustedRisk / 100, 2) * 100;
     const companyName = gameState.companyName || 'your company';
@@ -339,8 +339,8 @@ function generateRogueAIRiskTooltip() {
     
     // Build calculation explanation
     let calculationText = '';
-    if (gameState.safetyPoints > 0 || gameState.alignmentMaxScore > 0) {
-        calculationText = `Risk = <strong>${rawRisk.toFixed(1)}%</strong> (AI Level) / (<strong>${safetyFactor.toFixed(2)}</strong> (Safety R&D) × <strong>${alignmentFactor.toFixed(2)}</strong> (Alignment)) = <strong>${adjustedRisk.toFixed(1)}%</strong><br><br>`;
+    if (gameState.safetyPoints > 0 || gameState.alignmentMaxScore > 0 || gameState.interpretabilityProgress > 0) {
+        calculationText = `Risk = <strong>${rawRisk.toFixed(1)}%</strong> (AI Level) / (<strong>${safetyFactor.toFixed(2)}</strong> (Safety R&D) × <strong>${alignmentFactor.toFixed(2)}</strong> (Alignment)) × <strong>${interpretabilityFactor.toFixed(2)}</strong> (Interpretability) = <strong>${adjustedRisk.toFixed(1)}%</strong><br><br>`;
     }
     
     return `Current AI systems are capable of harms like <strong>${currentRisks[0]}</strong> and <strong>${currentRisks[1]}</strong>, and <strong style="color: #ff6b6b;">ASI</strong> could threaten humanity as a whole.<br><br>${calculationText}Currently the risk of <strong style="color: ${riskColor};">${riskPercent}%</strong> means:<br>- <strong style="color: ${riskColor};">${riskPercent}%</strong> chance of existential risk at game end<br>- ${riskPercent}%² = <strong style="color: ${riskColor};">${monthlyIncidentChance.toFixed(1)}%</strong> monthly chance of ${companyName} safety incident.`;
@@ -863,6 +863,14 @@ function generateActionTooltip(actionType, _resources) {
             const alignmentRiskPercentReduction = (1 - 1 / getRiskFactors().alignmentFactor) * 100
             
             return `Human-like and benign values. Alignment progress has reduced Rogue AI risk by <strong>${alignmentRiskPercentReduction.toFixed(1)}%</strong>.`;
+        case 'interpretability-project':
+            // Calculate interpretability risk reduction using getRiskFactors
+            const interpretabilityRiskReduction = (1 - 1 / getRiskFactors().interpretabilityFactor) * 100
+            const nextHours = gameState.interpretabilityLaborHours + _resources;
+            const nextProgress = Math.min(100, Math.sqrt(nextHours / 1000) * 100);
+            const progressGain = nextProgress - gameState.interpretabilityProgress;
+            
+            return `Understanding AI decision-making processes. Each allocation increases progress by <strong>+${progressGain.toFixed(1)}%</strong>. Interpretability progress has reduced Rogue AI risk by <strong>${interpretabilityRiskReduction.toFixed(1)}%</strong>.`;
         default:
             return '';
     }
@@ -1052,6 +1060,13 @@ function applyResourceAllocation(resourceType, corporateResources) {
             gameState.money = Math.max(0, gameState.money - gains.safetyCost);
             // Launch alignment minigame after resources are applied
             startMinigame('alignment-research');
+            break;
+        case 'interpretability-project':
+            gameState.money = Math.max(0, gameState.money - gains.safetyCost);
+            // Add labor hours to interpretability project
+            gameState.interpretabilityLaborHours += corporateResources;
+            // Calculate progress using sqrt formula: requires 1B hours for 100%
+            gameState.interpretabilityProgress = Math.min(100, Math.sqrt(gameState.interpretabilityLaborHours / 1000) * 100);
             break;
         case 'revenue':
             gameState.money += gains.revenue;
@@ -1402,15 +1417,16 @@ async function showPage(pageId) {
             `;
             projectsSection.appendChild(projectsHeader);
             
-            // Add Alignment research button
-            const alignmentBtn = document.createElement('button');
-            alignmentBtn.className = 'button';
-            const alignmentScore = gameState.alignmentMaxScore;
-            
-            // Calculate cost (same as safety R&D)
+            // Calculate cost for all projects (same as safety R&D)
             const gains = calculateResourceGains(corporateResources);
             const cost = gains.safetyCost;
             const canAfford = gameState.money >= cost;
+            
+            // Add Alignment research button (only if unlocked)
+            if (gameState.alignmentUnlocked) {
+                const alignmentBtn = document.createElement('button');
+                alignmentBtn.className = 'button';
+                const alignmentScore = gameState.alignmentMaxScore;
             
             alignmentBtn.innerHTML = `Alignment 🧭 ${alignmentScore.toFixed(0)}% (-$${(Math.round(cost * 10) / 10).toFixed(1)}B)`;
             alignmentBtn.style.cssText = `
@@ -1464,6 +1480,73 @@ async function showPage(pageId) {
                 }
             };
             projectsSection.appendChild(alignmentBtn);
+            }
+            
+            // Add Interpretability research button
+            const interpretabilityBtn = document.createElement('button');
+            interpretabilityBtn.className = 'button';
+            const interpretabilityProgress = gameState.interpretabilityProgress;
+            
+            // Calculate if progress is maxed out
+            const isMaxed = interpretabilityProgress >= 100;
+            
+            interpretabilityBtn.innerHTML = `Interp 🔬 ${interpretabilityProgress.toFixed(0)}% (-$${(Math.round(cost * 10) / 10).toFixed(1)}B)`;
+            interpretabilityBtn.style.cssText = `
+                width: 200px;
+                height: 50px;
+                margin-bottom: 10px;
+                font-family: 'Courier New', Courier, monospace;
+                font-size: 14px;
+                line-height: 1.2;
+                background-color: #5a2d5a;
+            `;
+            
+            // Style based on selection state, affordability, and max progress
+            if (isMaxed) {
+                interpretabilityBtn.style.backgroundColor = '#666';
+                interpretabilityBtn.style.opacity = '0.6';
+                interpretabilityBtn.style.cursor = 'not-allowed';
+                interpretabilityBtn.disabled = true;
+            } else if (gameState.selectedAllocation === 'interpretability-project') {
+                interpretabilityBtn.style.backgroundColor = '#005a87';
+                interpretabilityBtn.style.border = '2px solid #66b3ff';
+            } else if (gameState.selectedAllocation) {
+                interpretabilityBtn.style.backgroundColor = '#666';
+                interpretabilityBtn.style.opacity = '0.6';
+                interpretabilityBtn.style.cursor = 'not-allowed';
+            } else if (!canAfford) {
+                interpretabilityBtn.style.backgroundColor = '#666';
+                interpretabilityBtn.style.opacity = '0.6';
+                interpretabilityBtn.style.cursor = 'not-allowed';
+                interpretabilityBtn.disabled = true;
+            }
+            
+            // Add tooltip for interpretability project
+            const interpretabilityTooltip = generateActionTooltip('interpretability-project', corporateResources);
+            if (interpretabilityTooltip) {
+                interpretabilityBtn.className = 'button tooltip';
+                interpretabilityBtn.style.position = 'relative';
+                
+                // Create tooltip span element
+                const tooltipSpan = document.createElement('span');
+                tooltipSpan.className = 'tooltiptext';
+                tooltipSpan.innerHTML = interpretabilityTooltip;
+                tooltipSpan.style.width = '300px';
+                tooltipSpan.style.marginLeft = '-150px';
+                
+                interpretabilityBtn.appendChild(tooltipSpan);
+            }
+            
+            interpretabilityBtn.onclick = () => {
+                if (!gameState.selectedAllocation && canAfford && !isMaxed) {
+                    gameState.selectedAllocation = 'interpretability-project';
+                    
+                    // Apply the allocation immediately for projects (unlike sectors)
+                    applyResourceAllocation('interpretability-project', corporateResources);
+                    gameState.allocationApplied = true;
+                }
+            };
+            projectsSection.appendChild(interpretabilityBtn);
             
             mainContainer.appendChild(projectsSection);
         }
@@ -1820,6 +1903,11 @@ async function handleEventChoice(choiceIndex) {
         // Unlock Projects panel for safety research limitations event
         if (event.type === 'safety-research-limitations') {
             gameState.projectsUnlocked = true;
+        }
+        
+        // Unlock alignment project for alignment research breakthrough event
+        if (event.type === 'alignment-research-breakthrough') {
+            gameState.alignmentUnlocked = true;
         }
     }
 

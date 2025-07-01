@@ -202,3 +202,28 @@ function handleMyComplexEvent(choice, event, sanctionsTriggered) {
 - Register minigames in the global minigame system
 - Use consistent scoring and feedback patterns
 - Update max scores in game state for progression tracking
+
+## Project System (Interpretability/Alignment)
+
+### Implementation Pattern
+- **Project Unlocking**: Events trigger project availability via gameState flags
+  - `projectsUnlocked`: Unlocks Projects panel (safety-research-limitations event at 80 safety)
+  - `alignmentUnlocked`: Unlocks alignment project (alignment-research-breakthrough event at 320 safety)
+- **Progress Tracking**: Projects use different mechanisms than sectors
+  - Alignment: Minigame-based with `alignmentMaxScore` (0-100%)
+  - Interpretability: Labor-hour based with `interpretabilityProgress` (0-100%)
+- **Cost Structure**: All projects cost same as Safety R&D (`Math.sqrt(playerAILevel) / 2`)
+
+### Interpretability Project
+- **Progress Formula**: `sqrt(laborHours / 1000) * 100` (requires 1B hours for 100%)
+- **Risk Reduction**: Factor of `1 + (progress / 100)` reduces risk as divisor
+- **Button Text**: "Interp 🔬 X% (-$YB)" for conciseness
+- **Max Progress**: Button greyed out at 100%, no further allocation allowed
+
+### Adding New Projects
+1. Add unlock flag to `createInitialGameState()` in utils.js
+2. Create unlock event in events.json with appropriate safety threshold
+3. Add event processing in `game-core.js` (around line 1906)
+4. Add project button in Projects section with conditional display
+5. Add case to `applyResourceAllocation()` for resource processing
+6. Add tooltip case to `generateActionTooltip()` for descriptions

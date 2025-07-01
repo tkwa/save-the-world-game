@@ -185,8 +185,11 @@ function createInitialGameState() {
         eventsAccepted: new Set(), // Tracks which DSA events have been accepted
         eventAppearanceCounts: new Map(), // Tracks how many times each event has appeared
         alignmentMaxScore: 0, // Maximum score achieved in alignment minigame
+        interpretabilityProgress: 0, // Progress towards 100% interpretability (0-100)
+        interpretabilityLaborHours: 0, // Total labor hours invested in interpretability (in millions)
         endgameAdjustedRisk: null, // Adjusted risk level at endgame trigger
-        projectsUnlocked: false, // Whether Projects panel is unlocked (at 100 safety points)
+        projectsUnlocked: false, // Whether Projects panel is unlocked (at 80 safety points)
+        alignmentUnlocked: false, // Whether Alignment project is unlocked (at 320 safety points)
         startingCompany: null, // Original company name for endgame scoring (before merger)
         isVPSafetyAlignment: false, // Whether player became VP of Safety and Alignment through merger
         playerEquity: 0.1, // Player's equity stake in the company (0.1 = 10%, 0.01 = 1%, etc.)
@@ -200,20 +203,22 @@ function createInitialGameState() {
 }
 
 // Risk factor calculation - single source of truth
-function getRiskFactors(safetyPoints = null, alignmentMaxScore = null) {
+function getRiskFactors(safetyPoints = null, alignmentMaxScore = null, interpretabilityProgress = null) {
     const safety = safetyPoints !== null ? safetyPoints : gameState.safetyPoints;
     const alignment = alignmentMaxScore !== null ? alignmentMaxScore : gameState.alignmentMaxScore;
+    const interpretability = interpretabilityProgress !== null ? interpretabilityProgress : gameState.interpretabilityProgress;
     
     const safetyFactor = 1 + Math.pow(safety, 0.6) / 5;
     const alignmentFactor = 1 + (alignment / 100);
-    return { safetyFactor, alignmentFactor };
+    const interpretabilityFactor = 1 + (interpretability / 100);
+    return { safetyFactor, alignmentFactor, interpretabilityFactor };
 }
 
 // Risk calculation function used across multiple files
-function calculateAdjustedRiskPercent(safetyPoints = null, alignmentMaxScore = null) {
+function calculateAdjustedRiskPercent(safetyPoints = null, alignmentMaxScore = null, interpretabilityProgress = null) {
     const rawRisk = gameState.doomLevel;
-    const { safetyFactor, alignmentFactor } = getRiskFactors(safetyPoints, alignmentMaxScore);
-    const adjustedRisk = rawRisk / (safetyFactor * alignmentFactor);
+    const { safetyFactor, alignmentFactor, interpretabilityFactor } = getRiskFactors(safetyPoints, alignmentMaxScore, interpretabilityProgress);
+    const adjustedRisk = rawRisk / (safetyFactor * alignmentFactor * interpretabilityFactor);
     return Math.min(adjustedRisk, 100); // Cap at 100%
 }
 

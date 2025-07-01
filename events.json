@@ -97,7 +97,23 @@
         {
           "text": "Acknowledge the challenge",
           "action": "accept",
-          "result_text": "Safety research must evolve beyond current approaches. You begin exploring fundamental questions about AI alignment and monitoring.<br><strong>The Projects panel becomes available.</strong>"
+          "result_text": "Safety research must evolve beyond current approaches. You begin exploring fundamental questions about AI interpretability and monitoring.<br><strong>The Projects panel is available.</strong>"
+        }
+      ]
+    },
+    {
+      "type": "alignment-research-breakthrough",
+      "title": "Alignment Research Breakthrough",
+      "weight": 4,
+      "oneTimeAccept": true,
+      "text_versions": [
+        "Your continued safety research has reached a new milestone. With substantial interpretability foundations, your team can now rigorously probe the goals and tendencies of AI systems. This opens the door to alignment research - ensuring AI systems pursue intended objectives rather than misaligned proxies."
+      ],
+      "choices": [
+        {
+          "text": "Begin alignment research",
+          "action": "accept",
+          "result_text": "You establish a specialized alignment research program focused on goal specification and value learning.<br><strong>Alignment research is now available in the Projects panel.</strong>"
         }
       ]
     },

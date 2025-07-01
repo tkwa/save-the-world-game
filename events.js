@@ -136,10 +136,17 @@ function getAvailableEvents(allEvents) {
         }
         
         
-        // Check special requirements for safety research limitations
+        // Check special requirements for safety research limitations (interpretability unlock)
         if (event.type === 'safety-research-limitations') {
-            if (gameState.safetyPoints < 100) {
-                return false; // Need at least 100 safety points
+            if (gameState.safetyPoints < 80) {
+                return false; // Need at least 80 safety points
+            }
+        }
+        
+        // Check special requirements for alignment research breakthrough
+        if (event.type === 'alignment-research-breakthrough') {
+            if (gameState.safetyPoints < 320) {
+                return false; // Need at least 320 safety points
             }
         }
         
