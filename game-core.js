@@ -641,7 +641,7 @@ function handleSingularityButton(action) {
     if (action === 'nuclear-failure-singularity' || action === 'await-fate-singularity') {
         // Both scenarios lead to singularity - trigger endgame
         scaleAILevelsForEndGame();
-        showPage('end-screen');
+        showPage('end-game');
     } else if (action === 'nuclear-success-continue') {
         // Nuclear strike succeeded - continue playing but with disillusioned status
         finishTurn();
@@ -1159,6 +1159,32 @@ async function showPage(pageId) {
         updateStatusBar();
     } else {
         statusBar.style.display = 'none';
+    }
+
+    // Handle end-game background
+    const body = document.body;
+    const existingAttribution = document.getElementById('universe-attribution');
+    
+    if (pageId === 'end-game') {
+        // Add background class
+        body.classList.add('end-game-background');
+        
+        // Add attribution if not already present
+        if (!existingAttribution) {
+            const attribution = document.createElement('div');
+            attribution.id = 'universe-attribution';
+            attribution.className = 'image-attribution';
+            attribution.innerHTML = `
+                Image: <a href="https://commons.wikimedia.org/wiki/File:Large-scale_structure_of_light_distribution_in_the_universe.jpg" target="_blank">Large-scale structure of light distribution in the universe</a> by <a href="https://commons.wikimedia.org/wiki/User:Azcolvin429" target="_blank">Azcolvin429</a>, <a href="https://creativecommons.org/licenses/by/2.0/" target="_blank">CC BY 2.0</a>
+            `;
+            document.body.appendChild(attribution);
+        }
+    } else {
+        // Remove background class and attribution
+        body.classList.remove('end-game-background');
+        if (existingAttribution) {
+            existingAttribution.remove();
+        }
     }
 
     // Start date ticker when reaching 2026 page
@@ -2006,8 +2032,8 @@ function navigateToPage(page) {
     const dropdown = document.getElementById('debugPageDropdown');
     if (dropdown) dropdown.value = '';
     
-    // Handle special cases for end screen navigation
-    if (page === 'end-screen') {
+    // Handle special cases for end game navigation
+    if (page === 'end-game') {
         // Set up minimal endgame state if not already present
         if (!gameState.endGamePhase) {
             gameState.endGamePhase = 1;
