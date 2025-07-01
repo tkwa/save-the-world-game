@@ -188,17 +188,11 @@ function getPhase3BaseText() {
     const expectedHumanityGalaxies = competitorRawShare * (1 - adjustedDoom / 100);
     const expectedRogueGalaxies = 100 - expectedPlayerGalaxies - expectedHumanityGalaxies;
     
-    // Calculate expected score with equity-based multiplier
-    // Player gets: 10 (humanity survival) + 100 * equity (ownership stake)
-    const playerMultiplier = 10 + (100 * gameState.playerEquity);
+    // Use shared function to calculate multipliers
+    const multipliers = getGalaxyMultipliers();
     
-    // Check if player is disillusioned - halves value of humanity galaxies
-    const humanityMultiplier = (gameState.statusEffects.disillusioned && gameState.statusEffects.disillusioned.active) 
-        ? GAME_CONSTANTS.GALAXY_MULTIPLIERS.HUMANITY / 2 
-        : GAME_CONSTANTS.GALAXY_MULTIPLIERS.HUMANITY;
-    
-    const expectedScore = expectedPlayerGalaxies * playerMultiplier + 
-                         expectedHumanityGalaxies * humanityMultiplier;
+    const expectedScore = (expectedPlayerGalaxies * gameState.playerEquity * multipliers.player) + 
+                         (expectedHumanityGalaxies * multipliers.humanity);
     
     // Determine net assessments based on baselines
     // Baseline: 25% ownership for shareholders, 80% survival (100% - 20% baseline risk) for humanity
@@ -223,11 +217,11 @@ function getPhase3BaseText() {
         `<div style="display: flex; justify-content: space-between; width: 100%;">` +
         `<div style="text-align: center;">` +
         `<div style="color: #ffa726; margin-bottom: 5px;">${gameState.companyName}</div>` +
-        `<div>${Math.round(expectedPlayerGalaxies)}% × ${Math.round(playerMultiplier * 10) / 10}</div>` +
+        `<div>${Math.round(expectedPlayerGalaxies)}% × ${Math.round(gameState.playerEquity * multipliers.player * 10) / 10}</div>` +
         `</div>` +
         `<div style="text-align: center;">` +
         `<div style="color: #66bb6a; margin-bottom: 5px;">Other humanity</div>` +
-        `<div>${Math.round(expectedHumanityGalaxies)}% × ${humanityMultiplier}</div>` +
+        `<div>${Math.round(expectedHumanityGalaxies)}% × ${multipliers.humanity}</div>` +
         `</div>` +
         `<div style="text-align: center;">` +
         `<div style="color: #ff6b6b; margin-bottom: 5px;">Rogue AI</div>` +
@@ -504,23 +498,17 @@ function calculateEndGameScore() {
         }
     }
 
-    // Calculate final score with equity-based multiplier
-    // Player gets: 10 (humanity survival) + 100 * equity (ownership stake)
-    const playerMultiplier = 10 + (100 * gameState.playerEquity);
+    // Calculate final score using shared multiplier function
+    const multipliers = getGalaxyMultipliers();
     
-    // Check if player is disillusioned - halves value of humanity galaxies
-    const humanityMultiplier = (gameState.statusEffects.disillusioned && gameState.statusEffects.disillusioned.active) 
-        ? GAME_CONSTANTS.GALAXY_MULTIPLIERS.HUMANITY / 2 
-        : GAME_CONSTANTS.GALAXY_MULTIPLIERS.HUMANITY;
-    
-    const finalScore = (0 * rogueGalaxies) + (humanityMultiplier * humanityGalaxies) + (playerMultiplier * playerGalaxies);
+    const finalScore = (0 * rogueGalaxies) + (multipliers.humanity * humanityGalaxies) + (multipliers.player * gameState.playerEquity * playerGalaxies);
 
     resultText += `<br><br><strong>Final Galaxy Distribution:</strong><br>`;
     resultText += `• Rogue AI: ${rogueGalaxies}%<br>`;
     resultText += `• Humanity at large: ${humanityGalaxies}%<br>`;
     resultText += `• Your company: ${playerGalaxies}%<br><br>`;
     resultText += `<strong>Final Score: ${finalScore}</strong><br>`;
-    resultText += `(${rogueGalaxies}×0 + ${humanityGalaxies}×${humanityMultiplier} + ${playerGalaxies}×${Math.round(playerMultiplier * 10) / 10})`;
+    resultText += `(${rogueGalaxies}×0 + ${humanityGalaxies}×${multipliers.humanity} + ${playerGalaxies}×${Math.round(multipliers.player * gameState.playerEquity * 10) / 10})`;
 
     // Store the result to avoid re-rolling randomness
     gameState.endGameResult = resultText;

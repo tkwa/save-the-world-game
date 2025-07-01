@@ -58,6 +58,21 @@ const TECHNOLOGY_VISIBILITY = {
     nukes: () => gameState.technologies.humanoidRobots
 };
 
+// Utility function to calculate galaxy scoring multipliers
+function getGalaxyMultipliers() {
+    const humanityMultiplier = (gameState.statusEffects.disillusioned && gameState.statusEffects.disillusioned.active) 
+        ? GAME_CONSTANTS.GALAXY_MULTIPLIERS.HUMANITY / 2 
+        : GAME_CONSTANTS.GALAXY_MULTIPLIERS.HUMANITY;
+    
+    const playerMultiplier = GAME_CONSTANTS.GALAXY_MULTIPLIERS.PLAYER;
+    
+    return {
+        humanity: humanityMultiplier,
+        player: playerMultiplier,
+        rogue: GAME_CONSTANTS.GALAXY_MULTIPLIERS.ROGUE
+    };
+}
+
 // Game constants
 const GAME_CONSTANTS = {
     // Initial values
@@ -127,7 +142,7 @@ const GAME_CONSTANTS = {
     GALAXY_MULTIPLIERS: {
         ROGUE: 0,
         HUMANITY: 10,
-        PLAYER: 20
+        PLAYER: 100,
     },
     
     // Minigame
@@ -265,7 +280,11 @@ const storyContent = {
             
             // Create tooltip content for role tracker
             const equityPercent = Math.round(gameState.playerEquity * 100 * 10) / 10; // Round to 1 decimal place
-            const tooltipContent = `You have <strong>${equityPercent}%</strong> equity in ${companyDisplay}. You want to avoid human extinction due to rogue AI, and value property you personally own <strong>100x</strong> as much as property belonging to other humans.`;
+            
+            // Calculate point values using shared function
+            const multipliers = getGalaxyMultipliers();
+            
+            const tooltipContent = `You have <strong>${equityPercent}%</strong> equity in ${companyDisplay}. You want to avoid human extinction due to rogue AI. You want humanity to inherit the stars (<strong>+${multipliers.humanity} points</strong> per human filament) but are also selfish (<strong>+${Math.round(multipliers.player * 10) / 10} additional points</strong> per personal filament).`;
             
             return `<div style="display: flex; justify-content: space-between; align-items: center;"><span>${gameState.currentMonth || 'January'} ${gameState.currentYear || 2026}</span><span class="tooltip" style="font-size: 14px; color: #999;">Role: ${role}, ${companyDisplay}${flagDisplay}<span class="tooltiptext" style="width: 300px; margin-left: -150px; font-weight: normal;">${tooltipContent}</span></span></div>`;
         },
@@ -2610,6 +2629,7 @@ if (typeof window !== 'undefined') {
     window.debugShowAllTechs = debugShowAllTechs;
     window.toggleTechnology = toggleTechnology;
     window.navigateToPage = navigateToPage;
+    window.getGalaxyMultipliers = getGalaxyMultipliers;
     window.applyStatusEffect = applyStatusEffect;
     window.getChoiceAffordability = getChoiceAffordability;
     window.formatChoiceTextWithCosts = formatChoiceTextWithCosts;
