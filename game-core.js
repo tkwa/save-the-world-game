@@ -1,34 +1,12 @@
 // Core game logic for the AI Timeline Game
+/* global calculateAdjustedRiskPercent, getRiskFactors, getAISystemVersion, getRiskColor, getGalaxyMultipliers, COMPANIES, GAME_CONSTANTS, createInitialGameState, INITIAL_TECHNOLOGIES, generateEvent, boldifyNumbers, getEndGamePhaseText, getEndGamePhaseButtons, updateAlignmentMinigame, updateEventPoolOverlay, scaleAILevelsForEndGame, applyEventEffects, startMinigame, startDateTicker, submitCapabilityEvalsAnswer, submitForecastingEvalsAnswer, forceEvent, calculateEndGameScore, debugUnlockProjects, debugShowEventPool, populateDebugDropdown, applyChoiceEffects, giveResources, MutationObserver, setInterval, clearInterval, prompt, alert, module */
+/* eslint-disable no-unused-vars */
+/* global continueToNextPhase */
+/* eslint-enable no-unused-vars */
 
-const VERSION = "v0.3.4"
+const VERSION = "v0.3.5"
 
-// Technology configuration
-const INITIAL_TECHNOLOGIES = {
-    // General technologies (column 1 - all visible from start)
-    robotaxi: true, // Starts enabled
-    aiNovelist: false,
-    aiResearchLead: false,
-    persuasion: false,
-    // Medicine technologies (column 2 - only medicine visible at start)
-    medicine: false,
-    syntheticBiology: false,
-    cancerCure: false,
-    brainUploading: false,
-    // Robotics technologies (column 3 - only robotics visible at start)
-    robotics: false,
-    humanoidRobots: false,
-    nanotech: false,
-    // Alignment technologies (column 4 - all visible from start)
-    aiMonitoring: false,
-    aiControl: false,
-    aiAlignment: false,
-    aiInterpretability: false,
-    // Military technologies (column 5 - only cyberWarfare visible at start)
-    cyberWarfare: false, // Starts shown but not developed
-    bioweapons: false,
-    killerDrones: false,
-    nukes: false
-};
+// Note: INITIAL_TECHNOLOGIES moved to utils.js
 
 // Technology visibility conditions - functions that determine if a tech should be visible
 const TECHNOLOGY_VISIBILITY = {
@@ -59,177 +37,12 @@ const TECHNOLOGY_VISIBILITY = {
 };
 
 // Utility function to calculate galaxy scoring multipliers
-function getGalaxyMultipliers() {
-    const humanityMultiplier = (gameState.statusEffects.disillusioned && gameState.statusEffects.disillusioned.active) 
-        ? GAME_CONSTANTS.GALAXY_MULTIPLIERS.HUMANITY / 2 
-        : GAME_CONSTANTS.GALAXY_MULTIPLIERS.HUMANITY;
-    
-    const playerMultiplier = GAME_CONSTANTS.GALAXY_MULTIPLIERS.PLAYER;
-    
-    return {
-        humanity: humanityMultiplier,
-        player: playerMultiplier,
-        rogue: GAME_CONSTANTS.GALAXY_MULTIPLIERS.ROGUE
-    };
-}
+// Note: getGalaxyMultipliers moved to utils.js
 
-// Game constants
-const GAME_CONSTANTS = {
-    // Initial values
-    INITIAL_PLAYER_AI_LEVEL: 10,
-    INITIAL_DOOM_LEVEL: 20.0,
-    INITIAL_COMPETITOR_AI_LEVELS: [8, 6, 4],
-    INITIAL_TURN: 1,
-    INITIAL_YEAR: 2026,
-    INITIAL_MONEY: 10,
-    MAX_COMPETITORS: 3,
-    
-    // AI capability risk thresholds
-    AI_RISK_THRESHOLDS: {
-        LEVEL_1: 16,
-        LEVEL_2: 32,
-        LEVEL_3: 64,
-        LEVEL_4: 128,
-        LEVEL_5: 256,
-        LEVEL_6: 512
-    },
-    
-    // Risk assessment thresholds
-    RISK_THRESHOLDS: {
-        MEDIUM: 15,
-        HIGH: 50,
-        CRITICAL: 75
-    },
-    
-    // Resource calculation constants
-    RESOURCE_FORMULAS: {
-        AI_GAIN_EXPONENT: 0.8,
-        AI_GAIN_DIVISOR: 5,
-        SAFETY_GAIN_EXPONENT: 0.8,
-        SAFETY_GAIN_DIVISOR: 5,
-        RISK_REDUCTION_DIVISOR: 10,
-        SAFETY_DIMINISHING_RETURNS_EXPONENT: -0.1,
-        DIPLOMACY_GAIN_DIVISOR: 10,
-        PRODUCT_GAIN_DIVISOR: 10,
-        COMPETITOR_PENALTY_POWER: 2,
-        PLAYER_LEVEL_POWER: 2
-    },
-    
-    // Infrastructure and sanctions
-    DATACENTER_BOOST_MULTIPLIER: 0.20,
-    SANCTIONS_PENALTY_DIVISOR: 2,
-    
-    // End game thresholds
-    DOOM_GAME_OVER_THRESHOLD: 100,
-    ASI_THRESHOLD: 1000,
-    NARROW_RACE_THRESHOLD: 900,
-    TOTAL_GALAXIES: 100,
-    
-    // Growth and simulation
-    COMPETITOR_GROWTH_DIVISOR: 25,
-    CAPABILITY_GROWTH_EXPONENT: 1.6,
-    GROWTH_RATE_BASE: 0.010,
-    HYPE_DIVISOR: 10,
-    HAWKISH_MULTIPLIER: 1.3,
-    DOVISH_MULTIPLIER: 0.5,
-    MAX_SIMULATION_ITERATIONS: 10000,
-    
-    // Display and UI
-    PERCENTAGE_MULTIPLIER: 100,
-    TIMEOUT_DELAY_MS: 100,
-    
-    // Galaxy multipliers
-    GALAXY_MULTIPLIERS: {
-        ROGUE: 0,
-        HUMANITY: 10,
-        PLAYER: 100,
-    },
-    
-    // Minigame
-    FORECASTING_OPTIONS: [50, 60, 70, 80],
-    
-    // Event variables
-    DATACENTER_COUNTRIES: ['Brazil', 'Indonesia', 'Turkey'],
-    
-    // Country flag mappings
-    COUNTRY_FLAGS: {
-        'Brazil': '🇧🇷',
-        'Indonesia': '🇮🇩', 
-        'Turkey': '🇹🇷'
-    }
-};
+// Note: GAME_CONSTANTS, INITIAL_TECHNOLOGIES, and createInitialGameState moved to utils.js
 
-// Game state
-const gameState = {
-    // AI Information
-    playerAILevel: GAME_CONSTANTS.INITIAL_PLAYER_AI_LEVEL,
-    doomLevel: GAME_CONSTANTS.INITIAL_DOOM_LEVEL,
-    competitorAILevels: [...GAME_CONSTANTS.INITIAL_COMPETITOR_AI_LEVELS], // Top 3 competitors in descending order
-    competitorNames: [], // Will be set during game setup
-
-    // Corporate Divisions
-    diplomacyPoints: 0,
-    productPoints: 0,
-    safetyPoints: 0,
-
-    // Status Effects
-    hasSanctions: false, // TODO: migrate to statusEffects system
-    statusEffects: {}, // Generic status effects system
-    diplomacyMultiplier: 1,
-    productMultiplier: 1,
-    
-    // Infrastructure
-    datacenterCount: 0,
-    powerplantCount: 0,
-    biotechLabCount: 0,
-    datacenterCountry: null, // Stores the country where datacenter was built
-    cooIsMinister: false, // Whether COO is serving as minister in datacenter country
-
-    // Technologies
-    technologies: { ...INITIAL_TECHNOLOGIES },
-
-    // Other game state
-    currentPage: "start",
-    alignmentLevel: Math.random(), // 0-1 float for alignment
-    evalsBuilt: {
-        capability: false,
-        corrigibility: false,
-        alignment: false,
-        forecasting: false
-    },
-    correlationDataset: null,
-    currentMinigame: null,
-    companyName: null,
-    currentTurn: GAME_CONSTANTS.INITIAL_TURN,
-    currentMonth: "January",
-    currentYear: GAME_CONSTANTS.INITIAL_YEAR,
-    money: GAME_CONSTANTS.INITIAL_MONEY, // Starting money
-    gameOverReason: null,
-    endGameResult: null, // Stores calculated end game score to avoid re-rolling
-    endGamePhase: 1, // Current phase of end game display (1-5)
-    currentEvent: null,
-    safetyIncidentCount: 0,
-    severeIncidentCount: 0,
-    isDisillusioned: false,
-    selectedAllocation: null,
-    allocationApplied: false,
-    eventsSeen: {}, // Tracks count of each event type seen
-    choicesTaken: {}, // Tracks choices taken for each event type
-    eventsAccepted: new Set(), // Tracks which DSA events have been accepted
-    eventAppearanceCounts: new Map(), // Tracks how many times each event has appeared
-    alignmentMaxScore: 0, // Maximum score achieved in alignment minigame
-    endgameAdjustedRisk: null, // Adjusted risk level at endgame trigger
-    projectsUnlocked: false, // Whether Projects panel is unlocked (at 100 safety points)
-    startingCompany: null, // Original company name for endgame scoring (before merger)
-    isVPSafetyAlignment: false, // Whether player became VP of Safety and Alignment through merger
-    playerEquity: 0.1, // Player's equity stake in the company (0.1 = 10%, 0.01 = 1%, etc.)
-    companyLongName: null, // Full company name (e.g., "Google DeepMind")
-    companyCountry: null, // Company home country code
-    companyFlag: null, // Company flag emoji
-    offeredEquity: null, // Equity player receives in acquisition event (player's share)
-    totalEquityOffered: null, // Total equity offered to the old company
-    hasEverFallenBehind: false // Whether player has ever fallen behind the top competitor
-};
+// Game state - use factory function from utils.js
+const gameState = createInitialGameState();
 
 // Story content
 const storyContent = {
@@ -542,19 +355,7 @@ function getAIRisksByCapability(capabilityLevel) {
     }
 }
 
-function calculateAdjustedRiskPercent() {
-    const rawRisk = gameState.doomLevel;
-    const safetyFactor = 1 + Math.pow(gameState.safetyPoints, 0.6) / 5;
-    const alignmentFactor = 1 + (gameState.alignmentMaxScore / 100);
-    const adjustedRisk = rawRisk / (safetyFactor * alignmentFactor);
-    return Math.min(adjustedRisk, 100); // Cap at 100%
-}
-
-function getRiskFactors() {
-    const safetyFactor = 1 + Math.pow(gameState.safetyPoints, 0.6) / 5;
-    const alignmentFactor = 1 + (gameState.alignmentMaxScore / 100);
-    return { safetyFactor, alignmentFactor };
-}
+// Note: calculateAdjustedRiskPercent and getRiskFactors moved to utils.js
 
 function generateRogueAIRiskTooltip() {
     const rawRisk = gameState.doomLevel;
@@ -966,20 +767,6 @@ async function advanceTurn() {
     showPage('main-game');
 }
 
-function buildEvals(evalType) {
-    if (evalType === 'Capability Evals') {
-        startCapabilityEvalsMinigame();
-    } else if (evalType === 'Corrigibility Evals') {
-        gameState.evalsBuilt.corrigibility = true;
-    } else if (evalType === 'Alignment Evals') {
-        gameState.evalsBuilt.alignment = true;
-    } else if (evalType === 'Forecasting') {
-        startForecastingEvalsMinigame();
-    }
-    updateStatusBar();
-}
-
-
 function toggleAlignmentProject() {
     if (!gameState.alignmentProjectStarted) return;
 
@@ -1026,31 +813,6 @@ function updateResearchDisplay() {
         }
     }
 }
-
-function calculateGrowthRate(capability, hype, usMood) {
-    let growthRate = capability ** 1.6 * 0.010 * (hype / 10);
-    if (usMood === "Hawkish") {
-        growthRate *= 1.3;
-    } else if (usMood === "Dovish") {
-        growthRate *= 0.5;
-    }
-    return growthRate;
-}
-
-function calculateDaysToSingularity() {
-    let currentCapability = gameState.aiCapability;
-    let days = 0;
-    const maxIterations = 10000; // Prevent infinite loops
-
-    while (currentCapability < gameState.singularityLevel && days < maxIterations) {
-        const growthRate = calculateGrowthRate(currentCapability, gameState.hype, gameState.usMood);
-        currentCapability += growthRate;
-        days++;
-    }
-
-    return days >= maxIterations ? "∞" : days;
-}
-
 
 function calculateResources() {
     // Start with base AI level
@@ -1132,15 +894,10 @@ function generateActionTooltip(actionType, _resources) {
             
             return `Consumer and business applications.<br>Revenue = TAM × market share.<br>At an AI level of <strong>${Math.round(playerLevel)}x</strong>, your TAM is <strong>$${Math.round(tam)} billion/month</strong>. You have <strong>${Math.round(marketShare * 10) / 10}%</strong> market share.`;
         case 'alignment-project':
-            // Calculate alignment risk reduction
-            const currentRisk = calculateAdjustedRiskPercent();
-            const alignmentFactor = 1 + (gameState.alignmentMaxScore / 100);
-            const newAlignmentFactor = 1 + ((gameState.alignmentMaxScore + 10) / 100); // Assume 10% gain
-            const currentAdjustedRisk = gameState.doomLevel / (1 + Math.pow(gameState.safetyPoints, 0.5) / 3) / alignmentFactor;
-            const newAdjustedRisk = gameState.doomLevel / (1 + Math.pow(gameState.safetyPoints, 0.5) / 3) / newAlignmentFactor;
-            const riskReduction = currentAdjustedRisk - newAdjustedRisk;
+            // Calculate alignment risk reduction using getRiskFactors
+            const alignmentRiskPercentReduction = (1 - 1 / getRiskFactors().alignmentFactor) * 100
             
-            return `Human-like and benign values. Alignment progress has reduced Rogue AI risk by <strong>${riskReduction.toFixed(2)}x</strong>.`;
+            return `Human-like and benign values. Alignment progress has reduced Rogue AI risk by <strong>${alignmentRiskPercentReduction.toFixed(1)}%</strong>.`;
         default:
             return '';
     }
@@ -1149,12 +906,10 @@ function generateActionTooltip(actionType, _resources) {
 function generateActionLabels(resources) {
     const gains = calculateResourceGains(resources);
     
-    // Calculate current and projected adjusted risk for safety R&D display
+    // Calculate current and projected adjusted risk for safety R&D display using getRiskFactors
     const currentRisk = calculateAdjustedRiskPercent();
     const projectedSafetyPoints = gameState.safetyPoints + gains.safety;
-    const projectedSafetyFactor = 1 + Math.pow(projectedSafetyPoints, 0.5) / 3;
-    const alignmentFactor = 1 + (gameState.alignmentMaxScore / 100);
-    const projectedRisk = gameState.doomLevel / (projectedSafetyFactor * alignmentFactor);
+    const projectedRisk = calculateAdjustedRiskPercent(projectedSafetyPoints, gameState.alignmentMaxScore);
     const riskReduction = currentRisk - projectedRisk;
     
     // Apply diplomacy multiplier to display the actual gain
@@ -1972,7 +1727,7 @@ function addDebugControls() {
         <option value="">Debug: Go to Page</option>
         <option value="start">Start Screen</option>
         <option value="main-game">Main Game</option>
-        <option value="end-screen">End Screen</option>
+        <option value="end-game">End Screen</option>
         <option value="alignment-minigame">Alignment Minigame</option>
     `;
     debugControls.appendChild(pageDropdown);
@@ -2169,14 +1924,7 @@ async function handleEventChoice(choiceIndex) {
     }
 }
 
-// Debug functions
-function giveResources() {
-    gameState.money += 1000;
-    gameState.diplomacyPoints += 1000;
-    gameState.productPoints += 1000;
-    gameState.safetyPoints += 1000;
-    updateStatusBar();
-}
+// Note: giveResources moved to events.js
 
 function toggleTechnology(tech) {
     if (!tech) return;
@@ -2612,7 +2360,7 @@ function startContinuousEvasion(element, originalHTML, originalTextContent, onCo
 }
 
 // Fallback function for debug testing
-function subtlyMoveMouseAway(element) {
+function _subtlyMoveMouseAway(element) {
     startContinuousEvasion(element, element.innerHTML, element.textContent, null);
 }
 
@@ -2624,8 +2372,7 @@ if (typeof window !== 'undefined') {
     window.handleEventChoice = handleEventChoice;
     window.handleSingularityButton = handleSingularityButton;
     window.forceEvent = forceEvent;
-    window.populateDebugDropdown = populateDebugDropdown;
-    window.giveResources = giveResources;
+    // Note: populateDebugDropdown and giveResources exported from events.js
     window.debugShowAllTechs = debugShowAllTechs;
     window.toggleTechnology = toggleTechnology;
     window.navigateToPage = navigateToPage;
@@ -2633,6 +2380,11 @@ if (typeof window !== 'undefined') {
     window.applyStatusEffect = applyStatusEffect;
     window.getChoiceAffordability = getChoiceAffordability;
     window.formatChoiceTextWithCosts = formatChoiceTextWithCosts;
+    window.getRiskColor = getRiskColor;
+    window.showPage = showPage;
+    window.calculateAdjustedRiskPercent = calculateAdjustedRiskPercent;
+    window.getAISystemVersion = getAISystemVersion;
+    window.updateStatusBar = updateStatusBar;
 }
 
 // Export for Node.js testing

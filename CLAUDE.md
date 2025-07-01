@@ -31,6 +31,7 @@ There's a TODO list atop `README.md`.
 
 ### File Structure
 - `game-core.js`: Main game logic, state management, UI updates
+- `utils.js`: All common functions
 - `minigames.js`: Standalone minigame implementations
 - `events.js`: Event system and handlers
 - `events.json`: Event text and data

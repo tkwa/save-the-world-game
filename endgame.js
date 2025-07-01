@@ -1,4 +1,15 @@
 // End game logic for Critical Path game
+/* global calculateAdjustedRiskPercent, getRiskColor, getGalaxyMultipliers, showPage, GAME_CONSTANTS */
+
+// Helper function to ensure endgame adjusted risk is calculated
+function ensureEndgameAdjustedRisk() {
+    if (gameState.endgameAdjustedRisk === null || gameState.endgameAdjustedRisk === undefined) {
+        // Use shared function from utils.js for consistent risk calculation
+        gameState.endgameAdjustedRisk = calculateAdjustedRiskPercent();
+    }
+    return gameState.endgameAdjustedRisk;
+}
+
 
 // Helper function to format alignment status
 function formatAlignmentStatus(isAligned) {
@@ -9,6 +20,7 @@ function formatAlignmentStatus(isAligned) {
 
 // Generate conclusion text based on player's outcome
 function generateConclusionText() {
+    // eslint-disable-next-line no-unused-vars
     const { playerGalaxies, humanityGalaxies, rogueGalaxies } = gameState.galaxyDistribution;
     
     // Determine player's fate
@@ -142,7 +154,7 @@ function getPhase1Text() {
 }
 
 function getPhase2Text() {
-    const adjustedDoom = gameState.endgameAdjustedRisk || calculateAdjustedRisk();
+    const adjustedDoom = ensureEndgameAdjustedRisk();
     const doomPercent = Math.round(adjustedDoom);
     
     let text = "There is a critical question that no one—not even the creators—can answer with certainty: ";
@@ -164,7 +176,7 @@ function getPhase2Text() {
 }
 
 function getPhase3BaseText() {
-    const adjustedDoom = gameState.endgameAdjustedRisk || calculateAdjustedRisk();
+    const adjustedDoom = ensureEndgameAdjustedRisk();
     const doomPercent = Math.round(adjustedDoom);
     
     // Roll for alignment (using same logic as calculateEndGameScore)
@@ -465,7 +477,7 @@ function calculateEndGameScore() {
     } else if (gameState.gameOverReason === 'ai-singularity' || gameState.gameOverReason === 'dsa-singularity') {
         resultText = "The singularity has arrived. ";
 
-        narrow_race = Math.min(gameState.playerAILevel, gameState.competitorAILevels[0]) >= GAME_CONSTANTS.NARROW_RACE_THRESHOLD;
+        const narrow_race = Math.min(gameState.playerAILevel, gameState.competitorAILevels[0]) >= GAME_CONSTANTS.NARROW_RACE_THRESHOLD;
         if (gameState.playerAILevel >= GAME_CONSTANTS.ASI_THRESHOLD) {
             resultText += narrow_race ? "You achieved ASI first. " : "You achieved ASI first, but competitor AI was close behind. ";
         } else {
@@ -477,7 +489,7 @@ function calculateEndGameScore() {
         const otherShare = 100 - playerShare;
 
         // Roll for misalignment using adjusted doom level as probability
-        const adjustedDoom = gameState.endgameAdjustedRisk || calculateAdjustedRisk();
+        const adjustedDoom = ensureEndgameAdjustedRisk();
         const playerMisaligned = Math.random() * 100 < adjustedDoom;
         const otherMisaligned = Math.random() * 100 < adjustedDoom;
 
@@ -514,4 +526,14 @@ function calculateEndGameScore() {
     gameState.endGameResult = resultText;
     
     return resultText;
+}
+
+// Export functions to global scope for cross-file access
+if (typeof window !== 'undefined') {
+    // Browser environment
+    window.scaleAILevelsForEndGame = scaleAILevelsForEndGame;
+    window.getEndGamePhaseText = getEndGamePhaseText;
+    window.getEndGamePhaseButtons = getEndGamePhaseButtons;
+    window.continueToNextPhase = continueToNextPhase;
+    window.calculateEndGameScore = calculateEndGameScore;
 }

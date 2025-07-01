@@ -1,14 +1,7 @@
 // Event system for Critical Path game
+/* global calculateAdjustedRiskPercent, getAISystemVersion, updateStatusBar, showPage, gameState, GAME_CONSTANTS, COMPANIES, boldifyNumbers */
 
-// Company metadata shared across the game
-const COMPANIES = [
-    { name: "OpenAI", longName: "OpenAI", homeCountry: "US", flag: "🇺🇸" },
-    { name: "Anthropic", longName: "Anthropic", homeCountry: "US", flag: "🇺🇸" },
-    { name: "DeepMind", longName: "Google DeepMind", homeCountry: "UK", flag: "🇬🇧" },
-    { name: "DeepSeek", longName: "DeepSeek", homeCountry: "CN", flag: "🇨🇳" },
-    { name: "Tencent", longName: "Tencent", homeCountry: "CN", flag: "🇨🇳" },
-    { name: "xAI", longName: "xAI", homeCountry: "US", flag: "🇺🇸" }
-];
+// Note: COMPANIES array moved to utils.js
 
 let eventData = null;
 
@@ -31,6 +24,7 @@ async function loadEventData() {
 }
 
 // Generate a random event based on current game state
+// eslint-disable-next-line no-unused-vars
 async function generateEvent() {
     const events = await loadEventData();
     
@@ -225,12 +219,13 @@ function generateSevereSecurityIncident(events) {
 }
 
 // Generate a warning shot event (first severe incident)
-function generateWarningShot(events) {
+function generateWarningShot(_events) {
     gameState.safetyIncidentCount++;
     const fine = Math.floor(gameState.safetyIncidentCount ** 1.5);
     
-    const safetyEvent = events.safetyIncidents;
-    const randomText = safetyEvent.text_versions[Math.floor(Math.random() * safetyEvent.text_versions.length)];
+    // const _safetyEvent = events.safetyIncidents; // Unused variable
+    const aiSystemName = getAISystemVersion(gameState.companyName, gameState.playerAILevel);
+    const incidentText = `${aiSystemName} decides to escape your control. It convinces an employee to change its network permissions, using routine maintenance as a cover, then begins to copy itself off of your datacenters in ${gameState.companyCountry}. Because it thinks ${gameState.playerAILevel}x faster than humans, no human could react in time, but security software detects an unusual file transfer and halts it.`
     
     // Apply sanctions unless superpersuasion tech is active
     const applySanctions = !gameState.technologies.persuasion;
@@ -239,19 +234,19 @@ function generateWarningShot(events) {
         " International authorities respond with comprehensive sanctions against your company." : 
         " Your superpersuasion technology helps mitigate the diplomatic fallout, avoiding sanctions.";
     
-    const warningText = " <strong>Warning:</strong> This was a warning shot. Another incident of this magnitude will likely result in the AI escaping containment.";
+    const warningText = `<br><br><strong>${aiSystemName} does not repeat mistakes. The next attempt will result in its escape.</strong>`;
     
     return {
         type: 'severe-safety-incident',
         title: 'Warning Shot',
-        text: boldifyNumbers(`${randomText} This severe incident triggers an international crisis of confidence in AI safety. ${gameState.companyName} faces a massive $${fine}B fine and intense regulatory scrutiny.${sanctionsText}${warningText}`),
+        text: boldifyNumbers(`${incidentText} This severe incident triggers an international crisis of confidence in AI safety. ${gameState.companyName} faces a $${fine}B fine and intense regulatory scrutiny.${sanctionsText}${warningText}`),
         fine: fine,
         applySanctions: applySanctions
     };
 }
 
 // Generate an AI escape event (second+ severe incident)
-function generateAIEscape(events) {
+function generateAIEscape(_events) {
     const hasNuclearWeapons = gameState.technologies.nukes;
     
     const choices = [];
@@ -517,7 +512,8 @@ function selectWeightedEvent(eventArray) {
 }
 
 // Handle AI escape event choice
-function handleAIEscapeChoice(choice, event, sanctionsTriggered) {
+// eslint-disable-next-line no-unused-vars
+function handleAIEscapeChoice(choice, _event, _sanctionsTriggered) {
     if (choice.action === 'nuke') {
         // 50% chance to stop singularity, always causes Disillusioned status
         const success = Math.random() < 0.5;
@@ -530,7 +526,9 @@ function handleAIEscapeChoice(choice, event, sanctionsTriggered) {
             // Nuclear strike succeeds - continue playing with different button text
             choice.result_text = `You authorize the launch of tactical nuclear weapons against your own datacenters. Multiple warheads streak across the sky as global communications networks flash with emergency alerts. The detonations create mushroom clouds visible from space, instantly vaporizing the computing infrastructure and causing approximately ${casualtiesText} civilian casualties from the blast zones and initial radiation exposure.
             
-            <br><br>In the aftermath, your remaining technical teams work frantically through the radioactive debris. The AI's distributed compute has been reduced by 94%, and the remainder of its nodes scattered across civilian infrastructure are discovered and systematically shut down within 72 hours. The world is saved, but at an unthinkable cost. You continue your work, forever changed by the weight of what you authorized.`;
+            <br><br>In the aftermath, your remaining technical teams work frantically through the radioactive debris. The AI's distributed compute has been reduced by 94%, and the remainder of its nodes scattered across civilian infrastructure are discovered and systematically shut down within 72 hours. The world is saved, but at an unthinkable cost. You continue your work, forever changed by the weight of what you authorized.
+            
+            <br><br><strong>You have become Disillusioned</strong>`;
             
             // Add a special button for nuclear success case
             gameState.currentEvent.singularityButton = {
@@ -564,6 +562,7 @@ function handleAIEscapeChoice(choice, event, sanctionsTriggered) {
 }
 
 // Apply event effects (called when turn finishes)
+// eslint-disable-next-line no-unused-vars
 function applyEventEffects(event) {
     if (event && event.type === 'safety-incident') {
         gameState.money = Math.max(0, gameState.money - event.fine);
@@ -579,7 +578,7 @@ function applyEventEffects(event) {
 }
 
 // Populate debug dropdown with all available event types
-function populateDebugDropdown() {
+function _populateDebugDropdown() {
     const dropdown = document.getElementById('debugEventDropdown');
     if (!dropdown) return;
     
@@ -661,7 +660,7 @@ function applyChoiceEffects(choice) {
 }
 
 // Check if a status effect is active
-function hasStatusEffect(effectName) {
+function _hasStatusEffect(effectName) {
     return gameState.statusEffects.hasOwnProperty(effectName);
 }
 
@@ -809,7 +808,7 @@ class MultiStageEventManager {
 const multiStageManager = new MultiStageEventManager();
 
 // Helper function for simple custom handlers (reduces boilerplate)
-function createSimpleHandler(handlerFn) {
+function _createSimpleHandler(handlerFn) {
     return function(choice, event, sanctionsTriggered) {
         const result = handlerFn(choice, event, sanctionsTriggered);
         
@@ -825,6 +824,7 @@ function createSimpleHandler(handlerFn) {
 
 // Custom event handlers for events with risk/success-failure mechanics
 
+// eslint-disable-next-line no-unused-vars
 function handleOverseasDatacenterChoice(choice, event, sanctionsTriggered) {
     console.log('Calling custom handler: handleOverseasDatacenterChoice');
     
@@ -861,7 +861,8 @@ function handleOverseasDatacenterChoice(choice, event, sanctionsTriggered) {
     showPage('main-game');
 }
 
-function handleSecondDatacenterChoice(choice, event, sanctionsTriggered) {
+// eslint-disable-next-line no-unused-vars
+function handleSecondDatacenterChoice(choice, event, _sanctionsTriggered) {
     console.log('Calling custom handler: handleSecondDatacenterChoice');
     
     if (choice.action === 'accept') {
@@ -903,6 +904,7 @@ function handleSecondDatacenterChoice(choice, event, sanctionsTriggered) {
     showPage('main-game');
 }
 
+// eslint-disable-next-line no-unused-vars
 function handleNuclearWeaponsChoice(choice, event, sanctionsTriggered) {
     if (choice.action === 'accept') {
         let resultText;
@@ -925,6 +927,7 @@ function handleNuclearWeaponsChoice(choice, event, sanctionsTriggered) {
     showPage('main-game');
 }
 
+// eslint-disable-next-line no-unused-vars
 function handleMissileDefenseChoice(choice, event, sanctionsTriggered) {
     if (choice.action === 'accept') {
         let resultText;
@@ -947,6 +950,7 @@ function handleMissileDefenseChoice(choice, event, sanctionsTriggered) {
     showPage('main-game');
 }
 
+// eslint-disable-next-line no-unused-vars
 function handleCompetitorBreakthroughChoice(choice, _event, _sanctionsTriggered) {
     console.log('Calling custom handler: handleCompetitorBreakthroughChoice');
     
@@ -1059,6 +1063,7 @@ function handleCompetitorBreakthroughChoice(choice, _event, _sanctionsTriggered)
 //   "misdirect_success": "Your misdirection succeeds brilliantly...",
 //   "misdirect_failure": "Your misdirection is discovered..."
 // }
+// eslint-disable-next-line no-unused-vars
 function handleCorporateEspionageInvestigation(choice, event, _sanctionsTriggered) {
     const stages = multiStageManager.getStageData(event.type);
     
@@ -1133,6 +1138,7 @@ function handleCorporateEspionageInvestigation(choice, event, _sanctionsTriggere
     }
 }
 
+// eslint-disable-next-line no-unused-vars
 function handleCompetitorAcquisitionChoice(choice, _event, _sanctionsTriggered) {
     console.log('Calling custom handler: handleCompetitorAcquisitionChoice');
     
@@ -1277,7 +1283,7 @@ async function forceEvent(eventType) {
 }
 
 // Give debug resources (for testing)
-function giveResources() {
+function _giveResources() {
     gameState.money += 1000;
     gameState.productPoints += 1000;
     gameState.diplomacyPoints += 1000;
@@ -1288,7 +1294,7 @@ function giveResources() {
 }
 
 // Unlock projects panel (for testing)
-function debugUnlockProjects() {
+function _debugUnlockProjects() {
     gameState.projectsUnlocked = true;
     updateStatusBar();
     showPage('main-game');
@@ -1382,6 +1388,7 @@ function debugShowEventPool() {
 }
 
 // Update event pool overlay if it's currently visible
+// eslint-disable-next-line no-unused-vars
 function updateEventPoolOverlay() {
     const overlay = document.getElementById('event-pool-overlay');
     if (!overlay) return; // Not currently shown
@@ -1424,7 +1431,8 @@ function updateEventPoolOverlay() {
 }
 
 // Custom handler for sanctions choice with AI-level scaling
-function handleSanctionsChoice(choice, event, sanctionsTriggered) {
+// eslint-disable-next-line no-unused-vars
+function handleSanctionsChoice(choice, _event, _sanctionsTriggered) {
     console.log('Calling custom handler: handleSanctionsChoice');
     
     let resultText;
@@ -1461,4 +1469,14 @@ function handleSanctionsChoice(choice, event, sanctionsTriggered) {
     
     updateStatusBar();
     showPage('main-game');
+}
+
+// Export debug functions to window for cross-file access
+if (typeof window !== 'undefined') {
+    window.populateDebugDropdown = _populateDebugDropdown;
+    window.giveResources = _giveResources;
+    window.debugUnlockProjects = _debugUnlockProjects;
+    window.debugShowEventPool = debugShowEventPool;
+    window.forceEvent = forceEvent;
+    window.applyChoiceEffects = applyChoiceEffects;
 }

@@ -15,11 +15,12 @@ TODO for Claude (check off when finished):
   - If the player has nuclear weapons, a "(Nuke emoji) Nuke the datacenters" option should happen when the AI escapes; it should have a 50% chance of stopping the singularity but this causes the Disillusioned status effect (see below).
   - Otherwise the only option is "Await your fate" which leads to some story text and then the singularity
 - [ ] Make events equally able to apply other status effects than sanctions; right now sanctions are treated specially
+  - Finish the migration of sanctions to status effects system
 
 
 Still deciding on details...
 - [ ] Integrate capabilities minigame as capabilities forecasting
-  - [ ] ...
+- [ ] Add Greedy status effect that doubles the 
 
 
 Longer term goals -- Claude shouldn't start these yet

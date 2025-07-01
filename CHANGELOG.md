@@ -4,11 +4,37 @@ All notable changes to the Save the World Game will be documented in this file.
 
 ## Summary
 
+- **v0.3.5** : Major refactor consolidating shared functions to utils.js; fixed inconsistent risk calculations
 - **v0.3.2** : Complete Projects allocation system with immediate minigame launch
 - **v0.3.1** : Fixed event handlers; nuclear weapons now later in DSA tree
 - **v0.3.0** : Competitor acquisition events and VP Safety role with unit testing
 - **v0.2.0** : Projects panel system and humanoid robotics event chain  
 - **v0.1.0** : Initial AI strategy game with turn-based gameplay and minigames
+
+## [v0.3.5] - 2025-07-01
+
+### Major Refactoring
+- **New utils.js Module**: Created centralized utility file containing all shared functions, constants, and game state factory
+- **DRY Principle Implementation**: Eliminated code duplication by moving shared functions to single source of truth
+- **Risk Calculation Consolidation**: Fixed inconsistent risk calculation formulas that were causing negative riskReduction values
+
+### Technical Improvements
+- **Script Loading Order**: Updated HTML to load utils.js first, ensuring proper dependency resolution
+- **Cross-File Function Access**: Implemented proper global exports for browser environment and Node.js testing
+- **ESLint Compliance**: Fixed all ESLint errors with proper global declarations and unused variable handling
+- **Mathematical Consistency**: All risk calculations now use centralized getRiskFactors() function from utils.js
+
+### Functions Moved to utils.js
+- `GAME_CONSTANTS`, `INITIAL_TECHNOLOGIES`, `COMPANIES` array
+- `createInitialGameState()` factory function
+- `calculateAdjustedRiskPercent()`, `getRiskFactors()`, `getAISystemVersion()`
+- `getRiskColor()`, `getGalaxyMultipliers()`
+
+### Bug Fixes
+- Fixed endgame.js duplicate risk calculation code to use shared functions
+- Resolved "calculateAdjustedRisk is not defined" error in endgame calculations
+- Fixed cross-file dependency issues and script loading order problems
+- Eliminated formula inconsistencies between getRiskFactors() and generateActionLabels()
 
 ## [v0.3.2] - 2025-06-28
 

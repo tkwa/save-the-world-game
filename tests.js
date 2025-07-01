@@ -1,6 +1,9 @@
 // Unit tests for Critical Path AI Strategy Game
 /* global require, module, process */
 
+// Load utils.js to make shared functions available in Node.js
+require('./utils.js');
+
 class TestSuite {
     constructor() {
         this.tests = [];
@@ -49,27 +52,17 @@ class TestSuite {
     }
 }
 
-// Initialize test state
+// Use createTestGameState as alias for the real factory for backwards compatibility
 function createTestGameState() {
-    return {
-        playerAILevel: 10,
-        competitorAILevels: [8, 6, 4],
-        competitorNames: ['OpenAI', 'Google', 'Anthropic'],
-        companyName: 'TestCorp',
-        money: 100,
-        diplomacyPoints: 50,
-        productPoints: 30,
-        safetyPoints: 25,
-        projectsUnlocked: false,
-        startingCompany: null,
-        isVPSafetyAlignment: false,
-        dsaEventsAccepted: new Set(),
-        acquisitionCompetitorIndex: null,
-        playerEquity: 0.1,
-        offeredEquity: null,
-        totalEquityOffered: null,
-        hasEverFallenBehind: false
-    };
+    const state = createInitialGameState();
+    // Override with test-specific values
+    state.competitorNames = ['OpenAI', 'Google', 'Anthropic'];
+    state.companyName = 'TestCorp';
+    state.money = 100;
+    state.diplomacyPoints = 50;
+    state.productPoints = 30;
+    state.safetyPoints = 25;
+    return state;
 }
 
 // Mock global state for testing
@@ -78,6 +71,107 @@ let gameState = createTestGameState();
 // Test helper functions
 function _mockCalculateAdjustedRisk() {
     return gameState.doomLevel || 20;
+}
+
+// Test shared utility functions from utils.js
+function testSharedUtilityFunctions() {
+    const suite = new TestSuite();
+
+    suite.test('calculateAdjustedRiskPercent should be available and work correctly', () => {
+        // Use the real game state factory from utils.js
+        const testState = createInitialGameState();
+        testState.doomLevel = 40;
+        testState.safetyPoints = 25;
+        testState.alignmentMaxScore = 20;
+        
+        // Set global gameState for the utility function
+        global.gameState = testState;
+        
+        // This should not throw an error if utils.js is loaded properly
+        const adjustedRisk = calculateAdjustedRiskPercent();
+        
+        suite.assertTrue(typeof adjustedRisk === 'number', 'calculateAdjustedRiskPercent should return a number');
+        suite.assertTrue(adjustedRisk > 0, 'Adjusted risk should be positive');
+        suite.assertTrue(adjustedRisk <= 100, 'Adjusted risk should be capped at 100%');
+        suite.assertTrue(adjustedRisk < testState.doomLevel, 'Adjusted risk should be less than raw doom level due to safety factors');
+    });
+
+    suite.test('getAISystemVersion should be available and work correctly', () => {
+        // Test various companies and AI levels (using utils.js implementation)
+        const testCases = [
+            { company: 'OpenAI', level: 10, expectedPattern: /^(GPT-\d|AGI-\d)$/ },
+            { company: 'Anthropic', level: 20, expectedPattern: /^(Claude|Constitutional)/ },
+            { company: 'DeepMind', level: 50, expectedPattern: /^(Gemini|Alpha)/ },
+            { company: 'UnknownCompany', level: 15, expectedPattern: /^(GPT-\d|AGI-\d)$/ } // Should fallback to OpenAI
+        ];
+        
+        testCases.forEach(testCase => {
+            const result = getAISystemVersion(testCase.company, testCase.level);
+            suite.assertTrue(typeof result === 'string', `getAISystemVersion should return string for ${testCase.company}`);
+            suite.assertTrue(result.length > 0, `getAISystemVersion should return non-empty string for ${testCase.company}`);
+            suite.assertTrue(testCase.expectedPattern.test(result), `getAISystemVersion should match expected pattern for ${testCase.company}: got ${result}`);
+        });
+    });
+
+    suite.test('getRiskColor should be available and work correctly', () => {
+        const testCases = [
+            { risk: 5, expectedColor: '#66bb6a' },   // Low risk - green
+            { risk: 25, expectedColor: '#ffa726' },  // Medium risk - orange  
+            { risk: 75, expectedColor: '#ff6b6b' }   // High risk - red
+        ];
+        
+        testCases.forEach(testCase => {
+            const result = getRiskColor(testCase.risk);
+            suite.assertEqual(result, testCase.expectedColor, `getRiskColor(${testCase.risk}) should return ${testCase.expectedColor}`);
+        });
+    });
+
+    suite.test('getGalaxyMultipliers should be available and work correctly', () => {
+        const testState = createInitialGameState();
+        
+        // Test normal state (no disillusioned status)
+        testState.statusEffects = {};
+        global.gameState = testState;
+        let multipliers = getGalaxyMultipliers();
+        
+        suite.assertTrue(typeof multipliers === 'object', 'getGalaxyMultipliers should return an object');
+        suite.assertTrue(typeof multipliers.humanity === 'number', 'humanity multiplier should be a number');
+        suite.assertTrue(typeof multipliers.player === 'number', 'player multiplier should be a number');
+        suite.assertTrue(typeof multipliers.rogue === 'number', 'rogue multiplier should be a number');
+        
+        // Test disillusioned state
+        testState.statusEffects = {
+            disillusioned: { active: true }
+        };
+        global.gameState = testState;
+        let disillusionedMultipliers = getGalaxyMultipliers();
+        
+        suite.assertTrue(disillusionedMultipliers.humanity < multipliers.humanity, 'Disillusioned status should reduce humanity multiplier');
+        suite.assertEqual(disillusionedMultipliers.humanity, multipliers.humanity / 2, 'Disillusioned status should halve humanity multiplier');
+    });
+
+    suite.test('Cross-file function access should work in events.js context', () => {
+        // Test that functions can be called from events context
+        const testState = createInitialGameState();
+        testState.doomLevel = 30;
+        testState.safetyPoints = 50;
+        testState.alignmentMaxScore = 10;
+        global.gameState = testState;
+        
+        // This simulates how events.js uses the function
+        const adjustedRiskPercent = calculateAdjustedRiskPercent();
+        const safetyIncidentChance = Math.pow(adjustedRiskPercent / 100.0, 2);
+        
+        suite.assertTrue(typeof safetyIncidentChance === 'number', 'Safety incident calculation should work');
+        suite.assertTrue(safetyIncidentChance >= 0 && safetyIncidentChance <= 1, 'Safety incident chance should be a valid probability');
+        
+        // Test AI system version generation as used in events
+        const aiSystemName = getAISystemVersion('OpenAI', 25);
+        suite.assertTrue(typeof aiSystemName === 'string', 'AI system name should be generated');
+        suite.assertTrue(aiSystemName.length > 0, 'AI system name should not be empty');
+    });
+
+    return suite.runAll();
 }
 
 // Test the acquisition event availability
@@ -1416,6 +1510,7 @@ async function runAllTests() {
     console.log('🧪 Critical Path Game - Acquisition Event Tests\n');
     
     const results = await Promise.all([
+        testSharedUtilityFunctions(),
         testAcquisitionEventAvailability(),
         testMergerMechanics(), 
         testEndgameScoring(),
