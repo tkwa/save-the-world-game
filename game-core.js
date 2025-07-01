@@ -283,10 +283,19 @@ const storyContent = {
                 eventHtml += `<p style="color: #d0d0d0; margin-bottom: 15px;">${gameState.currentEvent.text}</p>`;
 
                 if (gameState.currentEvent.showResult && gameState.currentEvent.resultText) {
-                    // Showing result of choice - just display result and next turn button
+                    // Showing result of choice - display result and appropriate button
                     const processedResultText = boldifyNumbers(gameState.currentEvent.resultText);
                     eventHtml += `<p style="color: #d0d0d0; margin-bottom: 15px;">${processedResultText}</p>`;
-                    eventHtml += `<button class="button" onclick="finishTurn()">Next Turn <strong>⏎</strong></button>`;
+                    
+                    // Check if there's a singularity button (AI escape scenarios)
+                    if (gameState.currentEvent.singularityButton) {
+                        const buttonText = gameState.currentEvent.singularityButton.text;
+                        const buttonAction = gameState.currentEvent.singularityButton.action;
+                        eventHtml += `<button class="button" onclick="handleSingularityButton('${buttonAction}')">${buttonText}</button>`;
+                    } else {
+                        // Regular next turn button
+                        eventHtml += `<button class="button" onclick="finishTurn()">Next Turn <strong>⏎</strong></button>`;
+                    }
                 } else if (gameState.currentEvent.choices && gameState.currentEvent.choices.length > 0) {
                     // Event has choices - show them as buttons
                     gameState.currentEvent.choices.forEach((choice, index) => {
@@ -821,6 +830,18 @@ async function finishTurn() {
 
     // Advance turn without applying resources (already applied when button was clicked)
     await advanceTurn();
+}
+
+// Handle singularity button clicks for AI escape scenarios
+function handleSingularityButton(action) {
+    if (action === 'nuclear-failure-singularity' || action === 'await-fate-singularity') {
+        // Both scenarios lead to singularity - trigger endgame
+        scaleAILevelsForEndGame();
+        showPage('end-screen');
+    } else if (action === 'nuclear-success-continue') {
+        // Nuclear strike succeeded - continue playing but with disillusioned status
+        finishTurn();
+    }
 }
 
 async function advanceTurn() {
@@ -2123,6 +2144,12 @@ function applyStatusEffect(effectType) {
                 gameState.technologies[tech] = INITIAL_TECHNOLOGIES[tech];
             }
             break;
+        case 'disillusioned':
+            gameState.statusEffects.disillusioned = {
+                active: true,
+                description: "Your employees are deeply shaken by recent events and question the company's direction."
+            };
+            break;
         case 'test-ai-manipulation':
             // Force trigger AI manipulation for testing - both text and evasion
             const safetyButtons = document.querySelectorAll('button');
@@ -2471,6 +2498,7 @@ if (typeof window !== 'undefined') {
     // Make functions globally accessible
     window.finishTurn = finishTurn;
     window.handleEventChoice = handleEventChoice;
+    window.handleSingularityButton = handleSingularityButton;
     window.forceEvent = forceEvent;
     window.populateDebugDropdown = populateDebugDropdown;
     window.giveResources = giveResources;

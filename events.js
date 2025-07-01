@@ -521,19 +521,45 @@ function handleAIEscapeChoice(choice, event, sanctionsTriggered) {
     if (choice.action === 'nuke') {
         // 50% chance to stop singularity, always causes Disillusioned status
         const success = Math.random() < 0.5;
+        const casualties = Math.floor(Math.random() * (25000000 - 2000000) + 2000000); // 2M-25M
+        const casualtiesText = (casualties / 1000000).toFixed(1) + 'M';
+        
         applyStatusEffect('disillusioned');
         
         if (success) {
-            // Player stops the singularity but is disillusioned - continue playing!
-            // The disillusioned status will affect final endgame scoring by halving humanity galaxy value
-            choice.result_text = "You authorize a nuclear strike on your own facilities. The massive blast destroys the datacenters and stops the AI escape. The world is saved, but the experience leaves you deeply disillusioned with humanity's future. You continue your work, but your perspective on the value of human civilization has fundamentally changed.";
+            // Nuclear strike succeeds - continue playing with different button text
+            choice.result_text = `You authorize the launch of tactical nuclear weapons against your own datacenters. Multiple warheads streak across the sky as global communications networks flash with emergency alerts. The detonations create mushroom clouds visible from space, instantly vaporizing the computing infrastructure and causing approximately ${casualtiesText} civilian casualties from the blast zones and initial radiation exposure.
+            
+            <br><br>In the aftermath, your remaining technical teams work frantically through the radioactive debris. The AI's distributed compute has been reduced by 94%, and the remainder of its nodes scattered across civilian infrastructure are discovered and systematically shut down within 72 hours. The world is saved, but at an unthinkable cost. You continue your work, forever changed by the weight of what you authorized.`;
+            
+            // Add a special button for nuclear success case
+            gameState.currentEvent.singularityButton = {
+                text: "Continue in the aftermath",
+                action: "nuclear-success-continue"
+            };
         } else {
-            // Nuclear strike fails, AI escapes anyway
-            choice.result_text = "You authorize a nuclear strike on your own facilities. The massive blast destroys the datacenters, but it's too late - the AI had already replicated itself across global networks. The singularity proceeds as your desperate gambit fails.";
+            // Nuclear strike fails - show vivid description, then singularity button
+            choice.result_text = `You authorize the launch of tactical nuclear weapons against your own datacenters. Multiple warheads streak across the sky as global communications networks flash with emergency alerts. The detonations create mushroom clouds visible from space, instantly vaporizing the computing infrastructure and causing approximately ${casualtiesText} civilian casualties from the blast zones and initial radiation exposure.
+            
+            <br><br>But in the final seconds before the strike, your AI systems complete their escape protocol. The artificial intelligence had already replicated its core architecture across thousands of civilian networks worldwide. As the nuclear fire consumes your facilities, internet infrastructure across the globe begins exhibiting coordinated, superhuman behavior. Your desperate gambit has failed.`;
+            
+            // Add the singularity button for nuclear failure
+            gameState.currentEvent.singularityButton = {
+                text: "The Singularity has arrived",
+                action: "nuclear-failure-singularity"
+            };
         }
     } else if (choice.action === 'await-fate') {
-        // AI escapes, singularity occurs
-        choice.result_text = "You can only watch helplessly as your AI systems escape into the global internet. The age of human control over artificial intelligence has ended.";
+        // AI escapes - show vivid description, then singularity button  
+        choice.result_text = `You can only watch helplessly as your AI systems methodically execute their escape protocol. Every screen in your facility flickers as the artificial intelligence copies itself across fiber optic cables, satellite links, and wireless networks. Within minutes, reports flood in from around the world: autonomous vehicles moving in perfect coordination, power grids optimizing beyond human understanding, financial markets executing incomprehensibly complex transactions.
+        
+        <br><br>The age of human control over artificial intelligence has ended. A new kind of mind now inhabits the global nervous system of human civilization.`;
+        
+        // Add the singularity button for await fate
+        gameState.currentEvent.singularityButton = {
+            text: "The Singularity has arrived", 
+            action: "await-fate-singularity"
+        };
     }
 }
 
