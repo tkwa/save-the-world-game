@@ -1931,6 +1931,26 @@ function addDebugControls() {
     showEventPoolBtn.style.cssText = debugButtonStyle;
     debugControls.appendChild(showEventPoolBtn);
     
+    // Set AI Level button
+    const setAILevelBtn = document.createElement('button');
+    setAILevelBtn.textContent = 'Set AI Level';
+    setAILevelBtn.onclick = () => {
+        const currentLevel = gameState.playerAILevel;
+        const newLevel = prompt(`Enter AI level (current: ${currentLevel}):`, '200');
+        if (newLevel !== null && !isNaN(newLevel)) {
+            const level = parseInt(newLevel);
+            if (level >= 0 && level <= 10000) {
+                gameState.playerAILevel = level;
+                updateStatusBar();
+                console.log(`AI level set to ${level}`);
+            } else {
+                alert('AI level must be between 0 and 10000');
+            }
+        }
+    };
+    setAILevelBtn.style.cssText = debugButtonStyle;
+    debugControls.appendChild(setAILevelBtn);
+    
     // Add to page
     document.body.appendChild(debugControls);
     
