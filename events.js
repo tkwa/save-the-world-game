@@ -566,6 +566,8 @@ function populateDebugDropdown() {
     // Add special events
     dropdown.innerHTML += '<option value="sanctions">Sanctions</option>';
     dropdown.innerHTML += '<option value="safety-incident">Safety Incident</option>';
+    dropdown.innerHTML += '<option value="warning-shot">Warning Shot</option>';
+    dropdown.innerHTML += '<option value="ai-escape">AI Escape</option>';
     
     // Add default events from JSON
     loadEventData().then(events => {
@@ -1213,6 +1215,10 @@ async function forceEvent(eventType) {
         };
     } else if (eventType === 'safety-incident') {
         event = generateSafetyIncident(events);
+    } else if (eventType === 'warning-shot') {
+        event = generateWarningShot(events);
+    } else if (eventType === 'ai-escape') {
+        event = generateAIEscape(events);
     } else {
         // Handle default events
         const eventTemplate = events.defaultEvents.find(e => e.type === eventType);
