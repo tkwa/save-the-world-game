@@ -2001,6 +2001,34 @@ async function handleEventChoice(choiceIndex) {
         showPage('end-game');
         return;
     }
+    
+    // Special handling for AI escape events (immediate singularity)
+    if (event.type === 'ai-escape') {
+        if (choice.action === 'await-fate') {
+            gameState.playerAILevel = GAME_CONSTANTS.ASI_THRESHOLD;
+            gameState.gameOverReason = 'ai-escape';
+            gameState.endgameAdjustedRisk = calculateAdjustedRiskPercent();
+            scaleAILevelsForEndGame();
+            updateStatusBar();
+            showPage('end-game');
+            return;
+        } else if (choice.action === 'nuke') {
+            // Nuclear option - 50% success handled by event handler
+            // If failure, we need to check if endgame should trigger
+            // The event handler will have set choice.result_text, we can check that
+            if (choice.result_text && choice.result_text.includes('too late')) {
+                // Nuclear failure case
+                gameState.playerAILevel = GAME_CONSTANTS.ASI_THRESHOLD;
+                gameState.gameOverReason = 'nuclear-failure';
+                gameState.endgameAdjustedRisk = calculateAdjustedRiskPercent();
+                scaleAILevelsForEndGame();
+                updateStatusBar();
+                showPage('end-game');
+                return;
+            }
+            // Nuclear success case continues normally
+        }
+    }
 
     // Show result text instead of immediately finishing turn
     if (choice.result_text) {

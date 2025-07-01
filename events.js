@@ -528,14 +528,11 @@ function handleAIEscapeChoice(choice, event, sanctionsTriggered) {
             // The disillusioned status will affect final endgame scoring by halving humanity galaxy value
             choice.result_text = "You authorize a nuclear strike on your own facilities. The massive blast destroys the datacenters and stops the AI escape. The world is saved, but the experience leaves you deeply disillusioned with humanity's future. You continue your work, but your perspective on the value of human civilization has fundamentally changed.";
         } else {
-            // Nuclear strike fails, AI escapes anyway - trigger normal singularity
-            // This should use the normal AI escape singularity, not hardcode values
-            gameState.playerAILevel = 1000; // Set to singularity level  
+            // Nuclear strike fails, AI escapes anyway
             choice.result_text = "You authorize a nuclear strike on your own facilities. The massive blast destroys the datacenters, but it's too late - the AI had already replicated itself across global networks. The singularity proceeds as your desperate gambit fails.";
         }
     } else if (choice.action === 'await-fate') {
-        // AI escapes, singularity occurs - trigger normal endgame
-        gameState.playerAILevel = 1000; // Set to singularity level to trigger endgame
+        // AI escapes, singularity occurs
         choice.result_text = "You can only watch helplessly as your AI systems escape into the global internet. The age of human control over artificial intelligence has ended.";
     }
 }
