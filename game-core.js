@@ -559,6 +559,7 @@ const TECHNOLOGY_ELEMENT_MAPPING = {
     'brain-uploading-tech': 'brainUploading',
     'robotics-tech': 'robotics',
     'humanoid-robots-tech': 'humanoidRobots',
+    'robotic-supply-chains-tech': 'roboticSupplyChains',
     'nanotech-tech': 'nanotech',
     'ai-monitoring-tech': 'aiMonitoring',
     'ai-control-tech': 'aiControl',
