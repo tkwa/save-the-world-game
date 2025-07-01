@@ -22,6 +22,11 @@
           "type": "string",
           "const": "safety-incident"
         },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Short title for the event"
+        },
         "weight": {
           "type": "number",
           "minimum": 0
@@ -56,6 +61,11 @@
           "type": "string",
           "pattern": "^[a-z-]+$"
         },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Short title for the event"
+        },
         "text_versions": {
           "type": "array",
           "items": {
@@ -89,6 +99,11 @@
           "type": "string",
           "pattern": "^[a-z-]+$",
           "description": "Unique identifier for the event type"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Short title for the event"
         },
         "weight": {
           "type": "number",
@@ -267,6 +282,11 @@
           "type": "number",
           "minimum": 1,
           "description": "Multiplier for diplomacy gains"
+        },
+        "productMultiplier": {
+          "type": "number",
+          "minimum": 1,
+          "description": "Multiplier for product development gains"
         },
         "activateTechnology": {
           "type": "string",

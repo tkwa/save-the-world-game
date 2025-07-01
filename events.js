@@ -529,6 +529,9 @@ function applyChoiceEffects(choice) {
             if (choice.benefit.diplomacyMultiplier) {
                 gameState.diplomacyMultiplier = (gameState.diplomacyMultiplier || 1) * choice.benefit.diplomacyMultiplier;
             }
+            if (choice.benefit.productMultiplier) {
+                gameState.productMultiplier = (gameState.productMultiplier || 1) * choice.benefit.productMultiplier;
+            }
             if (choice.benefit.activateTechnology) {
                 gameState.technologies[choice.benefit.activateTechnology] = true;
             }

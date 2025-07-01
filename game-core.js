@@ -1,6 +1,6 @@
 // Core game logic for the AI Timeline Game
 
-VERSION = "v0.3.4"
+const VERSION = "v0.3.4"
 
 // Technology configuration
 const INITIAL_TECHNOLOGIES = {
@@ -160,6 +160,7 @@ const gameState = {
     // Status Effects
     hasSanctions: false,
     diplomacyMultiplier: 1,
+    productMultiplier: 1,
     
     // Infrastructure
     datacenterCount: 0,
@@ -272,6 +273,10 @@ const storyContent = {
             // Show current event after resource allocation
             if (gameState.currentEvent) {
                 let eventHtml = `<div style="border-top: 2px solid #555; padding-top: 20px; margin-top: 20px;">`;
+                // Add event title as heading if it exists
+                if (gameState.currentEvent.title) {
+                    eventHtml += `<h3 style="color: #f0f0f0; margin-bottom: 10px; margin-top: 0;">${gameState.currentEvent.title}</h3>`;
+                }
                 eventHtml += `<p style="color: #d0d0d0; margin-bottom: 15px;">${gameState.currentEvent.text}</p>`;
 
                 if (gameState.currentEvent.showResult && gameState.currentEvent.resultText) {
@@ -1092,11 +1097,12 @@ function generateActionLabels(resources) {
     
     // Apply diplomacy multiplier to display the actual gain
     const actualDiplomacyGain = gains.diplomacy * (gameState.diplomacyMultiplier || 1);
+    const actualProductGain = gains.product * (gameState.productMultiplier || 1);
     
     return [
         `<strong>A</strong>I R&D<br>(+${Math.round(gains.ai * 10) / 10} AI, +${Math.round(gains.ai * 10) / 10}% Risk, -$${Math.round(gains.aiCost * 10) / 10}B)`,
         `<strong>D</strong>iplomacy (+${Math.round(actualDiplomacyGain * 10) / 10})`,
-        `<strong>P</strong>roduct (+${Math.round(gains.product * 10) / 10})`,
+        `<strong>P</strong>roduct (+${Math.round(actualProductGain * 10) / 10})`,
         `<strong>S</strong>afety R&D<br>(-${riskReduction.toFixed(1)}% Risk, -$${Math.round(gains.safetyCost * 10) / 10}B)`,
         `<strong>R</strong>evenue (+$${Math.round(gains.revenue * 10) / 10}B)`
     ];
@@ -1254,7 +1260,7 @@ function applyResourceAllocation(resourceType, corporateResources) {
             gameState.diplomacyPoints += gains.diplomacy * (gameState.diplomacyMultiplier || 1);
             break;
         case 'product':
-            gameState.productPoints += gains.product;
+            gameState.productPoints += gains.product * (gameState.productMultiplier || 1);
             break;
         case 'safety-rd':
             gameState.safetyPoints += gains.safety;
@@ -1282,6 +1288,7 @@ function resetGameState() {
     gameState.safetyPoints = 0;
     gameState.hasSanctions = false;
     gameState.diplomacyMultiplier = 1;
+    gameState.productMultiplier = 1;
     gameState.datacenterCount = 0;
     gameState.powerplantCount = 0;
     gameState.biotechLabCount = 0;

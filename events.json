@@ -2,6 +2,7 @@
   "specialEvents": {
     "sanctions": {
       "type": "sanctions",
+      "title": "International Sanctions",
       "customHandler": "handleSanctionsChoice",
       "text_versions": [
         "International sanctions are severely impacting your operations. Your resources are halved, and diplomatic relations are strained. Your legal team proposes spending significant resources to lobby for sanctions relief."
@@ -22,6 +23,7 @@
   },
   "safetyIncidents": {
     "type": "safety-incident",
+    "title": "Safety Incident",
     "weight": 1,
     "text_versions": [
       "A training run goes wrong and the AI starts optimizing for something unexpected, requiring emergency shutdown.",
@@ -36,6 +38,7 @@
   "defaultEvents": [
     {
       "type": "nothing",
+      "title": "Routine Progress",
       "weight": 3,
       "text_versions": [
         "Development proceeds smoothly this month with steady progress across all teams.",
@@ -52,6 +55,7 @@
     },
     {
       "type": "conditional-choice-demo",
+      "title": "Strategic Options",
       "weight": 0,
       "oneTimeAccept": true,
       "aiLevelRange": { "min": 999 },
@@ -83,6 +87,7 @@
     },
     {
       "type": "safety-research-limitations",
+      "title": "Safety Research Challenges",
       "weight": 4,
       "oneTimeAccept": true,
       "text_versions": [
@@ -98,6 +103,7 @@
     },
     {
       "type": "product-breakthrough-medicine",
+      "title": "Medical AI Breakthrough",
       "weight": 1,
       "oneTimeAccept": true,
       "aiLevelRange": { "min": 12 },
@@ -121,6 +127,7 @@
     },
     {
       "type": "product-breakthrough-robotics",
+      "title": "Robotics Acquisition",
       "weight": 1,
       "oneTimeAccept": true,
       "aiLevelRange": { "min": 16 },
@@ -144,6 +151,7 @@
     },
     {
       "type": "humanoid-robotics",
+      "title": "Humanoid Robot Development",
       "weight": 1,
       "requires": ["product-breakthrough-robotics"],
       "oneTimeAccept": true,
@@ -152,11 +160,11 @@
       ],
       "choices": [
         {
-          "text": "Develop humanoid robots (-$6B, -5 Product, +🦾)",
+          "text": "Develop humanoid robots (-$6B, -5 Product, doubles product gain, +🦾)",
           "action": "accept",
           "cost": { "money": 6, "productPoints": 5 },
-          "benefit": { "activateTechnology": "humanoidRobots" },
-          "result_text": "Your team begins mass production of general-purpose humanoid robots. The new models combine Boston Dynamics' mobility expertise with your AI's dexterity and decision-making. These robots can perform complex manual labor, opening vast new markets and manufacturing capabilities."
+          "benefit": { "activateTechnology": "humanoidRobots", "productMultiplier": 2 },
+          "result_text": "Your team begins mass production of general-purpose humanoid robots. The new models combine Boston Dynamics' mobility expertise with your AI's dexterity and decision-making. These robots can perform complex manual labor, opening vast new markets and manufacturing capabilities. Your product development capabilities are now dramatically enhanced."
         },
         {
           "text": "Decline",
@@ -167,6 +175,7 @@
     },
     {
       "type": "overseas-datacenter",
+      "title": "International Expansion",
       "weight": 4,
       "oneTimeAccept": true,
       "aiLevelRange": { "min": 20, "max": 80 },
@@ -202,6 +211,7 @@
     },
     {
       "type": "second-datacenter",
+      "title": "Government Partnership",
       "weight": 4,
       "requires": ["product-breakthrough-robotics", "overseas-datacenter"],
       "oneTimeAccept": true,
@@ -229,6 +239,7 @@
     },
     {
       "type": "nuclear-weapons",
+      "title": "Nuclear Weapons Program",
       "weight": 4,
       "requires": ["humanoid-robotics", "second-datacenter"],
       "oneTimeAccept": true,
@@ -258,6 +269,7 @@
     },
     {
       "type": "missile-defense",
+      "title": "Advanced Defense Systems",
       "weight": 4,
       "requires": ["nuclear-weapons"],
       "oneTimeAccept": true,
@@ -285,6 +297,7 @@
     },
     {
       "type": "decisive-strategic-advantage",
+      "title": "Global Hegemony",
       "weight": 4,
       "requires": ["missile-defense"],
       "oneTimeAccept": true,
@@ -306,6 +319,7 @@
     },
     {
       "type": "competitor-breakthrough",
+      "title": "Competitor Surge",
       "weight": 1,
       "maxTimes": 1,
       "aiLevelRange": { "max": 100 },
@@ -328,6 +342,7 @@
     },
     {
       "type": "competitor-acquisition",
+      "title": "Merger Proposal",
       "weight": 2,
       "oneTimeAccept": true,
       "customHandler": "handleCompetitorAcquisitionChoice",
@@ -349,6 +364,7 @@
     },
     {
       "type": "falling-behind",
+      "title": "Competitive Disadvantage",
       "weight": 1,
       "oneTimeAccept": true,
       "text_versions": [
@@ -365,6 +381,7 @@
     },
     {
       "type": "corporate-espionage-investigation-example",
+      "title": "Espionage Investigation",
       "weight": 0,
       "oneTimeAccept": true,
       "aiLevelRange": { "min": 999 },
@@ -394,9 +411,10 @@
     },
     {
       "type": "persuasion-breakthrough",
-      "weight": 4,
+      "title": "Persuasion Systems",
+      "weight": 2,
       "oneTimeAccept": true,
-      "aiLevelRange": { "min": 15 },
+      "aiLevelRange": { "min": 60 },
       "text_versions": [
         "Your AI research team has developed systems capable of superhuman persuasion and rhetorical skill. These models can craft compelling arguments, identify psychological vulnerabilities, and adapt communication styles with unprecedented sophistication. However, implementing this technology will require significant product development resources and could fundamentally change how your company interacts with stakeholders and the public."
       ],
@@ -417,7 +435,8 @@
     },
     {
       "type": "superpersuasion-mastery",
-      "weight": 3,
+      "title": "Superpersuasion Mastery",
+      "weight": 2,
       "requires": ["persuasion-breakthrough"],
       "oneTimeAccept": true,
       "aiLevelRange": { "min": 160 },
@@ -426,8 +445,9 @@
       ],
       "choices": [
         {
-          "text": "Implement superpersuasion (doubles diplomacy gain again, activates 🗣️ tech)",
+          "text": "Implement superpersuasion (-25 Diplomacy, 40 Product, doubles diplomacy gain again, +🗣️)",
           "action": "accept",
+          "cost": {"diplomacyPoints": 25, "productPoints": 40},
           "benefit": { "diplomacyMultiplier": 2, "activateTechnology": "persuasion" },
           "result_text": "Your superpersuasion systems come online. The technology demonstrates capabilities that seem almost supernatural - understanding subtle psychological patterns, predicting social outcomes, and crafting communications with precision that exceeds the best human experts. Your diplomatic influence expands dramatically as these systems reshape how your company engages with the world."
         },

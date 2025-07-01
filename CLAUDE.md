@@ -56,6 +56,7 @@ There's a TODO list atop `README.md`.
   - Manual: `node -e "require('./tests.js').runAllTests()"`
 - **Test categories**: Event logic, merger mechanics, endgame scoring, role indicators, other_texts usage
 - **Commit integration**: Failed tests block commits; passed tests append timing info to commit messages
+- Claude cannot test via `python -m http.server 8000` and should rely on `npm test` and human user testing
 
 ## Documentation
 

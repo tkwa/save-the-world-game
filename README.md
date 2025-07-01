@@ -3,19 +3,21 @@ A WIP game to represent the AI singularity.
 
 ## To run
 
-Open `savetheworld.html` in a browser, e.g. by using Cursor Live Preview or `python -m http.server 8000`
+Open `savetheworld.html` in a browser, e.g. by using Cursor Live Preview or `python -m http.server 8000`.
 
 ## Status
 
 TODO for Claude (check off when finished):
-- 
+- [ ] How could we test that every event handler is free of bugs (specifically calls the proper functions to update the screen)? Do this only if it's easy
+- [ ] Make every event have a short title
+- [ ] Make the "severe incident" a "warning shot" (same effects though); the second time a severe incident happens, the AI should escape into the world
+  - The description for the warning shot event should say that the next time such an incident happens, it is likely the AI will escape containment.
+  - If the player has nuclear weapons, a "(Nuke emoji) Nuke the datacenters" option should happen when the AI escapes; it should have a 50% chance of stopping the singularity but this causes the Disillusioned status effect (see below).
+  - Otherwise the only option is "Await your fate" which leads to some story text and then the singularity
 - [ ] Make events equally able to apply other status effects than sanctions; right now sanctions are treated specially
-- [ ] How could we test that every event handler is free of bugs like we fixed in the sanctions custom handler?
 
 
 Still deciding on details...
-- [ ] Uncertain escape
-  - The AI will escape at some point between 500 aand 1000x
 - [ ] Integrate capabilities minigame as capabilities forecasting
   - [ ] ...
 
@@ -45,8 +47,20 @@ Longer term goals -- Claude shouldn't start these yet
   - [ ] You have the chance to double your equity share by replacing a board member, but risk sanctions
 - [ ] Safety projects module
   - [ ] Interp minigame and effects
-    - Available from the beginning
-  - [ ] Control minigame and effects
+    - Available at 100 safety research
+    - 
+  - [ ] Monitor minigame
+    - Available at 200 safety research
+  - [ ] Control minigame and effects-- unlocked when monitoring 
+  finished
+    - Control has three things that can be improved
+      - Red team
+      - Monitor
+      - Control protocol
+  - [ ] Alignment now requires 300 safety research to start
+
+  - [ ] Neuralese event
+    - Makes monitoring/control progress impossible until interpretability reaches some values
 - [ ] Politics/geopolitics module
   - [ ] China blockades Taiwan
     - Use [drones/nukes/bioweapons] to help one side or the other
