@@ -642,14 +642,34 @@ function updateCompanyResources() {
 }
 
 function updateStatusEffects() {
-    // Sanctions
     const sanctionsElement = document.getElementById('sanctions-status');
     const sanctionsTooltip = document.getElementById('sanctions-tooltip');
+    
+    let statusTexts = [];
+    let tooltipTexts = [];
+    
+    // Legacy sanctions system
     if (gameState.hasSanctions) {
-        sanctionsElement.textContent = 'Sanctions';
-        sanctionsElement.style.color = '#ffa726'; // Orange for bad status
+        statusTexts.push('Sanctions');
+        tooltipTexts.push('International sanctions cut your base AI labor by <strong>50%</strong> and prevent you from taking certain diplomatic actions. Overseas datacenters are unaffected.');
+    }
+    
+    // Generic status effects system
+    for (const [effectName, effectData] of Object.entries(gameState.statusEffects)) {
+        if (effectData && effectData.active) {
+            // Format effect name for display (camelCase to Title Case)
+            const displayName = effectName.charAt(0).toUpperCase() + effectName.slice(1).replace(/([A-Z])/g, ' $1');
+            statusTexts.push(displayName);
+            tooltipTexts.push(effectData.description || `${displayName} status effect is active.`);
+        }
+    }
+    
+    // Update UI elements
+    if (statusTexts.length > 0) {
+        sanctionsElement.textContent = statusTexts.join(', ');
+        sanctionsElement.style.color = '#ffa726'; // Orange for status effects
         if (sanctionsTooltip) {
-            sanctionsTooltip.innerHTML = 'International sanctions cut your base AI labor by <strong>50%</strong> and prevent you from taking certain diplomatic actions. Overseas datacenters are unaffected.';
+            sanctionsTooltip.innerHTML = tooltipTexts.join('<br><br>');
         }
     } else {
         sanctionsElement.textContent = '';
@@ -657,7 +677,6 @@ function updateStatusEffects() {
             sanctionsTooltip.innerHTML = '';
         }
     }
-    
 }
 
 function updateInfrastructure() {
@@ -1882,6 +1901,7 @@ function addDebugControls() {
         <option value="">Debug: Apply Status</option>
         <option value="sanctions">Apply Sanctions</option>
         <option value="remove-sanctions">Remove Sanctions</option>
+        <option value="disillusioned">Apply Disillusioned</option>
         <option value="set-diplomacy-multiplier-2">Set Diplomacy Multiplier 2x</option>
         <option value="set-diplomacy-multiplier-4">Set Diplomacy Multiplier 4x</option>
         <option value="reset-diplomacy-multiplier">Reset Diplomacy Multiplier</option>
@@ -2232,7 +2252,7 @@ function applyStatusEffect(effectType) {
         case 'disillusioned':
             gameState.statusEffects.disillusioned = {
                 active: true,
-                description: "Your employees are deeply shaken by recent events and question the company's direction."
+                description: "You are disillusioned with humanity; galaxies owned by humanity have half value at end of game."
             };
             break;
         case 'test-ai-manipulation':
