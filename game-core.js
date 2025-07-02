@@ -391,7 +391,6 @@ function updateAISection() {
 
 function updateCompanySection() {
     // Company names
-    document.getElementById('company-name-header').textContent = gameState.companyName || 'Company';
     document.getElementById('company-name-ai').textContent = gameState.companyName || 'Company';
     
     // Update tooltips
