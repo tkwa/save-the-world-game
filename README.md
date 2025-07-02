@@ -8,14 +8,10 @@ Open `savetheworld.html` in a browser, e.g. by using Cursor Live Preview or `pyt
 ## Status
 
 TODO for Claude (check off when finished):
-- [ ] Interpretability project
-  - Should be unlocked first at 80 safety with the projects/diminishing returns event. This should now be the first project, not alignment, which is unlocked with a separate event with weight 4 that goes in the pool at 320 safety
-  - [ ] Now there can be a variable number of buttons in the projects section depending on what is unlocked
-  - [ ] Implementation. Reduces risk by 1 / (1 + interpretability%). Costs same as AI R&D; requires 1B labor-hours to complete, and progress goes like sqrt(hours)
-  - [ ] Button similar to alignment button
-  - [ ] Max progress is 100%. When reaching 100%, button is greyed out
-  - [ ] Update risk tooltip
-
+- [x] Superpersuasion effect on choices
+  - If you have unlocked superpersuasion and risk > 25%, then every month, one of the allocations will be randomly chosen to be greyed out. The "Allocate 400M AI labor-hours to one sector or project this month" will be appended with " ${player's ai name} recommends against investing in ${unavailable project}". AI R&D is never chosen.
+- [x] Change AI novelist to Persuasion and make its description consistent with the persuasion event
+- [x] Events should by default display their titles as the heading to the events section
 
 Still deciding on details...
 - [ ] Integrate capabilities minigame as capabilities forecasting
@@ -47,9 +43,8 @@ Longer term goals -- Claude shouldn't start these yet
   - [ ] You have the chance to double your equity share by replacing a board member, but risk sanctions
 - [ ] Safety projects module
   - [ ] Interp minigame and effects
-    - Available at 100 safety research
   - [ ] Monitor minigame
-    - Available at 200 safety research
+    - Available at 160 safety research?
   - [ ] Control minigame and effects-- unlocked when monitoring 
   finished
     - Control has three things that can be improved

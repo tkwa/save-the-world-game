@@ -11,9 +11,9 @@ const VERSION = "v0.3.5"
 // Technology visibility conditions - functions that determine if a tech should be visible
 const TECHNOLOGY_VISIBILITY = {
     // Column 1: General technologies  
-    aiNovelist: () => gameState.technologies.robotaxi,
+    aiNovelist: () => gameState.technologies.robotaxi, // Now represents basic persuasion tech
     aiResearchLead: () => gameState.technologies.robotaxi,
-    persuasion: () => gameState.eventsAccepted.has('persuasion-breakthrough'), // Revealed by persuasion event
+    persuasion: () => gameState.eventsAccepted.has('persuasion-breakthrough'), // Revealed by persuasion event (superpersuasion)
     
     
     // Column 2: Medicine - each depends on the one above
@@ -559,9 +559,9 @@ function getCriticalRiskColor(riskLevel) {
 // Technology element mapping
 const TECHNOLOGY_ELEMENT_MAPPING = {
     'robotaxi-tech': 'robotaxi',
-    'ai-novelist-tech': 'aiNovelist',
+    'normal-persuasion-tech': 'aiNovelist',
     'ai-research-lead-tech': 'aiResearchLead',
-    'persuasion-tech': 'persuasion',
+    'superpersuasion-tech': 'persuasion',
     'medicine-tech': 'medicine',
     'synthetic-biology-tech': 'syntheticBiology',
     'cancer-cure-tech': 'cancerCure',
@@ -762,8 +762,61 @@ async function advanceTurn() {
         return;
     }
 
+    // Apply superpersuasion effect (randomly disable one allocation if conditions met)
+    applySuperpersuasionEffect();
+    
     // Refresh the page to show new turn
     showPage('main-game');
+}
+
+// Apply superpersuasion effect - randomly disable one allocation when conditions are met
+function applySuperpersuasionEffect() {
+    // Reset previous superpersuasion effect
+    gameState.superpersuasionDisabledAllocation = null;
+    
+    // Check conditions: superpersuasion tech active AND risk > 25%
+    if (!gameState.technologies.persuasion || calculateAdjustedRiskPercent() <= 25) {
+        return;
+    }
+    
+    // Get all possible allocations (excluding AI R&D which is never chosen)
+    const possibleAllocations = [
+        'safety-rd',
+        'product-rd', 
+        'diplomacy',
+        'alignment-project',
+        'interpretability-project'
+    ];
+    
+    // Filter to only allocations that are actually available
+    const availableAllocations = possibleAllocations.filter(allocation => {
+        if (allocation === 'alignment-project') {
+            return gameState.alignmentUnlocked;
+        }
+        if (allocation === 'interpretability-project') {
+            return gameState.projectsUnlocked && gameState.interpretabilityProgress < 100;
+        }
+        return true; // safety-rd, product-rd, diplomacy are always available
+    });
+    
+    // Randomly select one allocation to disable
+    if (availableAllocations.length > 0) {
+        const randomIndex = Math.floor(Math.random() * availableAllocations.length);
+        gameState.superpersuasionDisabledAllocation = availableAllocations[randomIndex];
+    }
+}
+
+// Helper function to get display name for allocations
+function getAllocationDisplayName(allocationId) {
+    const allocationNames = {
+        'ai-rd': 'AI capabilities development',
+        'safety-rd': 'safety research',
+        'product-rd': 'product development', 
+        'diplomacy': 'diplomacy',
+        'alignment-project': 'alignment research',
+        'interpretability-project': 'interpretability research'
+    };
+    return allocationNames[allocationId] || allocationId;
 }
 
 function toggleAlignmentProject() {
@@ -1281,11 +1334,21 @@ async function showPage(pageId) {
 
         // Show sanctions calculation if active
         const projectText = gameState.projectsUnlocked ? ' or project' : '';
+        let headerText;
         if (gameState.hasSanctions) {
-            headerDiv.innerHTML = `Allocate <strong>${corporateResources}M</strong> AI labor-hours to <strong>one</strong> sector${projectText} this month (base compute cut 50% by sanctions):`;
+            headerText = `Allocate <strong>${corporateResources}M</strong> AI labor-hours to <strong>one</strong> sector${projectText} this month (base compute cut 50% by sanctions):`;
         } else {
-            headerDiv.innerHTML = `Allocate <strong>${corporateResources}M</strong> AI labor-hours to <strong>one</strong> sector${projectText} this month:`;
+            headerText = `Allocate <strong>${corporateResources}M</strong> AI labor-hours to <strong>one</strong> sector${projectText} this month:`;
         }
+        
+        // Add superpersuasion recommendation if applicable
+        if (gameState.superpersuasionDisabledAllocation) {
+            const aiSystemName = getAISystemVersion(gameState.companyName, gameState.playerAILevel);
+            const allocationName = getAllocationDisplayName(gameState.superpersuasionDisabledAllocation);
+            headerText += ` ${aiSystemName} recommends against investing in ${allocationName}.`;
+        }
+        
+        headerDiv.innerHTML = headerText;
         actionsPanel.appendChild(headerDiv);
 
         // Create main container for allocation and research sections
@@ -1388,17 +1451,18 @@ async function showPage(pageId) {
                 button.appendChild(tooltipSpan);
             }
 
-            // Style based on selection state, affordability, and Shaken status
+            // Style based on selection state, affordability, Shaken status, and superpersuasion effect
             const isShaken = page.actions[index] === 'ai-rd' && gameState.statusEffects.shaken && gameState.statusEffects.shaken.restrictionsActive;
+            const isSuperpersuasionDisabled = gameState.superpersuasionDisabledAllocation === page.actions[index];
             
             if (gameState.selectedAllocation === page.actions[index]) {
                 button.style.backgroundColor = '#005a87';
                 button.style.border = '2px solid #66b3ff';
-            } else if (gameState.selectedAllocation || isShaken) {
+            } else if (gameState.selectedAllocation || isShaken || isSuperpersuasionDisabled) {
                 button.style.backgroundColor = '#666';
                 button.style.opacity = '0.6';
                 button.style.cursor = 'not-allowed';
-                if (isShaken) {
+                if (isShaken || isSuperpersuasionDisabled) {
                     button.disabled = true;
                 }
             } else if (!canAfford) {
@@ -1433,6 +1497,14 @@ async function showPage(pageId) {
                 // Check if Shaken prevents AI R&D
                 if (page.actions[index] === 'ai-rd' && gameState.statusEffects.shaken && gameState.statusEffects.shaken.restrictionsActive) {
                     alert("AI capabilities development is halted due to the Shaken status effect.");
+                    return;
+                }
+                
+                // Check if superpersuasion prevents this allocation
+                if (gameState.superpersuasionDisabledAllocation === page.actions[index]) {
+                    const aiSystemName = getAISystemVersion(gameState.companyName, gameState.playerAILevel);
+                    const allocationName = getAllocationDisplayName(page.actions[index]);
+                    alert(`${aiSystemName} recommends against investing in ${allocationName}.`);
                     return;
                 }
                 
@@ -1515,14 +1587,20 @@ async function showPage(pageId) {
                 background-color: #2d5a2d;
             `;
             
-            // Style based on selection state and affordability
+            // Check if superpersuasion disables this project
+            const isAlignmentSuperpersuasionDisabled = gameState.superpersuasionDisabledAllocation === 'alignment-project';
+            
+            // Style based on selection state, affordability, and superpersuasion effect
             if (gameState.selectedAllocation === 'alignment-project') {
                 alignmentBtn.style.backgroundColor = '#005a87';
                 alignmentBtn.style.border = '2px solid #66b3ff';
-            } else if (gameState.selectedAllocation) {
+            } else if (gameState.selectedAllocation || isAlignmentSuperpersuasionDisabled) {
                 alignmentBtn.style.backgroundColor = '#666';
                 alignmentBtn.style.opacity = '0.6';
                 alignmentBtn.style.cursor = 'not-allowed';
+                if (isAlignmentSuperpersuasionDisabled) {
+                    alignmentBtn.disabled = true;
+                }
             } else if (!canAfford) {
                 alignmentBtn.style.backgroundColor = '#666';
                 alignmentBtn.style.opacity = '0.6';
@@ -1547,6 +1625,13 @@ async function showPage(pageId) {
             }
             
             alignmentBtn.onclick = () => {
+                // Check if superpersuasion prevents this allocation
+                if (gameState.superpersuasionDisabledAllocation === 'alignment-project') {
+                    const aiSystemName = getAISystemVersion(gameState.companyName, gameState.playerAILevel);
+                    alert(`${aiSystemName} recommends against investing in alignment research.`);
+                    return;
+                }
+                
                 if (!gameState.selectedAllocation && canAfford) {
                     gameState.selectedAllocation = 'alignment-project';
                     
@@ -1577,7 +1662,10 @@ async function showPage(pageId) {
                 background-color: #5a2d5a;
             `;
             
-            // Style based on selection state, affordability, and max progress
+            // Check if superpersuasion disables this project
+            const isInterpretabilitySuperpersuasionDisabled = gameState.superpersuasionDisabledAllocation === 'interpretability-project';
+            
+            // Style based on selection state, affordability, max progress, and superpersuasion effect
             if (isMaxed) {
                 interpretabilityBtn.style.backgroundColor = '#666';
                 interpretabilityBtn.style.opacity = '0.6';
@@ -1586,10 +1674,13 @@ async function showPage(pageId) {
             } else if (gameState.selectedAllocation === 'interpretability-project') {
                 interpretabilityBtn.style.backgroundColor = '#005a87';
                 interpretabilityBtn.style.border = '2px solid #66b3ff';
-            } else if (gameState.selectedAllocation) {
+            } else if (gameState.selectedAllocation || isInterpretabilitySuperpersuasionDisabled) {
                 interpretabilityBtn.style.backgroundColor = '#666';
                 interpretabilityBtn.style.opacity = '0.6';
                 interpretabilityBtn.style.cursor = 'not-allowed';
+                if (isInterpretabilitySuperpersuasionDisabled) {
+                    interpretabilityBtn.disabled = true;
+                }
             } else if (!canAfford) {
                 interpretabilityBtn.style.backgroundColor = '#666';
                 interpretabilityBtn.style.opacity = '0.6';
@@ -1614,6 +1705,13 @@ async function showPage(pageId) {
             }
             
             interpretabilityBtn.onclick = () => {
+                // Check if superpersuasion prevents this allocation
+                if (gameState.superpersuasionDisabledAllocation === 'interpretability-project') {
+                    const aiSystemName = getAISystemVersion(gameState.companyName, gameState.playerAILevel);
+                    alert(`${aiSystemName} recommends against investing in interpretability research.`);
+                    return;
+                }
+                
                 if (!gameState.selectedAllocation && canAfford && !isMaxed) {
                     gameState.selectedAllocation = 'interpretability-project';
                     
@@ -1824,7 +1922,7 @@ function addDebugControls() {
     techDropdown.innerHTML = `
         <option value="">Debug: Toggle Tech</option>
         <option value="robotaxi">Toggle Robotaxi</option>
-        <option value="aiNovelist">Toggle AI Novelist</option>
+        <option value="aiNovelist">Toggle Normal Persuasion</option>
         <option value="aiResearchLead">Toggle AI Research Lead</option>
         <option value="persuasion">Toggle Superpersuasion</option>
         <option value="medicine">Toggle Medicine</option>

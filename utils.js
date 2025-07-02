@@ -181,6 +181,7 @@ function createInitialGameState() {
         isDisillusioned: false,
         selectedAllocation: null,
         allocationApplied: false,
+        superpersuasionDisabledAllocation: null, // Allocation disabled by superpersuasion effect
         eventsSeen: {}, // Tracks count of each event type seen
         choicesTaken: {}, // Tracks choices taken for each event type
         eventsAccepted: new Set(), // Tracks which DSA events have been accepted
