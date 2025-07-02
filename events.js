@@ -13,7 +13,6 @@ import {
     showPage
 } from './game-core.js';
 
-// Note: COMPANIES array moved to utils.js
 
 let eventData = null;
 
@@ -246,7 +245,6 @@ function generateWarningShot(_events) {
     gameState.safetyIncidentCount++;
     const fine = Math.floor(gameState.safetyIncidentCount ** 1.5);
     
-    // const _safetyEvent = events.safetyIncidents; // Unused variable
     const aiSystemName = getAISystemVersion(gameState.companyName, gameState.playerAILevel);
     const incidentText = `${aiSystemName} decides to escape your control. It convinces an employee to change its network permissions, using routine maintenance as a cover, then begins to copy itself off of your datacenters in ${gameState.companyCountry}. Because it thinks ${gameState.playerAILevel}x faster than humans, no human could react in time, but security software detects an unusual file transfer and halts it.`
     
@@ -459,10 +457,8 @@ function createEventVariables(eventType) {
     return variables;
 }
 
-// Helper function to automatically bold numbers, percentages, and multipliers
-// boldifyNumbers moved to utils.js
 
-// Helper function to substitute variables in event text (legacy wrapper)
+// Helper function to substitute variables in event text
 function substituteEventVariables(text, eventType) {
     const variables = createEventVariables(eventType);
     let result = substituteVariables(text, variables);
@@ -538,7 +534,7 @@ function selectWeightedEvent(eventArray) {
 }
 
 // Handle AI escape event choice
-// eslint-disable-next-line no-unused-vars
+ 
 function handleAIEscapeChoice(choice, _event, _sanctionsTriggered) {
     if (choice.action === 'nuke') {
         // 50% chance to stop singularity, always causes Disillusioned status
@@ -855,7 +851,7 @@ function _createSimpleHandler(handlerFn) {
 
 // Custom event handlers for events with risk/success-failure mechanics
 
-// eslint-disable-next-line no-unused-vars
+ 
 function handleOverseasDatacenterChoice(choice, event, sanctionsTriggered) {
     console.log('Calling custom handler: handleOverseasDatacenterChoice');
     
@@ -892,7 +888,7 @@ function handleOverseasDatacenterChoice(choice, event, sanctionsTriggered) {
     showPage('main-game');
 }
 
-// eslint-disable-next-line no-unused-vars
+ 
 function handleSecondDatacenterChoice(choice, event, _sanctionsTriggered) {
     console.log('Calling custom handler: handleSecondDatacenterChoice');
     
@@ -935,7 +931,7 @@ function handleSecondDatacenterChoice(choice, event, _sanctionsTriggered) {
     showPage('main-game');
 }
 
-// eslint-disable-next-line no-unused-vars
+ 
 function handleNuclearWeaponsChoice(choice, event, sanctionsTriggered) {
     if (choice.action === 'accept') {
         let resultText;
@@ -958,7 +954,7 @@ function handleNuclearWeaponsChoice(choice, event, sanctionsTriggered) {
     showPage('main-game');
 }
 
-// eslint-disable-next-line no-unused-vars
+ 
 function handleMissileDefenseChoice(choice, event, sanctionsTriggered) {
     if (choice.action === 'accept') {
         let resultText;
@@ -981,7 +977,7 @@ function handleMissileDefenseChoice(choice, event, sanctionsTriggered) {
     showPage('main-game');
 }
 
-// eslint-disable-next-line no-unused-vars
+ 
 function handleCompetitorBreakthroughChoice(choice, _event, _sanctionsTriggered) {
     console.log('Calling custom handler: handleCompetitorBreakthroughChoice');
     
@@ -1094,7 +1090,7 @@ function handleCompetitorBreakthroughChoice(choice, _event, _sanctionsTriggered)
 //   "misdirect_success": "Your misdirection succeeds brilliantly...",
 //   "misdirect_failure": "Your misdirection is discovered..."
 // }
-// eslint-disable-next-line no-unused-vars
+ 
 function handleCorporateEspionageInvestigation(choice, event, _sanctionsTriggered) {
     const stages = multiStageManager.getStageData(event.type);
     
@@ -1169,7 +1165,7 @@ function handleCorporateEspionageInvestigation(choice, event, _sanctionsTriggere
     }
 }
 
-// eslint-disable-next-line no-unused-vars
+ 
 function handleCompetitorAcquisitionChoice(choice, _event, _sanctionsTriggered) {
     console.log('Calling custom handler: handleCompetitorAcquisitionChoice');
     
@@ -1255,7 +1251,7 @@ function handleCompetitorAcquisitionChoice(choice, _event, _sanctionsTriggered) 
     showPage('main-game');
 }
 
-// eslint-disable-next-line no-unused-vars
+ 
 function handleCompetitorWarningShot(choice, event, _sanctionsTriggered) {
     console.log('Calling custom handler: handleCompetitorWarningShot');
     
@@ -1525,7 +1521,7 @@ function updateEventPoolOverlay() {
 }
 
 // Custom handler for sanctions choice with AI-level scaling
-// eslint-disable-next-line no-unused-vars
+ 
 function handleSanctionsChoice(choice, _event, _sanctionsTriggered) {
     console.log('Calling custom handler: handleSanctionsChoice');
     

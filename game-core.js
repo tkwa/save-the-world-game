@@ -44,7 +44,6 @@ import {
     calculateEndGameScore
 } from './endgame.js';
 
-// Note: Functions from other modules will be imported when we resolve dependencies
 /* global updateEventPoolOverlay, startDateTicker, MutationObserver, setInterval, clearInterval, prompt, alert */
 /* eslint-disable no-unused-vars */
 /* global continueToNextPhase */
@@ -52,7 +51,6 @@ import {
 
 const VERSION = "v0.5.0"
 
-// Note: INITIAL_TECHNOLOGIES moved to utils.js
 
 // Technology visibility conditions - functions that determine if a tech should be visible
 const TECHNOLOGY_VISIBILITY = {
@@ -89,9 +87,7 @@ const TECHNOLOGY_VISIBILITY = {
 };
 
 // Utility function to calculate galaxy scoring multipliers
-// Note: getGalaxyMultipliers moved to utils.js
 
-// Note: GAME_CONSTANTS, INITIAL_TECHNOLOGIES, and createInitialGameState moved to utils.js
 
 // Game state imported from utils.js
 
@@ -377,7 +373,6 @@ const storyContent = {
     },
 };
 
-// Note: getAISystemVersion moved to utils.js
 
 function generateAICapabilitiesTooltip() {
     // Create ranking array with all companies
@@ -420,7 +415,6 @@ function getAIRisksByCapability(capabilityLevel) {
     }
 }
 
-// Note: calculateAdjustedRiskPercent and getRiskFactors moved to utils.js
 
 function generateRogueAIRiskTooltip() {
     const rawRisk = gameState.rawRiskLevel;
@@ -2394,7 +2388,6 @@ async function handleEventChoice(choiceIndex) {
     }
 }
 
-// Note: giveResources moved to events.js
 
 function toggleTechnology(tech) {
     if (!tech) return;

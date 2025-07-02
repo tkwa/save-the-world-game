@@ -858,9 +858,6 @@ function testConditionalChoices() {
     return suite.runAll();
 }
 
-// Mock functions for Node.js environment (unused but available for future use)
-function _mockUpdateStatusBar() {}
-function _mockShowPage() {}
 
 // Test multi-stage event system
 function testMultiStageEventSystem() {

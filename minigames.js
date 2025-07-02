@@ -3,7 +3,7 @@ import { showPage } from './game-core.js';
 
 /* global alert, updateForecastingDisplay */
 
-// Generic minigame starter - avoid circular dependency by using direct function calls
+// Generic minigame starter - dispatches to specific minigame functions
 function startMinigame(type) {
     switch (type) {
         case 'capability-evals':
@@ -809,8 +809,6 @@ function endAlignmentMinigame() {
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const pixels = imageData.data;
     let bluePixels = 0;
-    let _redPixels = 0;
-    let _totalNonBlackPixels = 0;
     
     // Check every pixel (RGBA = 4 bytes per pixel)
     for (let i = 0; i < pixels.length; i += 4) {
