@@ -1907,7 +1907,7 @@ function addDebugControls() {
         <option value="activate-medicine">Activate Medicine Tech</option>
         <option value="activate-robotics">Activate Robotics Tech</option>
         <option value="activate-humanoid-robots">Activate Humanoid Robots Tech</option>
-        <option value="activate-persuasion">Activate Superpersuasion Tech</option>
+        <option value="activate-superpersuasion">Activate Superpersuasion Tech</option>
         <option value="activate-nukes">Activate Nuclear Weapons Tech</option>
         <option value="reset-all-tech">Reset All Technologies</option>
         <option value="test-ai-manipulation">Test AI Manipulation</option>
@@ -2247,7 +2247,7 @@ function applyStatusEffect(effectType) {
         case 'activate-humanoid-robots':
             gameState.technologies.humanoidRobots = true;
             break;
-        case 'activate-persuasion':
+        case 'activate-superpersuasion':
             gameState.technologies.superpersuasion = true;
             break;
         case 'activate-nukes':

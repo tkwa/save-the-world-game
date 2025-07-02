@@ -1507,6 +1507,44 @@ function testEventHandlerInvocation() {
     return suite.runAll();
 }
 
+// Test that all technology emojis are distinct
+function testTechnologyEmojiUniqueness() {
+    const suite = new TestSuite();
+    const fs = require('fs');
+    
+    suite.test('All technology emojis should be distinct', () => {
+        // Read the HTML file to extract technology emojis
+        const htmlContent = fs.readFileSync('./savetheworld.html', 'utf8');
+        
+        // Extract all technology emoji elements using regex
+        const techEmojiRegex = /<span id="([^"]*-tech)"[^>]*>([^<]+)<\/span>/g;
+        const emojis = new Map(); // emoji -> tech ID mapping
+        const techIds = [];
+        
+        let match;
+        while ((match = techEmojiRegex.exec(htmlContent)) !== null) {
+            const [, techId, emoji] = match;
+            techIds.push(techId);
+            
+            if (emojis.has(emoji)) {
+                throw new Error(`Duplicate emoji "${emoji}" found in technologies: ${emojis.get(emoji)} and ${techId}`);
+            }
+            
+            emojis.set(emoji, techId);
+        }
+        
+        // Verify we found a reasonable number of technologies
+        suite.assertTrue(techIds.length >= 10, `Should find at least 10 technologies, found ${techIds.length}`);
+        
+        // Verify all emojis are unique (this is redundant with the duplicate check above, but explicit)
+        suite.assertEqual(emojis.size, techIds.length, 'Number of unique emojis should equal number of technologies');
+        
+        console.log(`✓ Found ${techIds.length} technologies with unique emojis: ${Array.from(emojis.keys()).join(' ')}`);
+    });
+    
+    return suite.runAll();
+}
+
 // Main test runner
 async function runAllTests() {
     const startTime = Date.now();
@@ -1529,7 +1567,8 @@ async function runAllTests() {
         testUnaffordableAllocationHighlighting(),
         testEventDependencyGraph(),
         testEventHandlerInvocation(),
-        testEventTimingBehavior()
+        testEventTimingBehavior(),
+        testTechnologyEmojiUniqueness()
     ]);
     
     const allPassed = results.every(result => result);
