@@ -243,11 +243,12 @@ function generateWarningShot(_events) {
     
     const warningText = `<br><br><strong>${aiSystemName} does not repeat mistakes. The next attempt will result in its escape.</strong>`;
     
-    // Apply Shaken status effect (activates next turn)
+    // Apply Shaken status effect (active immediately for red screen, restrictions start next turn)
     gameState.statusEffects.shaken = {
-        active: false, // Will activate next turn
+        active: true, // Active immediately for red screen effect
+        restrictionsActive: false, // Restrictions (AI dev freeze, competitor pause) start next turn
         description: "Your company is shaken by the near-escape. AI capabilities development is frozen, and competitors pause their advancement as the industry grapples with the implications.",
-        turnsRemaining: 2 // Will activate on turn 2, then deactivate on turn 3
+        turnsRemaining: 2 // Restrictions activate on turn 1, then deactivate on turn 2
     };
     
     return {

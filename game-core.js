@@ -661,8 +661,8 @@ function handleSingularityButton(action) {
 
 async function advanceTurn() {
 
-    // Increase competitor AI levels using continuous geometric distribution (unless Shaken)
-    if (!gameState.statusEffects.shaken || !gameState.statusEffects.shaken.active) {
+    // Increase competitor AI levels using continuous geometric distribution (unless Shaken restrictions active)
+    if (!gameState.statusEffects.shaken || !gameState.statusEffects.shaken.restrictionsActive) {
         const highestCompetitor = Math.max(...gameState.competitorAILevels);
         const mean = highestCompetitor / GAME_CONSTANTS.COMPETITOR_GROWTH_DIVISOR;
         
@@ -728,13 +728,18 @@ async function advanceTurn() {
         if (effectData && effectData.turnsRemaining !== undefined) {
             effectData.turnsRemaining--;
             
-            // Activate Shaken effect when turnsRemaining reaches 1 (next turn after warning shot)
-            if (effectName === 'shaken' && effectData.turnsRemaining === 1 && !effectData.active) {
-                effectData.active = true;
+            // Activate Shaken restrictions when turnsRemaining reaches 1 (next turn after warning shot)
+            if (effectName === 'shaken' && effectData.turnsRemaining === 1 && !effectData.restrictionsActive) {
+                effectData.restrictionsActive = true;
             }
             // Deactivate when turns reach 0
             else if (effectData.turnsRemaining <= 0) {
-                effectData.active = false;
+                if (effectName === 'shaken') {
+                    // For Shaken, remove the entire effect when turns reach 0
+                    delete gameState.statusEffects.shaken;
+                } else {
+                    effectData.active = false;
+                }
             }
         }
     }
@@ -1071,8 +1076,8 @@ function applyResourceAllocation(resourceType, corporateResources) {
     
     switch(resourceType) {
         case 'ai-rd':
-            // Prevent AI R&D when Shaken
-            if (gameState.statusEffects.shaken && gameState.statusEffects.shaken.active) {
+            // Prevent AI R&D when Shaken restrictions are active
+            if (gameState.statusEffects.shaken && gameState.statusEffects.shaken.restrictionsActive) {
                 alert("AI capabilities development is halted due to the Shaken status effect.");
                 return;
             }
@@ -1384,7 +1389,7 @@ async function showPage(pageId) {
             }
 
             // Style based on selection state, affordability, and Shaken status
-            const isShaken = page.actions[index] === 'ai-rd' && gameState.statusEffects.shaken && gameState.statusEffects.shaken.active;
+            const isShaken = page.actions[index] === 'ai-rd' && gameState.statusEffects.shaken && gameState.statusEffects.shaken.restrictionsActive;
             
             if (gameState.selectedAllocation === page.actions[index]) {
                 button.style.backgroundColor = '#005a87';
@@ -1426,7 +1431,7 @@ async function showPage(pageId) {
 
             button.onclick = () => {
                 // Check if Shaken prevents AI R&D
-                if (page.actions[index] === 'ai-rd' && gameState.statusEffects.shaken && gameState.statusEffects.shaken.active) {
+                if (page.actions[index] === 'ai-rd' && gameState.statusEffects.shaken && gameState.statusEffects.shaken.restrictionsActive) {
                     alert("AI capabilities development is halted due to the Shaken status effect.");
                     return;
                 }
