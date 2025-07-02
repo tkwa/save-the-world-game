@@ -1285,7 +1285,7 @@ function handleCompetitorWarningShot(choice, event, _sanctionsTriggered) {
         gameState.statusEffects.shaken = {
             active: true,
             restrictionsActive: true, // Active immediately since the incident already happened
-            description: 'Your organization is paralyzed by uncertainty about the AI race. Resource allocation is significantly impaired.',
+            description: "Your company is shaken by the near-escape. AI capabilities development is frozen, and competitors pause their advancement as the industry grapples with the implications.",
             turnsRemaining: 2 // Will last for 2 turns
         };
         
