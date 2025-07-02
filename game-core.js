@@ -11,9 +11,9 @@ const VERSION = "v0.3.5"
 // Technology visibility conditions - functions that determine if a tech should be visible
 const TECHNOLOGY_VISIBILITY = {
     // Column 1: General technologies  
-    aiNovelist: () => gameState.technologies.robotaxi, // Now represents basic persuasion tech
+    normalPersuasion: () => gameState.eventsAccepted.has('persuasion-breakthrough'), // Basic persuasion tech from event
     aiResearchLead: () => gameState.technologies.robotaxi,
-    persuasion: () => gameState.eventsAccepted.has('persuasion-breakthrough'), // Revealed by persuasion event (superpersuasion)
+    superpersuasion: () => gameState.technologies.normalPersuasion, // Superpersuasion requires basic persuasion
     
     
     // Column 2: Medicine - each depends on the one above
@@ -559,9 +559,9 @@ function getCriticalRiskColor(riskLevel) {
 // Technology element mapping
 const TECHNOLOGY_ELEMENT_MAPPING = {
     'robotaxi-tech': 'robotaxi',
-    'normal-persuasion-tech': 'aiNovelist',
+    'normal-persuasion-tech': 'normalPersuasion',
     'ai-research-lead-tech': 'aiResearchLead',
-    'superpersuasion-tech': 'persuasion',
+    'superpersuasion-tech': 'superpersuasion',
     'medicine-tech': 'medicine',
     'synthetic-biology-tech': 'syntheticBiology',
     'cancer-cure-tech': 'cancerCure',
@@ -775,7 +775,7 @@ function applySuperpersuasionEffect() {
     gameState.superpersuasionDisabledAllocation = null;
     
     // Check conditions: superpersuasion tech active AND risk > 25%
-    if (!gameState.technologies.persuasion || calculateAdjustedRiskPercent() <= 25) {
+    if (!gameState.technologies.superpersuasion || calculateAdjustedRiskPercent() <= 25) {
         return;
     }
     
@@ -1922,9 +1922,9 @@ function addDebugControls() {
     techDropdown.innerHTML = `
         <option value="">Debug: Toggle Tech</option>
         <option value="robotaxi">Toggle Robotaxi</option>
-        <option value="aiNovelist">Toggle Normal Persuasion</option>
+        <option value="normalPersuasion">Toggle Normal Persuasion</option>
         <option value="aiResearchLead">Toggle AI Research Lead</option>
-        <option value="persuasion">Toggle Superpersuasion</option>
+        <option value="superpersuasion">Toggle Superpersuasion</option>
         <option value="medicine">Toggle Medicine</option>
         <option value="syntheticBiology">Toggle Synthetic Biology</option>
         <option value="cancerCure">Toggle Cancer Cure</option>
@@ -2248,7 +2248,7 @@ function applyStatusEffect(effectType) {
             gameState.technologies.humanoidRobots = true;
             break;
         case 'activate-persuasion':
-            gameState.technologies.persuasion = true;
+            gameState.technologies.superpersuasion = true;
             break;
         case 'activate-nukes':
             gameState.technologies.nukes = true;
@@ -2295,7 +2295,7 @@ function addAIManipulation(safetyButton) {
     // 2. Superpersuasion tech is active
     // 3. High risk (50%+)
     const shouldManipulate = gameState.playerAILevel >= 64 && 
-                            gameState.technologies.persuasion && 
+                            gameState.technologies.superpersuasion && 
                             calculateAdjustedRiskPercent() >= 50;
     
     // Override for debug testing

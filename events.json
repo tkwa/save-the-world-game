@@ -463,7 +463,10 @@
           "text": "Develop persuasion systems (-30 Product, doubles diplomacy gain)",
           "action": "accept",
           "cost": { "productPoints": 30 },
-          "benefit": { "diplomacyMultiplier": 2 },
+          "benefit": { 
+            "diplomacyMultiplier": 2,
+            "activateTechnology": "normalPersuasion"
+          },
           "result_text": "Your team begins developing the persuasion systems. The AI-powered platform demonstrates remarkable ability to craft compelling narratives, negotiate complex agreements, and build consensus among diverse stakeholders. Your diplomatic effectiveness doubles as these systems become integrated into all external communications."
         },
         {
@@ -488,7 +491,7 @@
           "text": "Implement superpersuasion (-25 Diplomacy, 40 Product, doubles diplomacy gain again, +🗣️)",
           "action": "accept",
           "cost": {"diplomacyPoints": 25, "productPoints": 40},
-          "benefit": { "diplomacyMultiplier": 2, "activateTechnology": "persuasion" },
+          "benefit": { "diplomacyMultiplier": 2, "activateTechnology": "superpersuasion" },
           "result_text": "Your superpersuasion systems come online. The technology demonstrates capabilities that seem almost supernatural - understanding subtle psychological patterns, predicting social outcomes, and crafting communications with precision that exceeds the best human experts. Your diplomatic influence expands dramatically as these systems reshape how your company engages with the world."
         },
         {

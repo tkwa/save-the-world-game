@@ -91,9 +91,9 @@ const GAME_CONSTANTS = {
 const INITIAL_TECHNOLOGIES = {
     // General technologies (column 1 - all visible from start)
     robotaxi: true, // Starts enabled
-    aiNovelist: false,
+    normalPersuasion: false,
     aiResearchLead: false,
-    persuasion: false,
+    superpersuasion: false,
     // Medicine technologies (column 2 - only medicine visible at start)
     medicine: false,
     syntheticBiology: false,
