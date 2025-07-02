@@ -61,7 +61,12 @@ async function generateEvent() {
                 return {
                     ...choice,
                     text: choiceText,
-                    canAfford: canAfford
+                    canAfford: canAfford,
+                    // Store pre-calculated costs to avoid recalculation inconsistencies
+                    precalculatedCosts: {
+                        money: scaledMoneyCost,
+                        diplomacy: scaledDiplomacyCost
+                    }
                 };
             }
             return choice;
@@ -1453,13 +1458,19 @@ function handleSanctionsChoice(choice, _event, _sanctionsTriggered) {
     let resultText;
     
     if (choice.action === 'accept') {
-        // Calculate scaled costs based on AI level
-        // Goal: roughly 2 turns of funds and diplomacy to lift sanctions
-        const aiLevel = gameState.playerAILevel;
-        const scaledMoneyCost = Math.max(3, Math.round(aiLevel * 0.2)); // Scales with AI level, minimum 3B
-        const scaledDiplomacyCost = Math.max(3, Math.round(aiLevel * 0.15)); // Scales with AI level, minimum 3
+        // Use pre-calculated costs from event generation to ensure consistency
+        let scaledMoneyCost, scaledDiplomacyCost;
+        if (choice.precalculatedCosts) {
+            scaledMoneyCost = choice.precalculatedCosts.money;
+            scaledDiplomacyCost = choice.precalculatedCosts.diplomacy;
+        } else {
+            // Fallback: calculate costs if precalculated values not available
+            const aiLevel = gameState.playerAILevel;
+            scaledMoneyCost = Math.max(3, Math.round(aiLevel * 0.2));
+            scaledDiplomacyCost = Math.max(3, Math.round(aiLevel * 0.15));
+        }
         
-        // Check if player can afford the scaled costs
+        // Check if player can afford the costs (should match the pre-calculated canAfford)
         const canAfford = gameState.money >= scaledMoneyCost && gameState.diplomacyPoints >= scaledDiplomacyCost;
         
         if (canAfford) {

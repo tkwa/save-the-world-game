@@ -1966,6 +1966,17 @@ async function handleEventChoice(choiceIndex) {
 
     const choice = event.choices[choiceIndex];
 
+    // Check if choice is affordable before proceeding
+    const affordability = getChoiceAffordability(choice);
+    if (!affordability.canAfford) {
+        console.warn('Attempted to execute unaffordable choice:', choice.action);
+        const missingList = affordability.missingResources.map(r => 
+            `${r.name}: need ${r.needed}, have ${r.have}`
+        ).join(', ');
+        alert(`Not enough resources: ${missingList}`);
+        return;
+    }
+
     // Track choice taken
     if (!gameState.choicesTaken[event.type]) {
         gameState.choicesTaken[event.type] = {};
