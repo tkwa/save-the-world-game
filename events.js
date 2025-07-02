@@ -388,6 +388,11 @@ function createEventVariables(eventType) {
         
         const competitorName = gameState.competitorNames[selectedIndex] || `Competitor ${selectedIndex + 1}`;
         variables.competitorName = competitorName;
+        
+        // Add a country for international response context
+        const countries = ['the US', 'China', 'the UK', 'the EU', 'Japan', 'South Korea'];
+        const randomCountry = countries[Math.floor(Math.random() * countries.length)];
+        variables.country = randomCountry;
     }
     
     if (eventType === 'competitor-acquisition') {
