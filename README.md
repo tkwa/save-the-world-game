@@ -10,7 +10,8 @@ Open `savetheworld.html` in a browser, e.g. by using Cursor Live Preview or `pyt
 TODO for Claude (check off when finished):
 - [ ] Fix the ESLint warnings in events.js
 - [ ] Read thru the project and remove obsolete comments
-
+- [ ] Can we track our test coverage percentage somehow?
+- [ ] What are some things that could have gone wrong in the ES module migration and how can we write logic tests that are as general as possible in the current 
 
 
 

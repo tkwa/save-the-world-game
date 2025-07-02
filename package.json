@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "test": "node tests.js",
+    "test:coverage": "c8 --exclude='tests.js' --exclude='validate-events.js' --exclude='eslint.config.js' node tests.js",
+    "test:coverage:html": "c8 --exclude='tests.js' --exclude='validate-events.js' --exclude='eslint.config.js' --reporter=html --reporter=text node tests.js",
     "validate": "node validate-events.js",
     "validate:schema": "node validate-events.js",
     "test:all": "npm run validate && npm run test",
@@ -12,6 +14,7 @@
     "lint:unused": "eslint --rule 'no-unused-vars: error' *.js"
   },
   "devDependencies": {
+    "c8": "^8.0.1",
     "eslint": "^9.30.0"
   }
 }
