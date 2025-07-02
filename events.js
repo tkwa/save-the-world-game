@@ -1470,20 +1470,12 @@ function handleSanctionsChoice(choice, _event, _sanctionsTriggered) {
             scaledDiplomacyCost = Math.max(3, Math.round(aiLevel * 0.15));
         }
         
-        // Check if player can afford the costs (should match the pre-calculated canAfford)
-        const canAfford = gameState.money >= scaledMoneyCost && gameState.diplomacyPoints >= scaledDiplomacyCost;
+        // Apply costs and remove sanctions (button should only be clickable if affordable)
+        gameState.money -= scaledMoneyCost;
+        gameState.diplomacyPoints -= scaledDiplomacyCost;
+        gameState.hasSanctions = false;
         
-        if (canAfford) {
-            // Apply scaled costs and remove sanctions
-            gameState.money -= scaledMoneyCost;
-            gameState.diplomacyPoints -= scaledDiplomacyCost;
-            gameState.hasSanctions = false;
-            
-            resultText = `Your lobbying campaign succeeds after spending <strong>$${scaledMoneyCost}B</strong> and <strong>${scaledDiplomacyCost} diplomacy points</strong>. International pressure is lifted through back-channel negotiations. Your company can now operate freely again.`;
-        } else {
-            // Can't afford - sanctions remain
-            resultText = `You lack the resources to mount an effective lobbying campaign (need <strong>$${scaledMoneyCost}B</strong> and <strong>${scaledDiplomacyCost} diplomacy</strong>). Sanctions remain in effect.`;
-        }
+        resultText = `Your lobbying campaign succeeds after spending <strong>$${scaledMoneyCost}B</strong> and <strong>${scaledDiplomacyCost} diplomacy points</strong>. International pressure is lifted through back-channel negotiations. Your company can now operate freely again.`;
     } else {
         // Decline - standard result text
         resultText = choice.result_text;
