@@ -390,16 +390,7 @@ function createEventVariables(eventType) {
         variables.competitorName = competitorName;
         
         // Use player's home country for international response context
-        const playerCountry = gameState.companyCountry;
-        if (playerCountry === 'US') {
-            variables.country = 'the US';
-        } else if (playerCountry === 'CN') {
-            variables.country = 'China';
-        } else if (playerCountry === 'UK') {
-            variables.country = 'the UK';
-        } else {
-            variables.country = 'your country';
-        }
+        variables.country = gameState.companyCountryName || 'your country';
     }
     
     if (eventType === 'competitor-acquisition') {

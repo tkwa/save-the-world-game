@@ -118,12 +118,12 @@ const INITIAL_TECHNOLOGIES = {
 
 // Company metadata shared across the game
 const COMPANIES = [
-    { name: "OpenAI", longName: "OpenAI", homeCountry: "US", flag: "🇺🇸" },
-    { name: "Anthropic", longName: "Anthropic", homeCountry: "US", flag: "🇺🇸" },
-    { name: "DeepMind", longName: "Google DeepMind", homeCountry: "UK", flag: "🇬🇧" },
-    { name: "DeepSeek", longName: "DeepSeek", homeCountry: "CN", flag: "🇨🇳" },
-    { name: "Tencent", longName: "Tencent", homeCountry: "CN", flag: "🇨🇳" },
-    { name: "xAI", longName: "xAI", homeCountry: "US", flag: "🇺🇸" }
+    { name: "OpenAI", longName: "OpenAI", homeCountry: "US", countryName: "the United States", flag: "🇺🇸" },
+    { name: "Anthropic", longName: "Anthropic", homeCountry: "US", countryName: "the United States", flag: "🇺🇸" },
+    { name: "DeepMind", longName: "Google DeepMind", homeCountry: "UK", countryName: "the United Kingdom", flag: "🇬🇧" },
+    { name: "DeepSeek", longName: "DeepSeek", homeCountry: "CN", countryName: "China", flag: "🇨🇳" },
+    { name: "Tencent", longName: "Tencent", homeCountry: "CN", countryName: "China", flag: "🇨🇳" },
+    { name: "xAI", longName: "xAI", homeCountry: "US", countryName: "the United States", flag: "🇺🇸" }
 ];
 
 // Factory function to create initial game state
@@ -202,6 +202,7 @@ function createInitialGameState() {
         playerEquity: 0.1, // Player's equity stake in the company (0.1 = 10%, 0.01 = 1%, etc.)
         companyLongName: null, // Full company name (e.g., "Google DeepMind")
         companyCountry: null, // Company home country code
+        companyCountryName: null, // Full country name (e.g., "the United States")
         companyFlag: null, // Company flag emoji
         offeredEquity: null, // Equity player receives in acquisition event (player's share)
         totalEquityOffered: null, // Total equity offered to the old company

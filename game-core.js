@@ -63,6 +63,7 @@ const storyContent = {
             gameState.companyName = selectedCompany.name;
             gameState.companyLongName = selectedCompany.longName;
             gameState.companyCountry = selectedCompany.homeCountry;
+            gameState.companyCountryName = selectedCompany.countryName;
             gameState.companyFlag = selectedCompany.flag;
             
             // Assign competitor companies (excluding player's company)
@@ -1218,6 +1219,7 @@ function resetGameState() {
     gameState.correlationDataset = null;
     gameState.currentMinigame = null;
     gameState.companyName = null;
+    gameState.companyCountryName = null;
     gameState.currentTurn = GAME_CONSTANTS.INITIAL_TURN;
     gameState.currentMonth = "January";
     gameState.currentYear = GAME_CONSTANTS.INITIAL_YEAR;
