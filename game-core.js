@@ -4,38 +4,42 @@
 /* global continueToNextPhase */
 /* eslint-enable no-unused-vars */
 
-const VERSION = "v0.4.0"
+const VERSION = "v0.5.0"
 
 // Note: INITIAL_TECHNOLOGIES moved to utils.js
 
 // Technology visibility conditions - functions that determine if a tech should be visible
 const TECHNOLOGY_VISIBILITY = {
     // Column 1: General technologies  
-    normalPersuasion: () => gameState.eventsAccepted.has('persuasion-breakthrough'), // Basic persuasion tech from event
-    aiResearchLead: () => gameState.technologies.robotaxi,
-    superpersuasion: () => gameState.technologies.normalPersuasion, // Superpersuasion requires basic persuasion
+    robotaxi: () => true, // Always visible (including during intro)
+    normalPersuasion: () => gameState.mainGameStarted && gameState.eventsAccepted.has('persuasion-breakthrough'), // Basic persuasion tech from event
+    aiResearchLead: () => gameState.mainGameStarted && gameState.technologies.robotaxi,
+    superpersuasion: () => gameState.mainGameStarted && gameState.technologies.normalPersuasion, // Superpersuasion requires basic persuasion
     
     
     // Column 2: Medicine - each depends on the one above
-    syntheticBiology: () => gameState.technologies.medicine,
-    cancerCure: () => gameState.technologies.syntheticBiology,
-    brainUploading: () => gameState.technologies.cancerCure,
+    medicine: () => gameState.mainGameStarted, // Show medicine in main game
+    syntheticBiology: () => gameState.mainGameStarted && gameState.technologies.medicine,
+    cancerCure: () => gameState.mainGameStarted && gameState.technologies.syntheticBiology,
+    brainUploading: () => gameState.mainGameStarted && gameState.technologies.cancerCure,
     
     // Column 3: Robotics - each depends on the one above  
-    humanoidRobots: () => gameState.technologies.robotics,
-    roboticSupplyChains: () => gameState.technologies.humanoidRobots,
-    nanotech: () => gameState.technologies.roboticSupplyChains,
+    robotics: () => gameState.mainGameStarted, // Show robotics in main game
+    humanoidRobots: () => gameState.mainGameStarted && gameState.technologies.robotics,
+    roboticSupplyChains: () => gameState.mainGameStarted && gameState.technologies.humanoidRobots,
+    nanotech: () => gameState.mainGameStarted && gameState.technologies.roboticSupplyChains,
     
     // Column 4: Alignment - monitoring and alignment require projects unlocked, interpretability always visible
-    aiMonitoring: () => gameState.projectsUnlocked,
-    aiControl: () => gameState.technologies.aiMonitoring,
-    aiAlignment: () => gameState.projectsUnlocked,
-    aiInterpretability: () => true, // Always visible
+    aiMonitoring: () => gameState.mainGameStarted && gameState.projectsUnlocked,
+    aiControl: () => gameState.mainGameStarted && gameState.technologies.aiMonitoring,
+    aiAlignment: () => gameState.mainGameStarted && gameState.projectsUnlocked,
+    aiInterpretability: () => gameState.mainGameStarted, // Show in main game
     
     // Column 5: Military - special dependencies
-    bioweapons: () => gameState.technologies.syntheticBiology,
-    killerDrones: () => gameState.technologies.robotics,
-    nukes: () => gameState.technologies.humanoidRobots
+    cyberWarfare: () => gameState.mainGameStarted, // Show cyber warfare in main game
+    bioweapons: () => gameState.mainGameStarted && gameState.technologies.syntheticBiology,
+    killerDrones: () => gameState.mainGameStarted && gameState.technologies.robotics,
+    nukes: () => gameState.mainGameStarted && gameState.technologies.humanoidRobots
 };
 
 // Utility function to calculate galaxy scoring multipliers
@@ -52,8 +56,56 @@ const storyContent = {
         title: "",
         text: `<div style="position: absolute; top: 10px; right: 15px; color: #666; font-size: 12px;">${VERSION}</div>`,
         buttons: [
-            { text: "New Game", action: "goto", target: "game-setup" }
+            { text: "New Game", action: "goto", target: "intro" }
         ]
+    },
+    intro: {
+        title: function() {
+            const role = 'CEO'; // Always CEO during intro
+            const companyDisplay = (typeof introState !== 'undefined' && introState.companyName) ? introState.companyName : 'Company';
+            const currentMonth = (typeof introState !== 'undefined' && introState.currentMonth) ? introState.currentMonth : 'December';
+            const currentYear = (typeof introState !== 'undefined' && introState.currentYear) ? introState.currentYear : 2024;
+            const flagDisplay = (typeof introState !== 'undefined' && introState.selectedCompany && introState.selectedCompany.flag) ? 
+                `<span style="font-size: 20px; margin-left: 8px;">${introState.selectedCompany.flag}</span>` : '';
+            
+            return `<div style="display: flex; justify-content: space-between; align-items: center;">
+                <span>${currentMonth} ${currentYear}</span>
+                <span style="font-size: 14px; color: #999;">
+                    Role: ${role}, ${companyDisplay}${flagDisplay}
+                </span>
+            </div>`;
+        },
+        text: function() {
+            return `
+                <button id="intro-skip-button" onclick="startMainGame()">Skip</button>
+                <button id="intro-debug-speed-button" onclick="toggleIntroDebugSpeed()" 
+                        style="position: absolute; top: 60px; right: 20px; background-color: #666; color: white; padding: 6px 12px; border: none; border-radius: 3px; cursor: pointer; font-size: 12px; font-family: 'Courier New', Courier, monospace;">
+                    Debug: 10x Speed (OFF)
+                </button>
+                
+                <div style="text-align: center;">
+                    <button id="intro-ai-button" class="intro-ai-button" onclick="handleAIRDButtonPress()">
+                        AI R&D (+3%)
+                    </button>
+                </div>
+                
+                <div id="intro-text-container" class="intro-text-container">
+                    <!-- Progressive text will appear here -->
+                </div>
+                
+                <div style="text-align: center;">
+                    <button id="intro-transition-button" onclick="startMainGame()">
+                        Begin
+                    </button>
+                </div>
+            `;
+        },
+        showStatus: true,
+        buttons: [],
+        onShow: function() {
+            // Initialize the intro sequence when this page loads
+            initializeIntro();
+        }
     },
     "game-setup": {
         title: "January 2026",
@@ -695,6 +747,12 @@ async function advanceTurn() {
         gameState.money += gameState.incomeBonus;
     }
 
+    // Apply monthly compounding to international treaty progress (5% growth)
+    if (gameState.internationalTreatyProgress && gameState.internationalTreatyProgress > 0 && gameState.internationalTreatyProgress < 2000) {
+        const monthlyGrowth = gameState.internationalTreatyProgress * 0.05; // 5% compound growth
+        gameState.internationalTreatyProgress = Math.min(2000, gameState.internationalTreatyProgress + monthlyGrowth);
+    }
+
     // Advance turn
     gameState.currentTurn++;
     const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -960,13 +1018,13 @@ function generateActionTooltip(actionType, _resources) {
             return `Understanding AI decision-making processes. Each allocation increases progress by <strong>+${progressGain.toFixed(1)}%</strong>. Interpretability progress has reduced Rogue AI risk by <strong>${interpretabilityRiskReduction.toFixed(1)}%</strong>.`;
         case 'international-treaty-project':
             const currentProgress = gameState.internationalTreatyProgress || 0;
-            const progressRemaining = 2000 - currentProgress;
             const isCompleted = currentProgress >= 2000;
+            const availableDiplomacy = gameState.diplomacyPoints || 0;
             
             if (isCompleted) {
                 return `International treaty to pause frontier AI development has been completed. A global moratorium on advanced AI training is now in effect.`;
             } else {
-                return `Draft a comprehensive international treaty to pause frontier AI development until robust safety protocols are established. Progress: <strong>${currentProgress}/2000</strong> (${progressRemaining} diplomacy points remaining). Costs diplomacy points instead of money.`;
+                return `Draft a comprehensive international treaty to pause frontier AI development until robust safety protocols are established. Progress: <strong>${currentProgress}/2000</strong>. Selecting this option will invest all <strong>${availableDiplomacy}</strong> available diplomacy points toward the treaty goal. Treaty progress compounds by <strong>5% per month</strong> - early investment is rewarded.`;
             }
         default:
             return '';
@@ -1172,10 +1230,11 @@ function applyResourceAllocation(resourceType, corporateResources) {
             gameState.interpretabilityProgress = Math.min(100, Math.sqrt(gameState.interpretabilityLaborHours / 1000) * 100);
             break;
         case 'international-treaty-project':
-            // International treaty costs diplomacy points instead of money
-            gameState.diplomacyPoints = Math.max(0, gameState.diplomacyPoints - gains.safetyCost);
-            // Add progress towards treaty completion (requires 2000 total)
-            gameState.internationalTreatyProgress += corporateResources;
+            // International treaty uses ALL available diplomacy points
+            const availableDiplomacy = gameState.diplomacyPoints;
+            gameState.diplomacyPoints = 0; // Use all diplomacy points
+            // Add all diplomacy points to treaty progress
+            gameState.internationalTreatyProgress += availableDiplomacy;
             
             // Check if treaty is completed
             if (gameState.internationalTreatyProgress >= 2000) {
@@ -1759,7 +1818,9 @@ async function showPage(pageId) {
                 // Calculate if progress is maxed out
                 const isTreatyMaxed = treatyProgress >= 2000;
                 
-                treatyBtn.innerHTML = `Int'l Treaty 🕊️ ${treatyProgress.toFixed(0)}/2000 (-${Math.round(cost * 10) / 10} Diplomacy)`;
+                // Treaty uses all available diplomacy points
+                const availableDiplomacy = gameState.diplomacyPoints;
+                treatyBtn.innerHTML = `Int'l Treaty 🕊️ ${(treatyProgress / 2000 * 100).toFixed(0)}%  (Diplomacy)`;
                 treatyBtn.style.cssText = `
                     width: 200px;
                     height: 50px;
@@ -1773,9 +1834,8 @@ async function showPage(pageId) {
                 // Check if superpersuasion disables this project
                 const isTreatySuperpersuasionDisabled = gameState.superpersuasionDisabledAllocation === 'international-treaty-project';
                 
-                // Check affordability - treaties cost diplomacy instead of money
-                const diplomacyCost = cost; // Same cost as safety projects but in diplomacy points
-                const canAffordTreaty = gameState.diplomacyPoints >= diplomacyCost;
+                // Check affordability - need at least 1 diplomacy point to make progress
+                const canAffordTreaty = availableDiplomacy > 0;
                 
                 // Style based on selection state, affordability, max progress, and superpersuasion effect
                 if (isTreatyMaxed) {
@@ -1934,6 +1994,10 @@ async function showPage(pageId) {
                             // Reset game state when restarting from end screen
                             resetGameState();
                         }
+                        if (button.target === 'intro' && gameState.currentPage === 'start') {
+                            // Reset intro state when starting new game
+                            resetIntroState();
+                        }
                         gameState.currentPage = button.target;
                         showPage(button.target);
                     } else if (button.action === 'continue') {
@@ -1957,8 +2021,10 @@ async function showPage(pageId) {
 }
 
 function addDebugControls() {
-    // Remove existing debug controls to avoid duplicates
+    // Capture existing visibility state before removing
     const existingDebug = document.getElementById('debug-controls');
+    const wasVisible = existingDebug && existingDebug.style.display !== 'none';
+    
     if (existingDebug) {
         existingDebug.remove();
     }
@@ -2085,6 +2151,13 @@ function addDebugControls() {
     techsBtn.style.cssText = debugButtonStyle;
     debugControls.appendChild(techsBtn);
     
+    // Intro Page button
+    const introBtn = document.createElement('button');
+    introBtn.textContent = 'Intro Page';
+    introBtn.onclick = () => showPage('intro');
+    introBtn.style.cssText = debugButtonStyle;
+    debugControls.appendChild(introBtn);
+    
     // Main Game button
     const mainGameBtn = document.createElement('button');
     mainGameBtn.textContent = 'Main Game';
@@ -2147,8 +2220,8 @@ function addDebugControls() {
     setAILevelBtn.style.cssText = debugButtonStyle;
     debugControls.appendChild(setAILevelBtn);
     
-    // Add to page (initially hidden)
-    debugControls.style.display = 'none';
+    // Add to page (preserve previous visibility state, or hide if first time)
+    debugControls.style.display = wasVisible ? 'flex' : 'none';
     document.body.appendChild(debugControls);
     
     // Populate dropdown after a short delay

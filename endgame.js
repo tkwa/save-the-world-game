@@ -1,15 +1,6 @@
 // End game logic for Critical Path game
 /* global calculateAdjustedRiskPercent, getRiskColor, getGalaxyMultipliers, showPage, GAME_CONSTANTS */
 
-// Helper function to ensure endgame adjusted risk is calculated
-function ensureEndgameAdjustedRisk() {
-    if (gameState.endgameAdjustedRisk === null || gameState.endgameAdjustedRisk === undefined) {
-        // Use shared function from utils.js for consistent risk calculation
-        gameState.endgameAdjustedRisk = calculateAdjustedRiskPercent();
-    }
-    return gameState.endgameAdjustedRisk;
-}
-
 
 // Helper function to format alignment status
 function formatAlignmentStatus(isAligned) {
@@ -154,7 +145,7 @@ function getPhase1Text() {
 }
 
 function getPhase2Text() {
-    const adjustedRisk = ensureEndgameAdjustedRisk();
+    const adjustedRisk = calculateAdjustedRiskPercent();
     const riskPercent = Math.round(adjustedRisk);
     
     let text = "There is a critical question that no one—not even the creators—can answer with certainty: ";
@@ -176,7 +167,7 @@ function getPhase2Text() {
 }
 
 function getPhase3BaseText() {
-    const adjustedRisk = ensureEndgameAdjustedRisk();
+    const adjustedRisk = calculateAdjustedRiskPercent();
     const riskPercent = Math.round(adjustedRisk);
     
     // Roll for alignment (using same logic as calculateEndGameScore)
@@ -489,7 +480,7 @@ function calculateEndGameScore() {
         const otherShare = 100 - playerShare;
 
         // Roll for misalignment using adjusted risk level as probability
-        const adjustedRisk = ensureEndgameAdjustedRisk();
+        const adjustedRisk = calculateAdjustedRiskPercent();
         const playerMisaligned = Math.random() * 100 < adjustedRisk;
         const otherMisaligned = Math.random() * 100 < adjustedRisk;
 

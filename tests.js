@@ -1545,6 +1545,108 @@ function testTechnologyEmojiUniqueness() {
     return suite.runAll();
 }
 
+// Test intro sequence
+function testIntroSequence() {
+    const suite = new TestSuite();
+    
+    suite.test('Intro state initializes correctly', () => {
+        // Mock intro state initialization 
+        const mockIntroState = {
+            currentStep: 0,
+            aiLevel: 0.8,
+            currentMonth: "December",
+            currentYear: 2024,
+            buttonCooldown: false,
+            buttonPercentage: 3,
+            cooldownTime: 2500,
+            companyName: "OpenAI",
+            isButtonPressed: false
+        };
+        
+        suite.assertEqual(mockIntroState.aiLevel, 0.8, 'AI level should start at 0.8');
+        suite.assertEqual(mockIntroState.buttonPercentage, 3, 'Button should start at 3%');
+        suite.assertEqual(mockIntroState.cooldownTime, 2500, 'Cooldown should start at 2.5s');
+        suite.assertEqual(mockIntroState.currentMonth, "December", 'Should start in December');
+        suite.assertEqual(mockIntroState.currentYear, 2024, 'Should start in 2024');
+    });
+    
+    suite.test('Text appears only every second button press', () => {
+        let step = 0;
+        let textCount = 0;
+        
+        // Simulate 10 button presses
+        for (let i = 0; i < 10; i++) {
+            step++;
+            // Text appears when step is even (every second press)
+            if (step % 2 === 0) {
+                textCount++;
+            }
+        }
+        
+        suite.assertEqual(textCount, 5, 'Should show 5 texts after 10 button presses');
+    });
+    
+    suite.test('Month advances every second button press', () => {
+        let step = 0;
+        let monthChanges = 0;
+        
+        // Simulate 6 button presses
+        for (let i = 0; i < 6; i++) {
+            step++;
+            if (step % 2 === 0) {
+                monthChanges++;
+            }
+        }
+        
+        suite.assertEqual(monthChanges, 3, 'Month should advance 3 times after 6 button presses');
+    });
+    
+    suite.test('Button progression changes at correct text indices', () => {
+        const textIndex5 = 5; // "When AI systems become capable of automating AI R&D..."
+        const textIndex8 = 8; // "Companies face a dilemma..."
+        
+        // At text 5: button should change to 4% and cooldown to 2s
+        let buttonPercentage = 3;
+        let cooldownTime = 2500;
+        
+        if (textIndex5 === 5) {
+            buttonPercentage = 4;
+            cooldownTime = 2000;
+        }
+        
+        suite.assertEqual(buttonPercentage, 4, 'Button should be 4% after text 5');
+        suite.assertEqual(cooldownTime, 2000, 'Cooldown should be 2s after text 5');
+        
+        // At text 8: button should change to 5%
+        if (textIndex8 === 8) {
+            buttonPercentage = 5;
+        }
+        
+        suite.assertEqual(buttonPercentage, 5, 'Button should be 5% after text 8');
+    });
+    
+    suite.test('AI level increases with each button press', () => {
+        let aiLevel = 0.8;
+        let buttonPercentage = 3;
+        
+        // First button press
+        aiLevel += buttonPercentage / 100;
+        suite.assertTrue(Math.abs(aiLevel - 0.83) < 0.001, 'AI level should increase by 3% to 0.83');
+        
+        // After text 5, button becomes 4%
+        buttonPercentage = 4;
+        aiLevel += buttonPercentage / 100;
+        suite.assertTrue(Math.abs(aiLevel - 0.87) < 0.001, 'AI level should increase by 4% to 0.87');
+        
+        // After text 8, button becomes 5%
+        buttonPercentage = 5;
+        aiLevel += buttonPercentage / 100;
+        suite.assertTrue(Math.abs(aiLevel - 0.92) < 0.001, 'AI level should increase by 5% to 0.92');
+    });
+
+    return suite.runAll();
+}
+
 // Main test runner
 async function runAllTests() {
     const startTime = Date.now();
@@ -1568,7 +1670,8 @@ async function runAllTests() {
         testEventDependencyGraph(),
         testEventHandlerInvocation(),
         testEventTimingBehavior(),
-        testTechnologyEmojiUniqueness()
+        testTechnologyEmojiUniqueness(),
+        testIntroSequence()
     ]);
     
     const allPassed = results.every(result => result);

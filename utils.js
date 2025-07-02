@@ -206,7 +206,8 @@ function createInitialGameState() {
         companyFlag: null, // Company flag emoji
         offeredEquity: null, // Equity player receives in acquisition event (player's share)
         totalEquityOffered: null, // Total equity offered to the old company
-        hasEverFallenBehind: false // Whether player has ever fallen behind the top competitor
+        hasEverFallenBehind: false, // Whether player has ever fallen behind the top competitor
+        mainGameStarted: false // Whether the main game has started (affects tech visibility during intro)
     };
 }
 

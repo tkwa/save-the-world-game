@@ -4,6 +4,7 @@ All notable changes to the Save the World Game will be documented in this file.
 
 ## Summary
 
+- **v0.5.0** : Enhanced intro sequence with flexible text system and improved technology visibility controls
 - **v0.4.0** : Complete interpretability project implementation with dynamic project unlocking system
 - **v0.3.5** : Major refactor consolidating shared functions to utils.js; fixed inconsistent risk calculations
 - **v0.3.2** : Complete Projects allocation system with immediate minigame launch
@@ -11,6 +12,31 @@ All notable changes to the Save the World Game will be documented in this file.
 - **v0.3.0** : Competitor acquisition events and VP Safety role with unit testing
 - **v0.2.0** : Projects panel system and humanoid robotics event chain  
 - **v0.1.0** : Initial AI strategy game with turn-based gameplay and minigames
+
+## [v0.5.0] - 2025-07-02
+
+### Major Features
+- **Enhanced Intro Sequence**: Complete redesign with step-based text system, dynamic AI level display, and progressive narrative flow from 3.3x to ~10x AI capability
+- **Technology Visibility Controls**: Implemented mainGameStarted flag system to hide all technologies except robotaxi during intro, revealing full tech tree only when main game begins
+- **Flexible Text Display System**: Replaced linear text array with dictionary-based system allowing mixed timing (some texts every 2 clicks, intellectual tasks every click)
+
+### Intro Sequence Improvements
+- **Dynamic AI Level**: Button shows actual increase value (+0.XX) and AI level displays with "x" suffix matching main game
+- **Compound Growth**: AI R&D increases by 3% of current level instead of flat amount, creating realistic exponential progression
+- **Progressive Narrative**: 6 intellectual tasks (poetry, scientific reasoning, mathematical proofs, creative writing, strategic planning, persuasive communication) appear rapidly to show accelerating AI progress
+- **Smart Text Flow**: Line breaks only appear where paragraph breaks should naturally occur, maintaining sentence continuity
+- **Risk Progression**: Rogue AI Risk fades in at step 19 and progresses from 9% to 20% over remaining clicks
+
+### Technical Improvements
+- **Step-Based Architecture**: Text system uses step numbers as keys for maximum flexibility in timing and content
+- **Performance Optimization**: Reduced excessive DOM manipulation with statusBarSetup flag to prevent repeated calls
+- **Permanent Button States**: Added permanentlyDisabled flag to prevent button re-enabling after intro completion
+- **Dynamic Content Updates**: AI level value updates in real-time within displayed text using regex replacement
+
+### User Experience
+- **Natural Flow**: Removed awkward line breaks between "board games" and intellectual capabilities list
+- **Visual Consistency**: Intro status bar matches main game layout with proper 4-column structure
+- **HTML Rendering**: Supports bold text and line breaks within text content for enhanced presentation
 
 ## [v0.4.0] - 2025-07-01
 
