@@ -8,49 +8,26 @@ Open `savetheworld.html` in a browser, e.g. by using Cursor Live Preview or `pyt
 ## Status
 
 TODO for Claude (check off when finished):
-- [x] Intro sequence
- - [x] Create new page at opening.js and ensure everything is imported
- - [x] Intro should start in December 2024 and have the date, "Role" element and a single button labeled AI R&D (+3%) which can only be pressed every 2.5 seconds. "New Game" should go here. There should be a debug option to go to the intro page.
- - [x] Every other time the button is pressed the month should advance. The button should be greyed out before the 2 second delay and have a "slowly filling up" animation during it, like in e.g. A Dark Room
- - [x] Intro should have a simplified status bar which is just AI Capabilities [company]: X.Xx and Tech: robotaxi only-- the other two columns and AI Risk are blank. It starts at 0.8x
- - [x] When pressed there should be a series of texts that display below the button at every month:
-   - Since 2011, the capabilities of AI systems have grown steadily, but exponentially.
-   - Humans are notorious for underestimating exponentials.
-   - AIs began to surpass humans at image recognition and board games,
-   - then poetry, scientific knowledge, and persuasion.
-   - By 2025, AI systems are human-level at software development-- and think many times faster than any human.
-   - When AI systems become capable of automating AI R&D, the exponential progress only speeds up. (at this point button and its effect changes to 4%, and delay down to 2s)
-   - Employees understand they are creating their own obsolescence. 
-   - But no one knows if our ability to control AIs will keep pace with their rate of improvement.
-   - Companies face a dilemma: move too slowly on capabilities and competitors will achieve ASI first.  (button changes to +5%)
-   - Move too quickly and risk building misaligned systems that could destroy everything.  (fade in Rogue AI Risk element of status bar)
-   - But the risks are low
-  - [x] After this phase, there should be a button that fades in that takes the player to the main game
-  - [x] Write tests
-  - [ ] Minor version bump
+- [x] Fix eslint problems with files (unused variables, missing global declarations, etc.)
+- [x] Migrate to ES modules
+- [ ] Fix 
+- [ ] Move game to index.html
+- [ ] On mobile, add a warning to the home screen saying the game is best experienced on desktop. I'm thinking check for screen width unless there's a better way
+- [ ] Bump patch version
 
 
 
 
 
-- [x] Competitor warning shot event leading to international treaty
-  - [x] Add event to events.json with weight 1, AI level range 100-600, oneTimeAccept
-  - [x] Implement competitor selection proportional to AI level in custom handler
-  - [x] Draft treaty choice: starts International Treaty project (2000 diplomacy sink)
-  - [x] Safety differentiation choice: +25% interp progress, -25% alignment red circle growth, Regulatory Favor roll
-  - [x] Accelerate development choice: gain datacenter, accelerationist description
-  - [x] Regulatory Favor status effect: immunity from sanctions
-  - [x] International Treaty project system with completion trigger
-  - [x] Bump minor version when complete
+
+Still deciding on details...
+- [ ] Integrate capabilities minigame as capabilities forecasting
+- [ ] Add Greedy status effect that doubles your own galaxy values but halves humanity galaxy values, when you get $10T
 - [ ] Add event for completed international treaty (when progress reaches 2000)
   - [ ] Create treaty-completed event in events.json with proper narrative
   - [ ] Implement completion trigger when internationalTreatyProgress >= 2000
   - [ ] Add game state changes (pause track, end AI race mechanics)
   - [ ] Update endgame logic to handle treaty completion scenario
-
-Still deciding on details...
-- [ ] Integrate capabilities minigame as capabilities forecasting
-- [ ] Add Greedy status effect that doubles your own galaxy values but halves humanity galaxy values, when you get $10T
 
 
 Longer term goals -- Claude shouldn't start these yet

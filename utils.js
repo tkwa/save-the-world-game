@@ -1,5 +1,4 @@
 // Shared utility functions for Critical Path AI Strategy Game
-/* global gameState */
 
 // Game constants
 const GAME_CONSTANTS = {
@@ -223,6 +222,9 @@ function getRiskFactors(safetyPoints = null, alignmentMaxScore = null, interpret
     return { safetyFactor, alignmentFactor, interpretabilityFactor };
 }
 
+// Game state - shared across all modules
+let gameState = createInitialGameState();
+
 // Risk calculation function used across multiple files
 function calculateAdjustedRiskPercent(safetyPoints = null, alignmentMaxScore = null, interpretabilityProgress = null) {
     const rawRisk = gameState.rawRiskLevel;
@@ -296,28 +298,47 @@ function getGalaxyMultipliers() {
     };
 }
 
-// Export functions to global scope for cross-file usage
-if (typeof window !== 'undefined') {
-    // Browser environment
-    window.calculateAdjustedRiskPercent = calculateAdjustedRiskPercent;
-    window.getRiskFactors = getRiskFactors;
-    window.getAISystemVersion = getAISystemVersion;
-    window.getRiskColor = getRiskColor;
-    window.getGalaxyMultipliers = getGalaxyMultipliers;
-    window.COMPANIES = COMPANIES;
-    window.GAME_CONSTANTS = GAME_CONSTANTS;
-    window.createInitialGameState = createInitialGameState;
-    window.INITIAL_TECHNOLOGIES = INITIAL_TECHNOLOGIES;
-} else if (typeof global !== 'undefined') {
-    // Node.js environment (for testing)
-    /* global global */
-    global.calculateAdjustedRiskPercent = calculateAdjustedRiskPercent;
-    global.getRiskFactors = getRiskFactors;
-    global.getAISystemVersion = getAISystemVersion;
-    global.getRiskColor = getRiskColor;
-    global.getGalaxyMultipliers = getGalaxyMultipliers;
-    global.COMPANIES = COMPANIES;
-    global.GAME_CONSTANTS = GAME_CONSTANTS;
-    global.createInitialGameState = createInitialGameState;
-    global.INITIAL_TECHNOLOGIES = INITIAL_TECHNOLOGIES;
+// Helper function to bold important numbers in UI text
+function boldifyNumbers(text) {
+    if (!text) return text;
+    
+    // Split by <strong> tags to avoid double-bolding
+    const parts = text.split(/(<strong>.*?<\/strong>)/);
+    
+    for (let i = 0; i < parts.length; i += 2) { // Only process non-strong parts (even indices)
+        if (parts[i]) {
+            // Bold percentages: 50%, 12.5%, etc.
+            parts[i] = parts[i].replace(/\b(\d+(?:\.\d+)?%)\b/g, '<strong>$1</strong>');
+            
+            // Bold multipliers: 17x, 2.5x, etc.
+            parts[i] = parts[i].replace(/\b(\d+(?:\.\d+)?x)\b/g, '<strong>$1</strong>');
+            
+            // Bold numbers in specific game contexts (more targeted approach)
+            // Numbers after "reaching", "remains at", "drops from", "to"
+            parts[i] = parts[i].replace(/\b(reaching|remains at|drops from|to)\s+(\d+(?:\.\d+)?)\b/gi, '$1 <strong>$2</strong>');
+            
+            // Numbers with currency symbols: $3B, $10M, etc.
+            parts[i] = parts[i].replace(/(\$\d+(?:\.\d+)?[BM]?)\b/g, '<strong>$1</strong>');
+            
+            // Standalone numbers at start of sentences or after punctuation (likely metrics)
+            parts[i] = parts[i].replace(/(^|[.!?]\s+)(\d+(?:\.\d+)?)\b/g, '$1<strong>$2</strong>');
+        }
+    }
+    
+    return parts.join('');
 }
+
+// Export functions, constants, and game state for ES module usage
+export {
+    calculateAdjustedRiskPercent,
+    getRiskFactors,
+    getAISystemVersion,
+    getRiskColor,
+    getGalaxyMultipliers,
+    boldifyNumbers,
+    COMPANIES,
+    GAME_CONSTANTS,
+    createInitialGameState,
+    INITIAL_TECHNOLOGIES,
+    gameState
+};

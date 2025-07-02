@@ -19,6 +19,7 @@
             border-radius: 10px;
             box-shadow: 0 0 20px rgba(0,0,0,0.5);
             border: 1px solid #404040;
+            position: relative;
         }
         .status-bar {
             border: 2px solid #555;
@@ -220,7 +221,7 @@
         }
         #intro-skip-button {
             position: absolute;
-            top: 20px;
+            bottom: 20px;
             right: 20px;
             background-color: #666;
             color: white;
@@ -397,12 +398,7 @@
         </div>
     </div>
 
-    <!-- JavaScript Files -->
-    <script src="utils.js"></script>
-    <script src="minigames.js"></script>
-    <script src="events.js"></script>
-    <script src="endgame.js"></script>
-    <script src="opening.js"></script>
-    <script src="game-core.js"></script>
+    <!-- JavaScript Files (ES modules) -->
+    <script type="module" src="game-core.js"></script>
 </body>
 </html>

@@ -1,5 +1,13 @@
 // End game logic for Critical Path game
-/* global calculateAdjustedRiskPercent, getRiskColor, getGalaxyMultipliers, showPage, GAME_CONSTANTS */
+import {
+    calculateAdjustedRiskPercent,
+    getRiskColor,
+    getGalaxyMultipliers,
+    GAME_CONSTANTS,
+    gameState
+} from './utils.js';
+
+import { showPage } from './game-core.js';
 
 
 // Helper function to format alignment status
@@ -518,6 +526,15 @@ function calculateEndGameScore() {
     
     return resultText;
 }
+
+// Export functions for ES modules
+export {
+    scaleAILevelsForEndGame,
+    getEndGamePhaseText,
+    getEndGamePhaseButtons,
+    continueToNextPhase,
+    calculateEndGameScore
+};
 
 // Export functions to global scope for cross-file access
 if (typeof window !== 'undefined') {

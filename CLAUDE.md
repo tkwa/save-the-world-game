@@ -64,7 +64,7 @@ There's a TODO list atop `README.md`.
 ### Commits
 
 - Commit often but not more than once per task specified in the README.
-- You must make a commit when making a version bump.
+- You must make a commit when making a version bump. Start the commit message with "vX.Y.Z:"
 - Limit commit messages to 100 words.
 - If a series of commits feels like it merits a minor or patch version bump, ask the user and they'll probably approve it
 

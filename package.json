@@ -2,8 +2,9 @@
   "name": "save-the-world-game",
   "version": "0.5.0",
   "description": "AI Strategy Game",
+  "type": "module",
   "scripts": {
-    "test": "node -e \"require('./tests.js').runAllTests().then(result => process.exit((typeof result === 'object' ? result.passed : result) ? 0 : 1))\"",
+    "test": "node tests.js",
     "validate": "node validate-events.js",
     "validate:schema": "node validate-events.js",
     "test:all": "npm run validate && npm run test",

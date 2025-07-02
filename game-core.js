@@ -1,5 +1,51 @@
 // Core game logic for the AI Timeline Game
-/* global calculateAdjustedRiskPercent, getRiskFactors, getAISystemVersion, getRiskColor, getGalaxyMultipliers, COMPANIES, GAME_CONSTANTS, createInitialGameState, INITIAL_TECHNOLOGIES, generateEvent, boldifyNumbers, getEndGamePhaseText, getEndGamePhaseButtons, updateAlignmentMinigame, updateEventPoolOverlay, scaleAILevelsForEndGame, applyEventEffects, startMinigame, startDateTicker, submitCapabilityEvalsAnswer, submitForecastingEvalsAnswer, forceEvent, calculateEndGameScore, debugUnlockProjects, debugShowEventPool, populateDebugDropdown, applyChoiceEffects, giveResources, MutationObserver, setInterval, clearInterval, prompt, alert, module */
+import {
+    calculateAdjustedRiskPercent,
+    getRiskFactors,
+    getAISystemVersion,
+    getRiskColor,
+    getGalaxyMultipliers,
+    boldifyNumbers,
+    COMPANIES,
+    GAME_CONSTANTS,
+    INITIAL_TECHNOLOGIES,
+    gameState
+} from './utils.js';
+
+import {
+    generateEvent,
+    populateDebugDropdown,
+    giveResources,
+    debugUnlockProjects,
+    debugShowEventPool,
+    applyChoiceEffects,
+    applyEventEffects,
+    forceEvent
+} from './events.js';
+
+import {
+    startMinigame,
+    updateAlignmentMinigame,
+    submitCapabilityEvalsAnswer,
+    submitForecastingEvalsAnswer
+} from './minigames.js';
+
+import {
+    introState,
+    initializeIntro,
+    updateIntroDebugButtonVisibility,
+    resetIntroState
+} from './opening.js';
+
+import {
+    scaleAILevelsForEndGame,
+    getEndGamePhaseText,
+    getEndGamePhaseButtons,
+    calculateEndGameScore
+} from './endgame.js';
+
+// Note: Functions from other modules will be imported when we resolve dependencies
+/* global updateEventPoolOverlay, startDateTicker, MutationObserver, setInterval, clearInterval, prompt, alert */
 /* eslint-disable no-unused-vars */
 /* global continueToNextPhase */
 /* eslint-enable no-unused-vars */
@@ -47,8 +93,7 @@ const TECHNOLOGY_VISIBILITY = {
 
 // Note: GAME_CONSTANTS, INITIAL_TECHNOLOGIES, and createInitialGameState moved to utils.js
 
-// Game state - use factory function from utils.js
-const gameState = createInitialGameState();
+// Game state imported from utils.js
 
 // Story content
 const storyContent = {
@@ -77,11 +122,7 @@ const storyContent = {
         },
         text: function() {
             return `
-                <button id="intro-skip-button" onclick="startMainGame()">Skip</button>
-                <button id="intro-debug-speed-button" onclick="toggleIntroDebugSpeed()" 
-                        style="position: absolute; top: 60px; right: 20px; background-color: #666; color: white; padding: 6px 12px; border: none; border-radius: 3px; cursor: pointer; font-size: 12px; font-family: 'Courier New', Courier, monospace;">
-                    Debug: 10x Speed (OFF)
-                </button>
+                <button id="intro-skip-button" onclick="skipIntroToMainGame()">Skip</button>
                 
                 <div style="text-align: center;">
                     <button id="intro-ai-button" class="intro-ai-button" onclick="handleAIRDButtonPress()">
@@ -105,6 +146,10 @@ const storyContent = {
         onShow: function() {
             // Initialize the intro sequence when this page loads
             initializeIntro();
+            // Update debug button visibility when intro page loads
+            if (typeof updateIntroDebugButtonVisibility === 'function') {
+                setTimeout(updateIntroDebugButtonVisibility, 100);
+            }
         }
     },
     "game-setup": {
@@ -589,15 +634,7 @@ function updateInfrastructure() {
 }
 
 // Risk color utility function
-function getRiskColor(riskLevel) {
-    if (riskLevel > GAME_CONSTANTS.RISK_THRESHOLDS.HIGH) {
-        return '#ff6b6b'; // Red for high risk
-    } else if (riskLevel > GAME_CONSTANTS.RISK_THRESHOLDS.MEDIUM) {
-        return '#ffa726'; // Orange for medium risk
-    } else {
-        return '#e0e0e0'; // Default white
-    }
-}
+// getRiskColor imported from utils.js
 
 // Critical risk color (only for labels, not values)
 function getCriticalRiskColor(riskLevel) {
@@ -2238,6 +2275,11 @@ function toggleDebugControls() {
         // If debug controls don't exist, create them
         addDebugControls();
     }
+    
+    // Update intro debug button visibility if on intro page
+    if (typeof updateIntroDebugButtonVisibility === 'function') {
+        updateIntroDebugButtonVisibility();
+    }
 }
 
 // Handle event choice selection
@@ -2396,14 +2438,6 @@ function navigateToPage(page) {
     console.log(`Navigated to page: ${page}`);
 }
 
-function debugShowAllTechs() {
-    // Toggle all technologies
-    const allOff = Object.values(gameState.technologies).every(tech => !tech);
-    for (const tech in gameState.technologies) {
-        gameState.technologies[tech] = allOff;
-    }
-    updateTechnologies();
-}
 
 function applyStatusEffect(effectType) {
     if (!effectType) return;
@@ -2793,37 +2827,39 @@ function _subtlyMoveMouseAway(element) {
 }
 
 
+// Export functions and gameState for ES modules
+export {
+    gameState,
+    finishTurn,
+    handleEventChoice,
+    handleSingularityButton,
+    debugShowAllTechs,
+    toggleTechnology,
+    navigateToPage,
+    applyStatusEffect,
+    getChoiceAffordability,
+    formatChoiceTextWithCosts,
+    formatAllocationLabelWithCosts,
+    canAffordChoice,
+    showPage,
+    updateStatusBar
+};
+
 // Browser-specific initialization
 if (typeof window !== 'undefined') {
-    // Make functions globally accessible
+    // Make functions globally accessible for HTML onclick handlers
     window.finishTurn = finishTurn;
     window.handleEventChoice = handleEventChoice;
     window.handleSingularityButton = handleSingularityButton;
     window.forceEvent = forceEvent;
-    // Note: populateDebugDropdown and giveResources exported from events.js
     window.debugShowAllTechs = debugShowAllTechs;
     window.toggleTechnology = toggleTechnology;
     window.navigateToPage = navigateToPage;
-    window.getGalaxyMultipliers = getGalaxyMultipliers;
     window.applyStatusEffect = applyStatusEffect;
     window.getChoiceAffordability = getChoiceAffordability;
     window.formatChoiceTextWithCosts = formatChoiceTextWithCosts;
-    window.getRiskColor = getRiskColor;
     window.showPage = showPage;
-    window.calculateAdjustedRiskPercent = calculateAdjustedRiskPercent;
-    window.getAISystemVersion = getAISystemVersion;
     window.updateStatusBar = updateStatusBar;
-}
-
-// Export for Node.js testing
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {
-        gameState,
-        getChoiceAffordability,
-        formatChoiceTextWithCosts,
-        formatAllocationLabelWithCosts,
-        canAffordChoice
-    };
 }
 
 // Browser-specific event listeners

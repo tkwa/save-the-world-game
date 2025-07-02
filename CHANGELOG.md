@@ -4,10 +4,10 @@ All notable changes to the Save the World Game will be documented in this file.
 
 ## Summary
 
-- **v0.5.0** : Enhanced intro sequence with flexible text system and improved technology visibility controls
-- **v0.4.0** : Complete interpretability project implementation with dynamic project unlocking system
-- **v0.3.5** : Major refactor consolidating shared functions to utils.js; fixed inconsistent risk calculations
-- **v0.3.2** : Complete Projects allocation system with immediate minigame launch
+- **v0.5.0** : Add intro sequence
+- **v0.4.0** : Interpretability project; dynamic project unlocking system
+- **v0.3.5** : Refactor consolidating shared functions to utils.js
+- **v0.3.2** : Add Projects and Alignment minigame
 - **v0.3.1** : Fixed event handlers; nuclear weapons now later in DSA tree
 - **v0.3.0** : Competitor acquisition events and VP Safety role with unit testing
 - **v0.2.0** : Projects panel system and humanoid robotics event chain  

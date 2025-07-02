@@ -1,5 +1,17 @@
 // Event system for Critical Path game
-/* global calculateAdjustedRiskPercent, getAISystemVersion, updateStatusBar, showPage, gameState, GAME_CONSTANTS, COMPANIES, boldifyNumbers */
+import {
+    calculateAdjustedRiskPercent,
+    getAISystemVersion,
+    boldifyNumbers,
+    GAME_CONSTANTS,
+    COMPANIES,
+    gameState
+} from './utils.js';
+
+import {
+    updateStatusBar,
+    showPage
+} from './game-core.js';
 
 // Note: COMPANIES array moved to utils.js
 
@@ -24,7 +36,6 @@ async function loadEventData() {
 }
 
 // Generate a random event based on current game state
-// eslint-disable-next-line no-unused-vars
 async function generateEvent() {
     const events = await loadEventData();
     
@@ -449,34 +460,7 @@ function createEventVariables(eventType) {
 }
 
 // Helper function to automatically bold numbers, percentages, and multipliers
-function boldifyNumbers(text) {
-    if (!text) return text;
-    
-    // Split by <strong> tags to avoid double-bolding
-    const parts = text.split(/(<strong>.*?<\/strong>)/);
-    
-    for (let i = 0; i < parts.length; i += 2) { // Only process non-strong parts (even indices)
-        if (parts[i]) {
-            // Bold percentages: 50%, 12.5%, etc.
-            parts[i] = parts[i].replace(/\b(\d+(?:\.\d+)?%)\b/g, '<strong>$1</strong>');
-            
-            // Bold multipliers: 17x, 2.5x, etc.
-            parts[i] = parts[i].replace(/\b(\d+(?:\.\d+)?x)\b/g, '<strong>$1</strong>');
-            
-            // Bold numbers in specific game contexts (more targeted approach)
-            // Numbers after "reaching", "remains at", "drops from", "to"
-            parts[i] = parts[i].replace(/\b(reaching|remains at|drops from|to)\s+(\d+(?:\.\d+)?)\b/gi, '$1 <strong>$2</strong>');
-            
-            // Numbers with currency symbols: $3B, $10M, etc.
-            parts[i] = parts[i].replace(/(\$\d+(?:\.\d+)?[BM]?)\b/g, '<strong>$1</strong>');
-            
-            // Standalone numbers at start of sentences or after punctuation (likely metrics)
-            parts[i] = parts[i].replace(/(^|[.!?]\s+)(\d+(?:\.\d+)?)\b/g, '$1<strong>$2</strong>');
-        }
-    }
-    
-    return parts.join('');
-}
+// boldifyNumbers moved to utils.js
 
 // Helper function to substitute variables in event text (legacy wrapper)
 function substituteEventVariables(text, eventType) {
@@ -604,7 +588,6 @@ function handleAIEscapeChoice(choice, _event, _sanctionsTriggered) {
 }
 
 // Apply event effects (called when turn finishes)
-// eslint-disable-next-line no-unused-vars
 function applyEventEffects(event) {
     if (event && event.type === 'safety-incident') {
         gameState.money = Math.max(0, gameState.money - event.fine);
@@ -1580,12 +1563,37 @@ function handleSanctionsChoice(choice, _event, _sanctionsTriggered) {
     showPage('main-game');
 }
 
-// Export debug functions to window for cross-file access
+// Export functions for ES modules
+export {
+    generateEvent,
+    applyChoiceEffects,
+    applyEventEffects,
+    forceEvent,
+    debugShowEventPool,
+    _populateDebugDropdown as populateDebugDropdown,
+    _giveResources as giveResources,
+    _debugUnlockProjects as debugUnlockProjects
+};
+
+// Export functions to window for cross-file access
 if (typeof window !== 'undefined') {
+    // Debug functions
     window.populateDebugDropdown = _populateDebugDropdown;
     window.giveResources = _giveResources;
     window.debugUnlockProjects = _debugUnlockProjects;
     window.debugShowEventPool = debugShowEventPool;
     window.forceEvent = forceEvent;
     window.applyChoiceEffects = applyChoiceEffects;
+    
+    // Custom event handlers
+    window.handleSanctionsChoice = handleSanctionsChoice;
+    window.handleOverseasDatacenterChoice = handleOverseasDatacenterChoice;
+    window.handleSecondDatacenterChoice = handleSecondDatacenterChoice;
+    window.handleNuclearWeaponsChoice = handleNuclearWeaponsChoice;
+    window.handleMissileDefenseChoice = handleMissileDefenseChoice;
+    window.handleCompetitorBreakthroughChoice = handleCompetitorBreakthroughChoice;
+    window.handleCompetitorAcquisitionChoice = handleCompetitorAcquisitionChoice;
+    window.handleCorporateEspionageInvestigation = handleCorporateEspionageInvestigation;
+    window.handleCompetitorWarningShot = handleCompetitorWarningShot;
+    window.handleAIEscapeChoice = handleAIEscapeChoice;
 }

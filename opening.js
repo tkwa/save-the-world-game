@@ -1,5 +1,7 @@
 // Opening sequence for Critical Path game
-/* global COMPANIES, createInitialGameState, showPage */
+import { COMPANIES, GAME_CONSTANTS, gameState } from './utils.js';
+import { showPage } from './game-core.js';
+import { generateEvent } from './events.js';
 
 // Intro sequence state
 let introState = {
@@ -23,21 +25,21 @@ let introState = {
 
 // Text sequences - most appear every 2 clicks, but 6 intellectual tasks appear on consecutive clicks
 const introTexts = {
-    2: "Since 2011, the capabilities of AI systems have grown steadily, but exponentially.",
-    4: "  Humans are notorious for underestimating exponentials.",
-    6: "<br><br>AIs began to surpass humans at image recognition and board games, then poetry, ",
-    7: "scientific reasoning, ",
-    8: "mathematical proofs, ",
-    9: "protein design, ",
-    10: "and persuasion.",
-    12: "<br><br>By 2025, AI systems are human-level at software development--",
-    13: "and think about <strong>{aiLevel}x</strong> faster than any human.",
-    14: "<br><br>When AI systems become capable of automating AI R&D, the exponential progress only speeds up.", // Button changes to 4%, delay to 2s
-    16: "<br>But no one knows if our ability to control AIs will keep pace with their rate of improvement.",
-    18: "<br>Companies evaluate their AIs for ability to make chemical and biological weapons, and to escape containment.",
-    20: "<br>You face a dilemma: move too slowly on capabilities and competitors will achieve superintelligence first.", // Button changes to 5%
-    22: "<br>Move too quickly and risk building misaligned systems that could destroy everything.", // Fade in Rogue AI Risk
-    24: "<br>The risks are low, but increasing every month..." // Final text
+    1: "Since 2011, the capabilities of AI systems have grown steadily, but exponentially.",
+    3: "  Humans are notorious for underestimating exponentials.",
+    5: "<br><br>AIs began to surpass humans at image recognition and board games, then poetry, ",
+    6: "scientific reasoning, ",
+    7: "mathematical proofs, ",
+    8: "protein design, ",
+    9: "and persuasion.",
+    11: "  By 2025, AI systems are human-level at software development",
+    12: "-- and think about <strong>{aiLevel}x</strong> faster than any human.",
+    13: "<br><br>When AI systems become capable of automating AI R&D, the exponential progress only speeds up.", // Button changes to 4%, delay to 2s
+    15: "<br>But no one knows if our ability to control AIs will keep pace with their rate of improvement.",
+    17: "<br>Companies evaluate their AIs for ability to make chemical and biological weapons, and to escape containment.",
+    19: "<br>You face a dilemma: move too slowly on capabilities and competitors will achieve superintelligence first.", // Button changes to 5%
+    21: "<br>Move too quickly and risk building misaligned systems that could destroy everything.", // Fade in Rogue AI Risk
+    23: "<br>The risks are low, but increasing every month..." // Final text
 };
 
 // Function to get intro text with dynamic values substituted
@@ -132,12 +134,6 @@ function updateIntroTitle() {
     }
 }
 
-// Refresh the intro page to update the title
-function refreshIntroPage() {
-    // Don't reset when refreshing mid-intro
-    introState.isNewGame = false;
-    showPage('intro');
-}
 
 
 // Hide Resources and Status Effects columns for intro
@@ -534,6 +530,25 @@ async function startMainGame() {
     }
 }
 
+// Update intro debug button visibility based on main debug controls
+function updateIntroDebugButtonVisibility() {
+    const debugControls = document.getElementById('debug-controls');
+    const showDebugButton = debugControls && debugControls.style.display !== 'none';
+    const debugButton = document.getElementById('intro-debug-speed-button');
+    
+    if (showDebugButton && !debugButton) {
+        // Add debug button if it should be shown but doesn't exist
+        const buttonHtml = `<button id="intro-debug-speed-button" onclick="toggleIntroDebugSpeed()" 
+                style="position: fixed; top: 60px; right: 20px; background-color: #666; color: white; padding: 6px 12px; border: none; border-radius: 3px; cursor: pointer; font-size: 12px; font-family: 'Courier New', Courier, monospace; z-index: 1000;">
+            Debug: 10x Speed (OFF)
+        </button>`;
+        document.body.insertAdjacentHTML('beforeend', buttonHtml);
+    } else if (!showDebugButton && debugButton) {
+        // Remove debug button if it shouldn't be shown but exists
+        debugButton.remove();
+    }
+}
+
 // Toggle debug speed mode for intro
 function toggleIntroDebugSpeed() {
     introState.debugSpeedMode = !introState.debugSpeedMode;
@@ -545,19 +560,51 @@ function toggleIntroDebugSpeed() {
     console.log('Intro debug speed mode:', introState.debugSpeedMode ? 'ON (10x faster)' : 'OFF (normal speed)');
 }
 
+// Skip intro and start main game with AI level set to 10x
+function skipIntroToMainGame() {
+    // Set AI level to 10x to match expected intro completion level
+    introState.aiLevel = 10.0;
+    
+    // Set up company if not already done
+    if (!introState.companyName) {
+        const selectedCompany = COMPANIES[Math.floor(Math.random() * COMPANIES.length)];
+        introState.companyName = selectedCompany.name;
+        introState.selectedCompany = selectedCompany;
+    }
+    
+    // Start main game with the skip settings
+    startMainGame();
+}
+
 // Start a new game by resetting intro state and going to intro page
 function startNewGame() {
     resetIntroState();
     showPage('intro');
 }
 
+// Export functions for ES modules
+export {
+    introState,
+    initializeIntro,
+    handleAIRDButtonPress,
+    startMainGame,
+    skipIntroToMainGame,
+    startNewGame,
+    resetIntroState,
+    restoreFullStatusBar,
+    toggleIntroDebugSpeed,
+    updateIntroDebugButtonVisibility
+};
+
 // Export functions for global use
 if (typeof window !== 'undefined') {
     window.initializeIntro = initializeIntro;
     window.handleAIRDButtonPress = handleAIRDButtonPress;
     window.startMainGame = startMainGame;
+    window.skipIntroToMainGame = skipIntroToMainGame;
     window.startNewGame = startNewGame;
     window.resetIntroState = resetIntroState;
     window.restoreFullStatusBar = restoreFullStatusBar;
     window.toggleIntroDebugSpeed = toggleIntroDebugSpeed;
+    window.updateIntroDebugButtonVisibility = updateIntroDebugButtonVisibility;
 }

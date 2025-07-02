@@ -2,9 +2,13 @@
 
 // Event validation script for Critical Path game
 // Usage: node validate-events.js
+/* global process */
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-const fs = require('fs');
-const path = require('path');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Simple JSON schema validator (subset of functionality)
 class SimpleValidator {
@@ -230,10 +234,11 @@ function validateEvents() {
     }
 }
 
-// Run validation
-if (require.main === module) {
+// Export for ES modules
+export { validateEvents, SimpleValidator };
+
+// Run validation if this is the main module
+if (import.meta.url === `file://${process.argv[1]}`) {
     const isValid = validateEvents();
     process.exit(isValid ? 0 : 1);
 }
-
-module.exports = { validateEvents, SimpleValidator };

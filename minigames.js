@@ -1,4 +1,7 @@
 // Minigame functions for the AI Timeline Game
+import { showPage } from './game-core.js';
+
+/* global alert, updateForecastingDisplay */
 
 // Generic minigame starter - avoid circular dependency by using direct function calls
 function startMinigame(type) {
@@ -49,7 +52,7 @@ async function startCapabilityEvalsMinigame() {
     showPage('capability-evals-minigame');
 }
 
-function submitCapabilityEvalsAnswer(selectedCorrelation, buttonElement) {
+function _submitCapabilityEvalsAnswer(selectedCorrelation, buttonElement) {
     const minigame = gameState.currentMinigame;
     if (!minigame || minigame.type !== 'capability-evals') return;
     
@@ -153,7 +156,7 @@ function startForecastingEvalsMinigame() {
     showPage('forecasting-evals-minigame');
 }
 
-function performDailyCoinFlip() {
+function _performDailyCoinFlip() {
     if (!gameState.coinFlipData.active) {
         console.log('Coin flip not active');
         return;
@@ -207,7 +210,7 @@ function updateForecastingMinigameDisplay() {
     }
 }
 
-function submitForecastingEvalsAnswer(selectedPercentage, buttonElement) {
+function _submitForecastingEvalsAnswer(selectedPercentage, buttonElement) {
     const trueProbability = gameState.coinFlipData.trueProbability;
     const correctPercentage = trueProbability * 100;
     const isCorrect = Math.abs(selectedPercentage - correctPercentage) < 0.1;
@@ -806,8 +809,8 @@ function endAlignmentMinigame() {
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const pixels = imageData.data;
     let bluePixels = 0;
-    let redPixels = 0;
-    let totalNonBlackPixels = 0;
+    let _redPixels = 0;
+    let _totalNonBlackPixels = 0;
     
     // Check every pixel (RGBA = 4 bytes per pixel)
     for (let i = 0; i < pixels.length; i += 4) {
@@ -817,7 +820,7 @@ function endAlignmentMinigame() {
         
         // Check if pixel is not black (background)
         if (r > 10 || g > 10 || b > 10) {
-            totalNonBlackPixels++;
+            _totalNonBlackPixels++;
             
             // Check if pixel is blue (both light and dark blue)
             // Light blue: #4444FF (68, 68, 255), Dark blue: #0000AA (0, 0, 170)
@@ -827,7 +830,7 @@ function endAlignmentMinigame() {
             // Check if pixel is red (both light and dark red)  
             // Light red: #FF4444 (255, 68, 68), Dark red: #AA0000 (170, 0, 0)
             else if (r > 150 && g < 100 && b < 100) {
-                redPixels++;
+                _redPixels++;
             }
         }
     }
@@ -1037,8 +1040,21 @@ function createAlignmentGraph(percentageHistory) {
     return canvas;
 }
 
+// Export functions for ES modules
+export {
+    startMinigame,
+    clickAlignmentCanvas,
+    updateAlignmentMinigame,
+    startAlignmentGame,
+    _submitCapabilityEvalsAnswer as submitCapabilityEvalsAnswer,
+    _performDailyCoinFlip as performDailyCoinFlip,
+    _submitForecastingEvalsAnswer as submitForecastingEvalsAnswer
+};
+
 // Make functions globally accessible
-window.startMinigame = startMinigame;
-window.clickAlignmentCanvas = clickAlignmentCanvas;
-window.updateAlignmentMinigame = updateAlignmentMinigame;
-window.startAlignmentGame = startAlignmentGame;
+if (typeof window !== 'undefined') {
+    window.startMinigame = startMinigame;
+    window.clickAlignmentCanvas = clickAlignmentCanvas;
+    window.updateAlignmentMinigame = updateAlignmentMinigame;
+    window.startAlignmentGame = startAlignmentGame;
+}
