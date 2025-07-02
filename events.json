@@ -505,7 +505,7 @@
       "type": "competitor-warning-shot",
       "title": "Competitor Safety Incident",
       "weight": 1,
-      "oneTimeAccept": true,
+      "maxTimes": 1,
       "aiLevelRange": { "min": 100, "max": 600 },
       "customHandler": "handleCompetitorWarningShot",
       "text_versions": [
