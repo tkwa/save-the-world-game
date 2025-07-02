@@ -500,6 +500,41 @@
           "result_text": "You decide that superpersuasion technology requires more careful consideration before deployment. The systems remain in research phase while your team studies the implications of such powerful communicative capabilities."
         }
       ]
+    },
+    {
+      "type": "competitor-warning-shot",
+      "title": "Competitor Safety Incident",
+      "weight": 1,
+      "oneTimeAccept": true,
+      "aiLevelRange": { "min": 100, "max": 600 },
+      "customHandler": "handleCompetitorWarningShot",
+      "text_versions": [
+        "Intelligence reports indicate that $competitorName has suffered a severe safety incident during model training. Details remain classified, but rumors suggest their AI system briefly exhibited concerning autonomous behavior before being shut down. The incident has triggered widespread alarm in the AI safety community and government circles. Sources claim that if a similar incident occurred with AI systems just 2 years more advanced, the consequences could be catastrophic for humanity. Leaders in $country and beyond are demanding immediate action to prevent future incidents."
+      ],
+      "other_texts": {
+        "treaty_result": "$companyName and the world are shaken by the incident, and you begin drafting a comprehensive international treaty to pause frontier AI development. The proposal calls for a global moratorium on training runs above current capability levels. You commit to the diplomatic path forward, and success will require unprecedented international cooperation to tame the AI race.",
+        "safety_differentiation_success": "Your safety research program has made significant progress in AI alignment and interpretability. Government regulators, impressed by your proactive safety measures and technical competence, grant your company regulatory favor. This provides immunity from future sanctions and preferential treatment in policy discussions. The increased government funding substantially accelerates your safety research capabilities.",
+        "safety_differentiation_failure": "Your safety research program fails to sufficiently distinguish your approach from competitors in the eyes of regulators. While increased government investment still provides modest improvements to your safety research infrastructure, you do not achieve the regulatory protection you sought. Governments remain skeptical that any private company can adequately self-regulate such a dangerous technology.",
+        "accelerate_result": "Cautious competitors are scaling back operations and selling excess compute capacity. You rapidly acquire a datacenter at favorable prices, gaining an advantage while rivals hesitate. The greatest safety risk is allowing less safety-conscious actors to achieve AGI first. Speed, not caution, is the path to ensuring aligned superintelligence. The markets reward your decisive action as $companyName pulls ahead in the race."
+      },
+      "choices": [
+        {
+          "text": "Draft international treaty to stop AI race",
+          "action": "draft-treaty",
+          "result_text": "You begin drafting a comprehensive international treaty to pause frontier AI development..."
+        },
+        {
+          "text": "Differentiate your safety approach",
+          "action": "differentiate-safety",
+          "result_text": "Your enhanced safety research program demonstrates superior approaches to AI alignment and interpretability..."
+        },
+        {
+          "text": "Accelerate development",
+          "action": "accelerate-development",
+          "cost": { "money": 3 },
+          "result_text": "The incident reveals that cautious competitors are scaling back operations and selling excess compute capacity..."
+        }
+      ]
     }
   ]
 }

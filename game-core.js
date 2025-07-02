@@ -4,7 +4,7 @@
 /* global continueToNextPhase */
 /* eslint-enable no-unused-vars */
 
-const VERSION = "v0.3.5"
+const VERSION = "v0.4.0"
 
 // Note: INITIAL_TECHNOLOGIES moved to utils.js
 
@@ -586,7 +586,7 @@ function updateTechnologies() {
         if (element) {
             // Check if technology should be visible using visibility condition
             const visibilityCondition = TECHNOLOGY_VISIBILITY[techKey];
-            const isVisible = visibilityCondition ? visibilityCondition() : true; // Default to visible if no condition
+            const isVisible = visibilityCondition ? visibilityCondition() || gameState.technologies[techKey] : true; // Default to visible if no condition
             const isVisibleOrDebug = isVisible || gameState.debugShowAllTechs;
             
             if (isVisibleOrDebug) {
@@ -958,6 +958,16 @@ function generateActionTooltip(actionType, _resources) {
             const progressGain = nextProgress - gameState.interpretabilityProgress;
             
             return `Understanding AI decision-making processes. Each allocation increases progress by <strong>+${progressGain.toFixed(1)}%</strong>. Interpretability progress has reduced Rogue AI risk by <strong>${interpretabilityRiskReduction.toFixed(1)}%</strong>.`;
+        case 'international-treaty-project':
+            const currentProgress = gameState.internationalTreatyProgress || 0;
+            const progressRemaining = 2000 - currentProgress;
+            const isCompleted = currentProgress >= 2000;
+            
+            if (isCompleted) {
+                return `International treaty to pause frontier AI development has been completed. A global moratorium on advanced AI training is now in effect.`;
+            } else {
+                return `Draft a comprehensive international treaty to pause frontier AI development until robust safety protocols are established. Progress: <strong>${currentProgress}/2000</strong> (${progressRemaining} diplomacy points remaining). Costs diplomacy points instead of money.`;
+            }
         default:
             return '';
     }
@@ -1155,10 +1165,24 @@ function applyResourceAllocation(resourceType, corporateResources) {
             break;
         case 'interpretability-project':
             gameState.money = Math.max(0, gameState.money - gains.safetyCost);
-            // Add labor hours to interpretability project
-            gameState.interpretabilityLaborHours += corporateResources;
+            // Add labor hours to interpretability project with multiplier
+            const multipliedLaborHours = corporateResources * (gameState.interpretabilityProgressMultiplier || 1);
+            gameState.interpretabilityLaborHours += multipliedLaborHours;
             // Calculate progress using sqrt formula: requires 1B hours for 100%
             gameState.interpretabilityProgress = Math.min(100, Math.sqrt(gameState.interpretabilityLaborHours / 1000) * 100);
+            break;
+        case 'international-treaty-project':
+            // International treaty costs diplomacy points instead of money
+            gameState.diplomacyPoints = Math.max(0, gameState.diplomacyPoints - gains.safetyCost);
+            // Add progress towards treaty completion (requires 2000 total)
+            gameState.internationalTreatyProgress += corporateResources;
+            
+            // Check if treaty is completed
+            if (gameState.internationalTreatyProgress >= 2000) {
+                gameState.internationalTreatyProgress = 2000; // Cap at maximum
+                // TODO: Trigger International Treaty event when implemented
+                console.log('International Treaty completed! Future: trigger treaty event');
+            }
             break;
         case 'revenue':
             gameState.money += gains.revenue;
@@ -1724,6 +1748,94 @@ async function showPage(pageId) {
                 }
             };
             projectsSection.appendChild(interpretabilityBtn);
+            
+            // Add International Treaty project button (only if unlocked)
+            if (gameState.internationalTreatyUnlocked) {
+                const treatyBtn = document.createElement('button');
+                treatyBtn.className = 'button';
+                const treatyProgress = gameState.internationalTreatyProgress || 0;
+                
+                // Calculate if progress is maxed out
+                const isTreatyMaxed = treatyProgress >= 2000;
+                
+                treatyBtn.innerHTML = `Int'l Treaty 🕊️ ${treatyProgress.toFixed(0)}/2000 (-${Math.round(cost * 10) / 10} Diplomacy)`;
+                treatyBtn.style.cssText = `
+                    width: 200px;
+                    height: 50px;
+                    margin-bottom: 10px;
+                    font-family: 'Courier New', Courier, monospace;
+                    font-size: 14px;
+                    line-height: 1.2;
+                    background-color: #5a5a2d;
+                `;
+                
+                // Check if superpersuasion disables this project
+                const isTreatySuperpersuasionDisabled = gameState.superpersuasionDisabledAllocation === 'international-treaty-project';
+                
+                // Check affordability - treaties cost diplomacy instead of money
+                const diplomacyCost = cost; // Same cost as safety projects but in diplomacy points
+                const canAffordTreaty = gameState.diplomacyPoints >= diplomacyCost;
+                
+                // Style based on selection state, affordability, max progress, and superpersuasion effect
+                if (isTreatyMaxed) {
+                    treatyBtn.style.backgroundColor = '#666';
+                    treatyBtn.style.opacity = '0.6';
+                    treatyBtn.style.cursor = 'not-allowed';
+                    treatyBtn.disabled = true;
+                } else if (gameState.selectedAllocation === 'international-treaty-project') {
+                    treatyBtn.style.backgroundColor = '#005a87';
+                    treatyBtn.style.border = '2px solid #66b3ff';
+                } else if (gameState.selectedAllocation || isTreatySuperpersuasionDisabled) {
+                    treatyBtn.style.backgroundColor = '#666';
+                    treatyBtn.style.opacity = '0.6';
+                    treatyBtn.style.cursor = 'not-allowed';
+                    if (isTreatySuperpersuasionDisabled) {
+                        treatyBtn.disabled = true;
+                    }
+                } else if (!canAffordTreaty) {
+                    treatyBtn.style.backgroundColor = '#666';
+                    treatyBtn.style.opacity = '0.6';
+                    treatyBtn.style.cursor = 'not-allowed';
+                    treatyBtn.disabled = true;
+                }
+                
+                // Add tooltip for international treaty project
+                const treatyTooltip = generateActionTooltip('international-treaty-project', corporateResources);
+                if (treatyTooltip) {
+                    treatyBtn.className = 'button tooltip';
+                    treatyBtn.style.position = 'relative';
+                    
+                    // Create tooltip span element
+                    const tooltipSpan = document.createElement('span');
+                    tooltipSpan.className = 'tooltiptext';
+                    tooltipSpan.innerHTML = treatyTooltip;
+                    tooltipSpan.style.width = '300px';
+                    tooltipSpan.style.marginLeft = '-150px';
+                    
+                    treatyBtn.appendChild(tooltipSpan);
+                }
+                
+                treatyBtn.onclick = () => {
+                    // Check if superpersuasion prevents this allocation
+                    if (gameState.superpersuasionDisabledAllocation === 'international-treaty-project') {
+                        const aiSystemName = getAISystemVersion(gameState.companyName, gameState.playerAILevel);
+                        alert(`${aiSystemName} recommends against investing in international treaty negotiations.`);
+                        return;
+                    }
+                    
+                    if (!gameState.selectedAllocation && canAffordTreaty && !isTreatyMaxed) {
+                        gameState.selectedAllocation = 'international-treaty-project';
+                        
+                        // Apply the allocation immediately for projects
+                        applyResourceAllocation('international-treaty-project', corporateResources);
+                        gameState.allocationApplied = true;
+                        
+                        // Refresh UI to show other buttons as greyed out
+                        showPage('main-game');
+                    }
+                };
+                projectsSection.appendChild(treatyBtn);
+            }
             
             mainContainer.appendChild(projectsSection);
         }

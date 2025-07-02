@@ -8,10 +8,16 @@ Open `savetheworld.html` in a browser, e.g. by using Cursor Live Preview or `pyt
 ## Status
 
 TODO for Claude (check off when finished):
-- [x] Superpersuasion effect on choices
-  - If you have unlocked superpersuasion and risk > 25%, then every month, one of the allocations will be randomly chosen to be greyed out. The "Allocate 400M AI labor-hours to one sector or project this month" will be appended with " ${player's ai name} recommends against investing in ${unavailable project}". AI R&D is never chosen.
-- [x] Change AI novelist to Persuasion and make its description consistent with the persuasion event
-- [x] Events should by default display their titles as the heading to the events section
+
+- [ ] Competitor warning shot event leading to international treaty
+  - [ ] Add event to events.json with weight 1, AI level range 100-600, oneTimeAccept
+  - [ ] Implement competitor selection proportional to AI level in custom handler
+  - [ ] Draft treaty choice: starts International Treaty project (2000 diplomacy sink)
+  - [ ] Safety differentiation choice: +25% interp progress, -25% alignment red circle growth, Regulatory Favor roll
+  - [ ] Accelerate development choice: gain datacenter, accelerationist description
+  - [ ] Regulatory Favor status effect: immunity from sanctions
+  - [ ] International Treaty project system with completion trigger
+  - [ ] Bump minor version when complete
 
 Still deciding on details...
 - [ ] Integrate capabilities minigame as capabilities forecasting
@@ -127,7 +133,7 @@ Directions
 * Get alignment from someone else
 
 Plot ideas
-* Pause track
+* Coordination track
   * The company realizes (Safety: Evals, Forecasting) that alignment is too hard for them to solve while in full race mode. They convince everyone (Diplomacy) to slow down / pause, and their success depends on their existing lead.
   * Should be able to commit to this one late if sufficient diplomacy.
 * Alignment track (default)
@@ -150,7 +156,7 @@ Plot ideas
 * Product breakthrough (robotics): Research (-4 PP, +$1/turn) / Decline
 * Safety release-- The public demands you release safety research; however, your safety techniques are entangled. Publish (1 SP; -10% XL; 50% chance of increasing the public AI level by [0, 10]) / Decline
 * Evals: pay 2 Safety Research to multiply XL by a value in [0.3,1.7].
-* International treaty (requires 2 Evals, 10 SP): Unrestricted AI development poses an unacceptable risk of catastrophe. [name] has drafted a treaty that places development of frontier AI under an international body of neutral observers. However, treaties are a messy, bureaucratic process, and this document codifies today's best guess at an alignment protocol-- it will only cut existential risk by half, not eliminate it. (-6 DP, -50% XL) (Leads to end screen with AL and OL proportionally scaled up to 100) / Not yet
+* International treaty: Unrestricted AI development poses an unacceptable risk of catastrophe. [name] has drafted a treaty that places development of frontier AI under an international body of neutral observers. However, treaties are a messy, bureaucratic process, and this document codifies today's best guess at an alignment protocol-- it will only cut existential risk by 75%, not eliminate it. This treaty will end the AI race (Leads to end screen with AI levels proportionally scaled up to 1000) / Not yet
 
 Capabilities breakthrough
 * Automated AIRD

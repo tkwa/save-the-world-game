@@ -202,8 +202,8 @@
         },
         "action": {
           "type": "string",
-          "enum": ["accept", "decline", "accept-sanctions"],
-          "description": "Action type for this choice"
+          "pattern": "^[a-z-]+$",
+          "description": "Action type for this choice (accepts custom actions for events with customHandler)"
         },
         "condition": {
           "type": "string",

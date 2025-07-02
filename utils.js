@@ -189,6 +189,11 @@ function createInitialGameState() {
         alignmentMaxScore: 0, // Maximum score achieved in alignment minigame
         interpretabilityProgress: 0, // Progress towards 100% interpretability (0-100)
         interpretabilityLaborHours: 0, // Total labor hours invested in interpretability (in millions)
+        interpretabilityProgressMultiplier: 1, // Multiplier for interpretability progress gains
+        alignmentRedCircleReduction: 0, // Reduction in alignment minigame red circle growth rate
+        internationalTreatyProgress: 0, // Progress towards international treaty completion (0-2000)
+        internationalTreatyUnlocked: false, // Whether International Treaty project is unlocked
+        plotTrack: null, // Current plot track: null, "pause", "alignment", "dsa", etc.
         endgameAdjustedRisk: null, // Adjusted risk level at endgame trigger
         projectsUnlocked: false, // Whether Projects panel is unlocked (at 80 safety points)
         alignmentUnlocked: false, // Whether Alignment project is unlocked (at 320 safety points)

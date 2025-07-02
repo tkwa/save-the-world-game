@@ -371,6 +371,25 @@ function createEventVariables(eventType) {
         variables.marketShareAfter = (Math.round(marketShareAfter * 10) / 10).toString();
     }
     
+    if (eventType === 'competitor-warning-shot') {
+        // Select competitor proportional to AI level (weighted random)
+        const totalWeight = gameState.competitorAILevels.reduce((sum, level) => sum + level, 0);
+        const randomValue = Math.random() * totalWeight;
+        
+        let selectedIndex = 0;
+        let cumulativeWeight = 0;
+        for (let i = 0; i < gameState.competitorAILevels.length; i++) {
+            cumulativeWeight += gameState.competitorAILevels[i];
+            if (randomValue <= cumulativeWeight) {
+                selectedIndex = i;
+                break;
+            }
+        }
+        
+        const competitorName = gameState.competitorNames[selectedIndex] || `Competitor ${selectedIndex + 1}`;
+        variables.competitorName = competitorName;
+    }
+    
     if (eventType === 'competitor-acquisition') {
         // Find the leading competitor (at least 2x player level)
         let leadingCompetitorIndex = -1;
@@ -657,7 +676,10 @@ function applyChoiceEffects(choice) {
                 gameState.rawRiskLevel += choice.penalty.riskLevel;
             }
             if (choice.penalty.sanctions) {
-                gameState.hasSanctions = true;
+                // Check if player has Regulatory Favor immunity
+                if (!gameState.statusEffects.regulatoryFavor) {
+                    gameState.hasSanctions = true;
+                }
             }
             if (choice.penalty.statusEffect) {
                 applyStatusEffect(choice.penalty.statusEffect);
@@ -667,8 +689,11 @@ function applyChoiceEffects(choice) {
         // Apply risks (probability-based negative effects)
         if (choice.risk) {
             if (choice.risk.sanctions && Math.random() < choice.risk.sanctions) {
-                gameState.hasSanctions = true;
-                return true; // Return true if sanctions were triggered
+                // Check if player has Regulatory Favor immunity
+                if (!gameState.statusEffects.regulatoryFavor) {
+                    gameState.hasSanctions = true;
+                    return true; // Return true if sanctions were triggered
+                }
             }
             if (choice.risk.statusEffect && Math.random() < choice.risk.statusEffect.probability) {
                 applyStatusEffect(choice.risk.statusEffect.name);
@@ -1238,6 +1263,69 @@ function handleCompetitorAcquisitionChoice(choice, _event, _sanctionsTriggered) 
             gameState.currentEvent.showResult = true;
             gameState.currentEvent.resultText = choice.result_text;
         }
+    }
+    
+    updateStatusBar();
+    showPage('main-game');
+}
+
+// eslint-disable-next-line no-unused-vars
+function handleCompetitorWarningShot(choice, event, _sanctionsTriggered) {
+    console.log('Calling custom handler: handleCompetitorWarningShot');
+    
+    if (choice.action === 'draft-treaty') {
+        // Start International Treaty project
+        gameState.internationalTreatyProgress = 0;
+        gameState.internationalTreatyUnlocked = true;
+        
+        // Apply Shaken status effect (active immediately since incident already happened)
+        gameState.statusEffects.shaken = {
+            active: true,
+            restrictionsActive: true, // Active immediately since the incident already happened
+            description: 'Your organization is paralyzed by uncertainty about the AI race. Resource allocation is significantly impaired.',
+            turnsRemaining: 2 // Will last for 2 turns
+        };
+        
+        // Commit to Pause track - disable certain future events/projects
+        gameState.plotTrack = "pause";
+        
+        gameState.currentEvent.showResult = true;
+        // Apply variable substitution to result text
+        gameState.currentEvent.resultText = substituteEventVariables(event.originalEventData.other_texts.treaty_result, event.type);
+        
+    } else if (choice.action === 'differentiate-safety') {
+        // Calculate success probability based on interp + alignment progress
+        const interpProgress = gameState.interpretabilityProgress || 0;
+        const alignmentProgress = gameState.alignmentMaxScore || 0;
+        const successProbability = (interpProgress + alignmentProgress) / 100;
+        const success = Math.random() < successProbability;
+        
+        // Apply safety research boosts regardless of regulatory success
+        gameState.interpretabilityProgressMultiplier = (gameState.interpretabilityProgressMultiplier || 1) * 1.25;
+        gameState.alignmentRedCircleReduction = (gameState.alignmentRedCircleReduction || 0) + 0.25;
+        
+        if (success) {
+            // Grant Regulatory Favor status effect
+            gameState.statusEffects.regulatoryFavor = {
+                name: 'Regulatory Favor',
+                description: 'Your superior safety approach has earned government trust. You are immune to sanctions and receive preferential treatment in policy discussions.',
+                duration: null, // Permanent
+                turnsRemaining: null
+            };
+            
+            gameState.currentEvent.showResult = true;
+            gameState.currentEvent.resultText = substituteEventVariables(event.originalEventData.other_texts.safety_differentiation_success, event.type);
+        } else {
+            gameState.currentEvent.showResult = true;
+            gameState.currentEvent.resultText = substituteEventVariables(event.originalEventData.other_texts.safety_differentiation_failure, event.type);
+        }
+        
+    } else if (choice.action === 'accelerate-development') {
+        // Gain a datacenter 
+        gameState.datacenterCount = (gameState.datacenterCount || 0) + 1;
+        
+        gameState.currentEvent.showResult = true;
+        gameState.currentEvent.resultText = substituteEventVariables(event.originalEventData.other_texts.accelerate_result, event.type);
     }
     
     updateStatusBar();
