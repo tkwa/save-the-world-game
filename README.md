@@ -8,12 +8,9 @@ Open `savetheworld.html` in a browser, e.g. by using Cursor Live Preview or `pyt
 ## Status
 
 TODO for Claude (check off when finished):
-- [x] Fix eslint problems with files (unused variables, missing global declarations, etc.)
-- [x] Migrate to ES modules
-- [ ] Fix 
-- [ ] Move game to index.html
-- [ ] On mobile, add a warning to the home screen saying the game is best experienced on desktop. I'm thinking check for screen width unless there's a better way
-- [ ] Bump patch version
+- [ ] Fix the ESLint warnings in events.js
+- [ ] Read thru the project and remove obsolete comments
+
 
 
 
@@ -21,6 +18,10 @@ TODO for Claude (check off when finished):
 
 
 Still deciding on details...
+- [ ] Move game to index.html
+- [ ] On mobile, add a warning to the home screen saying the game is best experienced on desktop. I'm thinking check for screen width unless there's a better way
+- [ ] Bump patch version
+
 - [ ] Integrate capabilities minigame as capabilities forecasting
 - [ ] Add Greedy status effect that doubles your own galaxy values but halves humanity galaxy values, when you get $10T
 - [ ] Add event for completed international treaty (when progress reaches 2000)

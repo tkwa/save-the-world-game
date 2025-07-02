@@ -15,6 +15,8 @@ import {
     formatAllocationLabelWithCosts
 } from './game-core.js';
 
+import { validateEvents } from './validate-events.js';
+
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -1068,10 +1070,15 @@ function testEventsSchemaValidation() {
     suite.test('events.json should be valid according to schema', () => {
         // Check if we're in Node.js environment
         if (typeof process !== 'undefined') {
-            // We'll skip this test for now since it requires more complex import setup
-            console.log('Skipping schema validation test in ES module environment');
+            // Run actual schema validation
+            try {
+                const isValid = validateEvents();
+                suite.assertTrue(isValid, 'events.json should pass schema validation');
+            } catch (error) {
+                suite.assertTrue(false, `Schema validation failed with error: ${error.message}`);
+            }
         } else {
-            // Skip in browser environment
+            // Skip in browser environment (validation requires file system access)
             console.log('Skipping schema validation test in browser environment');
         }
     });
