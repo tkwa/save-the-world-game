@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Allocation Experiment - Critical Path</title>
+    <style>
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+        }
+        .container {
+            background-color: #2d2d2d;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            border: 1px solid #404040;
+        }
+        .status-bar {
+            border: 2px solid #555;
+            padding: 15px;
+            margin-bottom: 20px;
+            background-color: #353535;
+        }
+        .status-columns {
+            display: flex;
+            gap: 10px;
+        }
+        .status-column {
+            flex: 1;
+        }
+        .controls {
+            margin: 20px 0;
+            text-align: center;
+        }
+        .control-button {
+            background-color: #0066a2;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 0 10px;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        .control-button:hover {
+            background-color: #004d7a;
+        }
+        .control-button.pause {
+            background-color: #ff6b6b;
+        }
+        .control-button.pause:hover {
+            background-color: #e55555;
+        }
+        .speed-control {
+            margin: 10px 0;
+            text-align: center;
+        }
+        .speed-slider {
+            width: 200px;
+            margin: 0 10px;
+        }
+        .speed-label {
+            color: #66b3ff;
+            font-weight: bold;
+        }
+        .bottom-panel {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .allocation-panel {
+            background-color: #353535;
+            border: 2px solid #555;
+            border-radius: 8px;
+            padding: 10px 5px 10px 10px;
+            flex: 1;
+        }
+        .actions-section {
+            flex: 1;
+            padding: 20px 0;
+        }
+        .action-button {
+            background-color: #0066a2;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px 0;
+            font-family: 'Courier New', Courier, monospace;
+            width: 100%;
+            text-align: left;
+        }
+        .action-button:hover {
+            background-color: #004d7a;
+        }
+        .action-button:disabled {
+            background-color: #666;
+            cursor: not-allowed;
+        }
+        .allocation-row {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+            gap: 6px;
+        }
+        .allocation-label {
+            min-width: 90px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .allocation-slider {
+            flex: 1;
+            margin: 0 6px 0 8px;
+        }
+        .slider-input {
+            width: 100%;
+            height: 20px;
+            background: #666;
+            outline: none;
+            border-radius: 10px;
+        }
+        .slider-input::-webkit-slider-thumb {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #0066a2;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        .slider-input::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #0066a2;
+            cursor: pointer;
+            border-radius: 50%;
+            border: none;
+        }
+        .allocation-percentage {
+            min-width: 50px;
+            text-align: right;
+            font-weight: bold;
+            color: #4caf50;
+            font-size: 14px;
+        }
+        .time-display {
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #66b3ff;
+        }
+        .total-allocation {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #666;
+            text-align: center;
+            font-weight: bold;
+        }
+        h1 {
+            color: #e0e0e0;
+            text-align: center;
+        }
+        h2 {
+            color: #e0e0e0;
+            margin-bottom: 15px;
+        }
+        strong {
+            color: #f0f0f0;
+        }
+        .resource-value {
+            color: #4caf50;
+            font-weight: bold;
+        }
+        .resource-value.empty {
+            color: #ff6b6b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Allocation Experiment</h1>
+        <div class="time-display" id="time-display">January 2025 - Day 1</div>
+        
+        <div id="status-bar" class="status-bar">
+            <div class="status-columns">
+                <div class="status-column">
+                    <strong>AI Capabilities</strong><br>
+                    Company: <span class="resource-value" id="player-ai-level">1.0</span><br>
+                    Competitors: <span id="competitor-levels">2.0, 1.5, 1.2</span><br>
+                    Market Share: <span class="resource-value" id="market-share">25%</span>
+                    <br><br>
+                    <strong>Rogue AI Risk</strong>: <span class="resource-value" id="risk-level">5%</span>
+                </div>
+                <div class="status-column">
+                    <strong>Resources</strong><br>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Funds:</span><span><span class="resource-value" id="money">$0B</span><span id="money-trend"></span></span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Diplomacy:</span><span class="resource-value" id="diplomacy-points">0</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Product:</span><span class="resource-value" id="product-points">0</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Safety:</span><span class="resource-value" id="safety-points">0</span>
+                    </div>
+                </div>
+                <div class="status-column">
+                    <strong>Daily Rates</strong><br>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>AI R&D:</span><span class="resource-value" id="ai-rate">+0.0</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Revenue:</span><span class="resource-value" id="revenue-rate">+$0B</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Diplomacy:</span><span class="resource-value" id="diplomacy-rate">+0.0</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Product:</span><span class="resource-value" id="product-rate">+0.0</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span>Safety:</span><span class="resource-value" id="safety-rate">+0.0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="control-button" id="clear-btn" onclick="clearValues()">Clear Values</button>
+            <button class="control-button" id="pause-btn" onclick="togglePause()">Pause</button>
+        </div>
+        
+        <div class="speed-control">
+            <span class="speed-label">Speed: </span>
+            <input type="range" min="0" max="100" value="50" class="speed-slider" id="speed-slider" oninput="updateSpeed()">
+            <span class="speed-label" id="speed-display">2.0 days/sec</span>
+        </div>
+        
+        <div class="bottom-panel">
+            <div class="allocation-panel">
+                <h2>Resource Allocation</h2>
+                
+                <div class="allocation-row">
+                    <div class="allocation-label">AI R&D</div>
+                    <div class="allocation-slider">
+                        <input type="range" min="0" max="100" value="20" class="slider-input" id="ai-slider" oninput="updateAllocations()">
+                    </div>
+                    <div class="allocation-percentage" id="ai-percentage">20.0%</div>
+                </div>
+                
+                <div class="allocation-row">
+                    <div class="allocation-label">Revenue</div>
+                    <div class="allocation-slider">
+                        <input type="range" min="0" max="100" value="20" class="slider-input" id="revenue-slider" oninput="updateAllocations()">
+                    </div>
+                    <div class="allocation-percentage" id="revenue-percentage">20.0%</div>
+                </div>
+                
+                <div class="allocation-row">
+                    <div class="allocation-label">Diplomacy</div>
+                    <div class="allocation-slider">
+                        <input type="range" min="0" max="100" value="20" class="slider-input" id="diplomacy-slider" oninput="updateAllocations()">
+                    </div>
+                    <div class="allocation-percentage" id="diplomacy-percentage">20.0%</div>
+                </div>
+                
+                <div class="allocation-row">
+                    <div class="allocation-label">Product R&D</div>
+                    <div class="allocation-slider">
+                        <input type="range" min="0" max="100" value="20" class="slider-input" id="product-slider" oninput="updateAllocations()">
+                    </div>
+                    <div class="allocation-percentage" id="product-percentage">20.0%</div>
+                </div>
+                
+                <div class="allocation-row">
+                    <div class="allocation-label">Safety R&D</div>
+                    <div class="allocation-slider">
+                        <input type="range" min="0" max="100" value="20" class="slider-input" id="safety-slider" oninput="updateAllocations()">
+                    </div>
+                    <div class="allocation-percentage" id="safety-percentage">20.0%</div>
+                </div>
+                
+                <div class="total-allocation">
+                    Total Allocation: <span id="total-percentage">0.0%</span>
+                </div>
+            </div>
+            
+            <div class="actions-section">
+                <h2>Actions</h2>
+                
+                <button class="action-button" onclick="action1()">
+                    1. Emergency Funding (+$5B, -10 Diplomacy)
+                </button>
+                
+                <button class="action-button" onclick="action2()">
+                    2. Rush Research (+0.5 AI Level, -$2B)
+                </button>
+                
+                <button class="action-button" onclick="action3()">
+                    3. Talent Raid (-$3B, -5 Diplomacy, slow competitor)
+                </button>
+                
+                <button class="action-button" onclick="action4()">
+                    4. Market Manipulation (-$4B, +2 Market Share)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game state
+        let gameState = {
+            aiLevel: 1.0,
+            money: 10,      // Start with some money
+            diplomacyPoints: 0,
+            productPoints: 0,
+            safetyPoints: 0,
+            rawRiskLevel: 1.0, // Risk increases with AI level
+            competitorAILevels: [2.0, 1.5, 1.2], // Competitor levels
+            day: 1,
+            month: 0, // 0 = January
+            year: 2025,
+            isPaused: false,
+            marketShareHistory: [], // Track market share over time for rate calculation
+            currentMarketShare: 0,
+            gameSpeed: 2.0, // days per second (default speed)
+            moneyHistory: [], // Track money over time for rate calculation
+            previousMoney: 10
+        };
+        
+        let gameInterval = null;
+
+        // Game constants (from main game)
+        const GAME_CONSTANTS = {
+            RESOURCE_FORMULAS: {
+                RISK_REDUCTION_DIVISOR: 10,
+                DIPLOMACY_GAIN_DIVISOR: 10,
+                PRODUCT_GAIN_DIVISOR: 10,
+                COMPETITOR_PENALTY_POWER: 2,
+                PLAYER_LEVEL_POWER: 2
+            }
+        };
+
+        const monthNames = [
+            'January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December'
+        ];
+
+        // Calculate resource gains using actual game formulas
+        function calculateResourceGains(aiResources, revenueResources, diplomacyResources, productResources, safetyResources) {
+            // Scale all allocations by AI level (everything proportional to AI level)
+            const aiLevelMultiplier = gameState.aiLevel;
+            
+            // Convert from monthly to daily rates (divide by 30)
+            const dailyScaling = 1 / 30;
+            
+            // AI R&D: resources/10, costs money proportional to sqrt(current AI level)
+            const aiGain = (aiResources * aiLevelMultiplier) / 10 * dailyScaling;
+            const aiCost = Math.sqrt(gameState.aiLevel) * aiResources * dailyScaling;
+            
+            // Safety R&D: resources/10, costs half as much as AI R&D
+            const safetyGain = (safetyResources * aiLevelMultiplier) / 10 * dailyScaling;
+            const safetyCost = (Math.sqrt(gameState.aiLevel) / 2) * safetyResources * dailyScaling;
+            
+            // Diplomacy: resources/10, scaled by AI level
+            const diplomacyGain = (diplomacyResources * aiLevelMultiplier) / GAME_CONSTANTS.RESOURCE_FORMULAS.DIPLOMACY_GAIN_DIVISOR * dailyScaling;
+            
+            // Product: resources/10, scaled by AI level
+            const productGain = (productResources * aiLevelMultiplier) / GAME_CONSTANTS.RESOURCE_FORMULAS.PRODUCT_GAIN_DIVISOR * dailyScaling;
+            
+            // Revenue: resources / (1 + sum_i(min(1, Y_i^2 / X^2))), scaled by AI level
+            const playerLevel = gameState.aiLevel;
+            const competitorPenalty = gameState.competitorAILevels.reduce((sum, yLevel) => {
+                return sum + Math.min(1, Math.pow(yLevel, GAME_CONSTANTS.RESOURCE_FORMULAS.COMPETITOR_PENALTY_POWER) / Math.pow(playerLevel, GAME_CONSTANTS.RESOURCE_FORMULAS.PLAYER_LEVEL_POWER));
+            }, 0);
+            const revenueGain = (revenueResources * aiLevelMultiplier) / (1 + competitorPenalty) * dailyScaling;
+            
+            return {
+                ai: aiGain,
+                aiCost: aiCost,
+                safety: safetyGain,
+                safetyCost: safetyCost,
+                diplomacy: diplomacyGain,
+                product: productGain,
+                revenue: revenueGain
+            };
+        }
+
+        // Calculate adjusted risk using actual game formula
+        function calculateAdjustedRiskPercent() {
+            const rawRisk = gameState.rawRiskLevel;
+            const safetyFactor = 1 + Math.pow(gameState.safetyPoints, 0.6) / 5;
+            const adjustedRisk = rawRisk / safetyFactor;
+            return Math.min(adjustedRisk, 100); // Cap at 100%
+        }
+
+        function updateAllocations() {
+            const sliders = {
+                ai: document.getElementById('ai-slider').value,
+                revenue: document.getElementById('revenue-slider').value,
+                diplomacy: document.getElementById('diplomacy-slider').value,
+                product: document.getElementById('product-slider').value,
+                safety: document.getElementById('safety-slider').value
+            };
+
+            // Calculate total and normalized percentages
+            const total = Object.values(sliders).reduce((sum, val) => sum + parseInt(val), 0);
+            const normalizedPercentages = {};
+            
+            if (total > 0) {
+                Object.keys(sliders).forEach(key => {
+                    normalizedPercentages[key] = (parseInt(sliders[key]) / total) * 100;
+                });
+            } else {
+                Object.keys(sliders).forEach(key => {
+                    normalizedPercentages[key] = 0;
+                });
+            }
+
+            // Update percentage displays
+            document.getElementById('ai-percentage').textContent = normalizedPercentages.ai.toFixed(1) + '%';
+            document.getElementById('revenue-percentage').textContent = normalizedPercentages.revenue.toFixed(1) + '%';
+            document.getElementById('diplomacy-percentage').textContent = normalizedPercentages.diplomacy.toFixed(1) + '%';
+            document.getElementById('product-percentage').textContent = normalizedPercentages.product.toFixed(1) + '%';
+            document.getElementById('safety-percentage').textContent = normalizedPercentages.safety.toFixed(1) + '%';
+            document.getElementById('total-percentage').textContent = Math.min(total, 100).toFixed(1) + '%';
+
+            // Calculate actual gains using game formulas
+            const efficiency = Math.min(total / 100, 1); // Cap at 100% efficiency
+            const gains = calculateResourceGains(
+                normalizedPercentages.ai / 100 * efficiency,
+                normalizedPercentages.revenue / 100 * efficiency,
+                normalizedPercentages.diplomacy / 100 * efficiency,
+                normalizedPercentages.product / 100 * efficiency,
+                normalizedPercentages.safety / 100 * efficiency
+            );
+
+            // Update rate displays
+            document.getElementById('ai-rate').textContent = '+' + gains.ai.toFixed(3);
+            document.getElementById('revenue-rate').textContent = '+$' + gains.revenue.toFixed(1) + 'B';
+            document.getElementById('diplomacy-rate').textContent = '+' + gains.diplomacy.toFixed(2);
+            document.getElementById('product-rate').textContent = '+' + gains.product.toFixed(2);
+            document.getElementById('safety-rate').textContent = '+' + gains.safety.toFixed(2);
+
+            // Show costs for AI R&D and Safety R&D
+            if (gains.aiCost > 0) {
+                document.getElementById('ai-rate').textContent += ` (-$${gains.aiCost.toFixed(1)}B)`;
+            }
+            if (gains.safetyCost > 0) {
+                document.getElementById('safety-rate').textContent += ` (-$${gains.safetyCost.toFixed(1)}B)`;
+            }
+        }
+
+        function clearValues() {
+            gameState = {
+                aiLevel: 1.0,
+                money: 10,
+                diplomacyPoints: 0,
+                productPoints: 0,
+                safetyPoints: 0,
+                rawRiskLevel: 1.0,
+                competitorAILevels: [2.0, 1.5, 1.2],
+                day: 1,
+                month: 0,
+                year: 2025,
+                isPaused: false,
+                marketShareHistory: [],
+                currentMarketShare: 0,
+                gameSpeed: 2.0,
+                moneyHistory: [],
+                previousMoney: 10
+            };
+            
+            // Reset sliders to 20%
+            document.getElementById('ai-slider').value = 20;
+            document.getElementById('revenue-slider').value = 20;
+            document.getElementById('diplomacy-slider').value = 20;
+            document.getElementById('product-slider').value = 20;
+            document.getElementById('safety-slider').value = 20;
+            
+            updateAllocations();
+            updateDisplay();
+        }
+
+        function togglePause() {
+            gameState.isPaused = !gameState.isPaused;
+            const button = document.getElementById('pause-btn');
+            if (gameState.isPaused) {
+                button.textContent = 'Play';
+                button.classList.add('pause');
+            } else {
+                button.textContent = 'Pause';
+                button.classList.remove('pause');
+            }
+        }
+
+        // Convert slider value (0-100) to logarithmic speed (0.2-100 days/sec)
+        function sliderToSpeed(sliderValue) {
+            // Log scale: min=0.2, max=100
+            // Use exponential interpolation: speed = 0.2 * (100/0.2)^(sliderValue/100)
+            const minSpeed = 0.2;
+            const maxSpeed = 100;
+            const ratio = maxSpeed / minSpeed; // 500
+            const normalizedValue = sliderValue / 100; // 0-1
+            return minSpeed * Math.pow(ratio, normalizedValue);
+        }
+
+        function updateSpeed() {
+            const sliderValue = parseInt(document.getElementById('speed-slider').value);
+            gameState.gameSpeed = sliderToSpeed(sliderValue);
+            
+            // Update display
+            document.getElementById('speed-display').textContent = gameState.gameSpeed.toFixed(1) + ' days/sec';
+            
+            // Restart interval with new speed
+            if (gameInterval) {
+                clearInterval(gameInterval);
+            }
+            startGameLoop();
+        }
+
+        function updateDisplay() {
+            // Format AI level with 4 significant figures
+            const formatAILevel = (level) => {
+                if (level >= 100) {
+                    return level.toFixed(1) + 'x';
+                } else if (level >= 10) {
+                    return level.toFixed(2) + 'x';
+                } else {
+                    return level.toFixed(2) + 'x';
+                }
+            };
+
+            document.getElementById('player-ai-level').textContent = formatAILevel(gameState.aiLevel);
+            
+            // Update money display and color based on funds availability
+            const moneyElement = document.getElementById('money');
+            
+            // Format money with 3 significant figures
+            const formatMoney = (amount) => {
+                if (amount >= 100) {
+                    return '$' + Math.round(amount) + 'B';
+                } else if (amount >= 10) {
+                    return '$' + amount.toFixed(1) + 'B';
+                } else if (amount >= 1) {
+                    return '$' + amount.toFixed(2) + 'B';
+                } else if (amount > 0) {
+                    return '$' + amount.toFixed(3) + 'B';
+                } else {
+                    return '$0B';
+                }
+            };
+            
+            moneyElement.textContent = formatMoney(gameState.money);
+            
+            // Calculate if funds are critically low (less than 1 full day of AI R&D spending)
+            const sliders = {
+                ai: parseInt(document.getElementById('ai-slider').value),
+                revenue: parseInt(document.getElementById('revenue-slider').value),
+                diplomacy: parseInt(document.getElementById('diplomacy-slider').value),
+                product: parseInt(document.getElementById('product-slider').value),
+                safety: parseInt(document.getElementById('safety-slider').value)
+            };
+            const total = Object.values(sliders).reduce((sum, val) => sum + val, 0);
+            
+            let oneDayAICost = 0;
+            if (total > 0) {
+                const normalizedAIPercentage = (sliders.ai / total);
+                const efficiency = Math.min(total / 100, 1);
+                const aiAllocation = normalizedAIPercentage * efficiency;
+                const dailyScaling = 1 / 30;
+                oneDayAICost = Math.sqrt(gameState.aiLevel) * aiAllocation * dailyScaling;
+            }
+            
+            if (gameState.money < oneDayAICost) {
+                moneyElement.classList.add('empty');
+            } else {
+                moneyElement.classList.remove('empty');
+            }
+            
+            // Calculate money trend indicators
+            let moneyTrendEmoji = '';
+            if (gameState.moneyHistory.length >= 5) { // Need at least 5 days of data
+                const fiveDaysAgo = gameState.moneyHistory[gameState.moneyHistory.length - 5];
+                const dailyChange = (gameState.money - fiveDaysAgo) / 5; // Average daily change over 5 days
+                
+                // Calculate thresholds based on current allocation
+                const sliders = {
+                    ai: parseInt(document.getElementById('ai-slider').value),
+                    revenue: parseInt(document.getElementById('revenue-slider').value),
+                    diplomacy: parseInt(document.getElementById('diplomacy-slider').value),
+                    product: parseInt(document.getElementById('product-slider').value),
+                    safety: parseInt(document.getElementById('safety-slider').value)
+                };
+                const total = Object.values(sliders).reduce((sum, val) => sum + val, 0);
+                
+                let fullRevenueRate = 0;
+                let fullAICostRate = 0;
+                
+                if (total > 0) {
+                    const efficiency = Math.min(total / 100, 1);
+                    const dailyScaling = 1 / 30;
+                    
+                    // Full revenue allocation rate (positive)
+                    const aiLevelMultiplier = gameState.aiLevel;
+                    const playerLevel = gameState.aiLevel;
+                    const competitorPenalty = gameState.competitorAILevels.reduce((sum, yLevel) => {
+                        return sum + Math.min(1, Math.pow(yLevel, 2) / Math.pow(playerLevel, 2));
+                    }, 0);
+                    fullRevenueRate = (1.0 * aiLevelMultiplier) / (1 + competitorPenalty) * dailyScaling;
+                    
+                    // Full AI R&D cost rate (negative)
+                    fullAICostRate = -Math.sqrt(gameState.aiLevel) * 1.0 * dailyScaling;
+                }
+                
+                // Thresholds: two arrows at full rates, one arrow at 1/5 of that
+                const twoUpThreshold = -fullAICostRate / 5; // 1/5 of full AI cost (positive threshold)
+                const oneUpThreshold = -fullAICostRate / 25; // 1/25 of full AI cost
+                const oneDownThreshold = fullRevenueRate / 25; // 1/25 of full revenue (negative threshold)
+                const twoDownThreshold = fullRevenueRate / 5; // 1/5 of full revenue
+                
+                if (dailyChange >= twoUpThreshold) {
+                    moneyTrendEmoji = ' ⏫';
+                } else if (dailyChange >= oneUpThreshold) {
+                    moneyTrendEmoji = ' 🔼';
+                } else if (dailyChange <= -twoDownThreshold) {
+                    moneyTrendEmoji = ' ⏬';
+                } else if (dailyChange <= -oneDownThreshold) {
+                    moneyTrendEmoji = ' 🔽';
+                } else {
+                    moneyTrendEmoji = ' ⏺️'; // Record (verb) emoji for stable/neutral
+                }
+            }
+            
+            document.getElementById('money-trend').textContent = moneyTrendEmoji;
+            
+            document.getElementById('diplomacy-points').textContent = Math.floor(gameState.diplomacyPoints);
+            document.getElementById('product-points').textContent = Math.floor(gameState.productPoints);
+            document.getElementById('safety-points').textContent = Math.floor(gameState.safetyPoints);
+            
+            // Update competitor levels (show current ones)
+            document.getElementById('competitor-levels').textContent = 
+                gameState.competitorAILevels.map(level => formatAILevel(level)).join(', ');
+            
+            // Calculate market share: 1 / (1 + sum(competitor_level / player_level)^2)
+            const playerLevel = gameState.aiLevel;
+            const competitorPenalty = gameState.competitorAILevels.reduce((sum, yLevel) => {
+                return sum + Math.pow(yLevel / playerLevel, 2);
+            }, 0);
+            const marketShare = (1 / (1 + competitorPenalty)) * 100;
+            gameState.currentMarketShare = marketShare;
+            
+            // Calculate market share trend arrow based on last 14 days
+            let trendArrow = '';
+            if (gameState.marketShareHistory.length >= 14) { // Need at least 14 days of data
+                const fourteenDaysAgo = gameState.marketShareHistory[gameState.marketShareHistory.length - 14];
+                const fourteenDayChange = marketShare - fourteenDaysAgo;
+                
+                // Annualize the 14-day change: (14-day change) * (365/14) to get annual rate
+                const annualizedChange = fourteenDayChange * (365 / 14);
+                const annualizedChangePercent = Math.abs(annualizedChange);
+                
+                if (annualizedChangePercent >= 10) { // 10% annualized threshold
+                    if (annualizedChange > 0) {
+                        trendArrow = ' ↗';
+                    } else {
+                        trendArrow = ' ↘';
+                    }
+                }
+            }
+            
+            document.getElementById('market-share').textContent = Math.round(marketShare * 10) / 10 + '%' + trendArrow;
+            
+            // Calculate risk using actual game formula
+            const risk = calculateAdjustedRiskPercent();
+            document.getElementById('risk-level').textContent = risk.toFixed(1) + '%';
+            
+            // Update time display
+            document.getElementById('time-display').textContent = 
+                `${monthNames[gameState.month]} ${gameState.year} - Day ${gameState.day}`;
+        }
+
+        function gameLoop() {
+            if (!gameState.isPaused) {
+                const sliders = {
+                    ai: parseInt(document.getElementById('ai-slider').value),
+                    revenue: parseInt(document.getElementById('revenue-slider').value),
+                    diplomacy: parseInt(document.getElementById('diplomacy-slider').value),
+                    product: parseInt(document.getElementById('product-slider').value),
+                    safety: parseInt(document.getElementById('safety-slider').value)
+                };
+
+                const total = Object.values(sliders).reduce((sum, val) => sum + val, 0);
+                const efficiency = Math.min(total / 100, 1);
+
+                if (total > 0) {
+                    const normalizedPercentages = {};
+                    Object.keys(sliders).forEach(key => {
+                        normalizedPercentages[key] = (sliders[key] / total) * 100;
+                    });
+
+                    // Calculate gains using actual game formulas
+                    const gains = calculateResourceGains(
+                        normalizedPercentages.ai / 100 * efficiency,
+                        normalizedPercentages.revenue / 100 * efficiency,
+                        normalizedPercentages.diplomacy / 100 * efficiency,
+                        normalizedPercentages.product / 100 * efficiency,
+                        normalizedPercentages.safety / 100 * efficiency
+                    );
+
+                    // Calculate total cost needed for AI R&D and Safety R&D
+                    const totalCostNeeded = gains.aiCost + gains.safetyCost;
+                    const availableFunds = gameState.money;
+
+                    let aiMultiplier = 1;
+                    let safetyMultiplier = 1;
+
+                    // If costs exceed available funds, proportionally reduce progress
+                    if (totalCostNeeded > availableFunds && totalCostNeeded > 0) {
+                        const fundingRatio = availableFunds / totalCostNeeded;
+                        aiMultiplier = fundingRatio;
+                        safetyMultiplier = fundingRatio;
+                        
+                        // All available funds will be spent
+                        gameState.money = 0;
+                    } else {
+                        // Sufficient funds available, subtract full costs
+                        gameState.money -= gains.aiCost;
+                        gameState.money -= gains.safetyCost;
+                    }
+
+                    // Apply gains (with funding limitations for AI and Safety)
+                    gameState.aiLevel += gains.ai * aiMultiplier;
+                    gameState.money += gains.revenue;
+                    gameState.diplomacyPoints += gains.diplomacy;
+                    gameState.productPoints += gains.product;
+                    gameState.safetyPoints += gains.safety * safetyMultiplier;
+
+                    // Update raw risk level (increases with AI level)
+                    gameState.rawRiskLevel = gameState.aiLevel;
+
+                    // Prevent money from going negative (should already be 0 or positive)
+                    gameState.money = Math.max(0, gameState.money);
+
+                    // Make competitors slowly advance
+                    gameState.competitorAILevels = gameState.competitorAILevels.map(level => 
+                        level + 0.005 * Math.random()); // Random slow growth
+                }
+
+                // Advance time
+                gameState.day++;
+                if (gameState.day > 30) {
+                    gameState.day = 1;
+                    gameState.month++;
+                    if (gameState.month > 11) {
+                        gameState.month = 0;
+                        gameState.year++;
+                    }
+                }
+
+                // Record market share and money history (daily)
+                gameState.marketShareHistory.push(gameState.currentMarketShare);
+                gameState.moneyHistory.push(gameState.money);
+                
+                // Keep only last 2 years of data (730 days) to prevent memory bloat
+                if (gameState.marketShareHistory.length > 730) {
+                    gameState.marketShareHistory.shift();
+                }
+                if (gameState.moneyHistory.length > 730) {
+                    gameState.moneyHistory.shift();
+                }
+
+                updateDisplay();
+            }
+        }
+
+        function startGameLoop() {
+            // Calculate interval in milliseconds: 1000ms / (days per second)
+            const intervalMs = 1000 / gameState.gameSpeed;
+            gameInterval = setInterval(gameLoop, intervalMs);
+        }
+
+        // Action button functions (dummy implementations)
+        function action1() {
+            // Emergency Funding (+$5B, -10 Diplomacy)
+            if (gameState.diplomacyPoints >= 10) {
+                gameState.money += 5;
+                gameState.diplomacyPoints -= 10;
+                console.log('Emergency Funding: +$5B, -10 Diplomacy');
+            } else {
+                console.log('Insufficient diplomacy for Emergency Funding');
+            }
+        }
+
+        function action2() {
+            // Rush Research (+0.5 AI Level, -$2B)
+            if (gameState.money >= 2) {
+                gameState.aiLevel += 0.5;
+                gameState.money -= 2;
+                gameState.rawRiskLevel = gameState.aiLevel; // Update risk
+                console.log('Rush Research: +0.5 AI Level, -$2B');
+            } else {
+                console.log('Insufficient funds for Rush Research');
+            }
+        }
+
+        function action3() {
+            // Talent Raid (-$3B, -5 Diplomacy, slow competitor)
+            if (gameState.money >= 3 && gameState.diplomacyPoints >= 5) {
+                gameState.money -= 3;
+                gameState.diplomacyPoints -= 5;
+                // Slow down the highest competitor
+                const highestIndex = gameState.competitorAILevels.indexOf(Math.max(...gameState.competitorAILevels));
+                gameState.competitorAILevels[highestIndex] *= 0.95; // 5% reduction
+                console.log('Talent Raid: -$3B, -5 Diplomacy, slowed top competitor');
+            } else {
+                console.log('Insufficient resources for Talent Raid');
+            }
+        }
+
+        function action4() {
+            // Market Manipulation (-$4B, +2 Market Share through competitor penalty)
+            if (gameState.money >= 4) {
+                gameState.money -= 4;
+                // Temporarily reduce all competitors by small amount to boost market share
+                gameState.competitorAILevels = gameState.competitorAILevels.map(level => level * 0.98);
+                console.log('Market Manipulation: -$4B, reduced competitor effectiveness');
+            } else {
+                console.log('Insufficient funds for Market Manipulation');
+            }
+        }
+
+        // Initialize
+        updateAllocations();
+        updateDisplay();
+        updateSpeed(); // Set initial speed and start game loop
+    </script>
+</body>
+</html>

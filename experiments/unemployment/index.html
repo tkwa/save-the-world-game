@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unemployment Automation - Critical Path</title>
+    <style>
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+        }
+        .container {
+            background-color: #2d2d2d;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            border: 1px solid #404040;
+        }
+        .panels {
+            display: flex;
+            gap: 40px;
+            margin-bottom: 30px;
+        }
+        .panel {
+            background-color: #353535;
+            border: 2px solid #555;
+            border-radius: 8px;
+            padding: 20px;
+            flex: 1;
+        }
+        .panel h2 {
+            color: #e0e0e0;
+            margin-top: 0;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .emoji-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .emoji-cell {
+            font-size: 32px;
+            text-align: center;
+            padding: 8px;
+            background-color: #404040;
+            border-radius: 4px;
+            transition: all 0.5s ease;
+        }
+        .emoji-cell.automated {
+            background-color: #2d4a2d;
+            transform: scale(1.1);
+        }
+        .slider-container {
+            margin: 20px 0;
+            text-align: center;
+        }
+        .day-slider {
+            width: 100%;
+            height: 20px;
+            background: #666;
+            outline: none;
+            border-radius: 10px;
+            margin: 10px 0;
+        }
+        .day-slider::-webkit-slider-thumb {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #0066a2;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        .day-slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #0066a2;
+            cursor: pointer;
+            border-radius: 50%;
+            border: none;
+        }
+        .day-display {
+            font-size: 18px;
+            font-weight: bold;
+            color: #66b3ff;
+            margin: 10px 0;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background-color: #404040;
+            border-radius: 3px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: #ff6b6b;
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+        .automation-stats {
+            font-size: 14px;
+            color: #ccc;
+            text-align: center;
+            margin-top: 15px;
+        }
+        h1 {
+            color: #e0e0e0;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Unemployment Automation Visualization</h1>
+        
+        <div class="slider-container">
+            <div class="day-display" id="day-display">Day 0</div>
+            <input type="range" min="0" max="100" value="0" class="day-slider" id="day-slider" oninput="updateDay()">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+        </div>
+        
+        <div class="panels">
+            <div class="panel">
+                <h2>World Population</h2>
+                <div class="emoji-grid" id="world-grid"></div>
+                <div class="automation-stats" id="world-stats">0/20 jobs automated (0%)</div>
+            </div>
+            
+            <div class="panel">
+                <h2>Your Company</h2>
+                <div class="emoji-grid" id="company-grid"></div>
+                <div class="automation-stats" id="company-stats">0/20 jobs automated (0%)</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Define professions with their emojis and automation targets
+        const professions = [
+            // Row 1: Service workers
+            { original: '👨‍🍳', automated: '🤖', type: 'service', name: 'Chef' },
+            { original: '👩‍⚕️', automated: '🤖', type: 'medical', name: 'Doctor' },
+            { original: '👨‍🏫', automated: '🤖', type: 'education', name: 'Teacher' },
+            { original: '👩‍💼', automated: '💻', type: 'office', name: 'Manager' },
+            { original: '👨‍💻', automated: '💻', type: 'tech', name: 'Developer' },
+            
+            // Row 2: Transportation and logistics
+            { original: '👨‍✈️', automated: '🤖', type: 'transport', name: 'Pilot' },
+            { original: '🚛', automated: '🤖', type: 'transport', name: 'Truck Driver' },
+            { original: '👷‍♂️', automated: '🦾', type: 'physical', name: 'Construction' },
+            { original: '🔧', automated: '🦾', type: 'physical', name: 'Mechanic' },
+            { original: '📦', automated: '🤖', type: 'logistics', name: 'Warehouse' },
+            
+            // Row 3: Creative and professional
+            { original: '👩‍🎨', automated: '🤖', type: 'creative', name: 'Artist' },
+            { original: '📰', automated: '💻', type: 'media', name: 'Journalist' },
+            { original: '⚖️', automated: '💻', type: 'professional', name: 'Lawyer' },
+            { original: '💰', automated: '💻', type: 'finance', name: 'Accountant' },
+            { original: '🏪', automated: '🤖', type: 'retail', name: 'Store Clerk' },
+            
+            // Row 4: Manufacturing and manual labor
+            { original: '🏭', automated: '🤖', type: 'manufacturing', name: 'Factory Worker' },
+            { original: '🔨', automated: '🦾', type: 'physical', name: 'Carpenter' },
+            { original: '🧹', automated: '🤖', type: 'service', name: 'Cleaner' },
+            { original: '🚚', automated: '🤖', type: 'transport', name: 'Delivery' },
+            { original: '👥', automated: '🤖', type: 'service', name: 'Customer Service' }
+        ];
+
+        // Generate random automation timing for each profession (0-100 days)
+        const worldAutomationTiming = professions.map(() => Math.floor(Math.random() * 101));
+        const companyAutomationTiming = professions.map(() => Math.floor(Math.random() * 101));
+
+        let currentDay = 0;
+
+        function initializeGrids() {
+            const worldGrid = document.getElementById('world-grid');
+            const companyGrid = document.getElementById('company-grid');
+            
+            // Clear existing content
+            worldGrid.innerHTML = '';
+            companyGrid.innerHTML = '';
+            
+            // Create world grid
+            professions.forEach((profession, index) => {
+                const cell = document.createElement('div');
+                cell.className = 'emoji-cell';
+                cell.id = `world-${index}`;
+                cell.textContent = profession.original;
+                cell.title = profession.name;
+                worldGrid.appendChild(cell);
+            });
+            
+            // Create company grid
+            professions.forEach((profession, index) => {
+                const cell = document.createElement('div');
+                cell.className = 'emoji-cell';
+                cell.id = `company-${index}`;
+                cell.textContent = profession.original;
+                cell.title = profession.name;
+                companyGrid.appendChild(cell);
+            });
+        }
+
+        function updateDay() {
+            const slider = document.getElementById('day-slider');
+            currentDay = parseInt(slider.value);
+            
+            // Update day display
+            document.getElementById('day-display').textContent = `Day ${currentDay}`;
+            
+            // Update progress bar
+            const progressFill = document.getElementById('progress-fill');
+            progressFill.style.width = `${currentDay}%`;
+            
+            // Update world grid
+            let worldAutomated = 0;
+            professions.forEach((profession, index) => {
+                const cell = document.getElementById(`world-${index}`);
+                if (currentDay >= worldAutomationTiming[index]) {
+                    cell.textContent = profession.automated;
+                    cell.classList.add('automated');
+                    cell.title = `${profession.name} (Automated)`;
+                    worldAutomated++;
+                } else {
+                    cell.textContent = profession.original;
+                    cell.classList.remove('automated');
+                    cell.title = profession.name;
+                }
+            });
+            
+            // Update company grid
+            let companyAutomated = 0;
+            professions.forEach((profession, index) => {
+                const cell = document.getElementById(`company-${index}`);
+                if (currentDay >= companyAutomationTiming[index]) {
+                    cell.textContent = profession.automated;
+                    cell.classList.add('automated');
+                    cell.title = `${profession.name} (Automated)`;
+                    companyAutomated++;
+                } else {
+                    cell.textContent = profession.original;
+                    cell.classList.remove('automated');
+                    cell.title = profession.name;
+                }
+            });
+            
+            // Update statistics
+            const worldPercent = Math.round((worldAutomated / professions.length) * 100);
+            const companyPercent = Math.round((companyAutomated / professions.length) * 100);
+            
+            document.getElementById('world-stats').textContent = 
+                `${worldAutomated}/${professions.length} jobs automated (${worldPercent}%)`;
+            document.getElementById('company-stats').textContent = 
+                `${companyAutomated}/${professions.length} jobs automated (${companyPercent}%)`;
+        }
+
+        // Initialize the visualization
+        initializeGrids();
+        updateDay();
+    </script>
+</body>
+</html>
