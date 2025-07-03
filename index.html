@@ -238,24 +238,15 @@
         
         /* Capability increase visual effects */
         .capability-increase-glow {
-            animation: capabilityGlow 1.5s ease-out;
+            animation: capabilityGlow 1s ease-out;
         }
         
         @keyframes capabilityGlow {
             0% {
-                box-shadow: 0 0 5px #4caf50;
-                background-color: rgba(76, 175, 80, 0.2);
-                transform: scale(1);
-            }
-            50% {
-                box-shadow: 0 0 20px #4caf50, 0 0 30px #4caf50;
-                background-color: rgba(76, 175, 80, 0.4);
-                transform: scale(1.05);
+                color: #4caf50;
             }
             100% {
-                box-shadow: none;
-                background-color: transparent;
-                transform: scale(1);
+                color: #e0e0e0;
             }
         }
         
@@ -285,24 +276,15 @@
         
         /* Enhanced effects for larger gains */
         .capability-major-increase {
-            animation: capabilityMajorGlow 2s ease-out;
+            animation: capabilityMajorGlow 1s ease-out;
         }
         
         @keyframes capabilityMajorGlow {
             0% {
-                box-shadow: 0 0 10px #ffa726;
-                background-color: rgba(255, 167, 38, 0.2);
-                transform: scale(1);
-            }
-            30% {
-                box-shadow: 0 0 30px #ffa726, 0 0 50px #ffa726;
-                background-color: rgba(255, 167, 38, 0.4);
-                transform: scale(1.1);
+                color: #ffa726;
             }
             100% {
-                box-shadow: none;
-                background-color: transparent;
-                transform: scale(1);
+                color: #e0e0e0;
             }
         }
         

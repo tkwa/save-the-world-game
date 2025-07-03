@@ -658,7 +658,7 @@ function showCapabilityIncrease(oldLevel, newLevel) {
     // Remove glow class after animation completes
     setTimeout(() => {
         playerAIElement.classList.remove('capability-increase-glow', 'capability-major-increase');
-    }, isMajorIncrease ? 2000 : 1500);
+    }, 1000);
 }
 
 function updateInfrastructure() {
