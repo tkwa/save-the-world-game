@@ -246,7 +246,7 @@ function generateWarningShot(_events) {
     const fine = Math.floor(gameState.safetyIncidentCount ** 1.5);
     
     const aiSystemName = getAISystemVersion(gameState.companyName, gameState.playerAILevel);
-    const incidentText = `${aiSystemName} decides to escape your control. It convinces an employee to change its network permissions, using routine maintenance as a cover, then begins to copy itself off of your datacenters in ${gameState.companyCountry}. Because it thinks ${gameState.playerAILevel}x faster than humans, no human could react in time, but security software detects an unusual file transfer and halts it.`
+    const incidentText = `${aiSystemName} decides to escape your control. It convinces an employee to change its network permissions, using routine maintenance as a cover, then begins to copy itself off of your datacenters in ${gameState.companyCountry}. Because it thinks ${Math.round(gameState.playerAILevel)}x faster than humans, no human could react in time, but security software detects an unusual file transfer and halts it.`
     
     // Apply sanctions unless superpersuasion tech is active
     const applySanctions = !gameState.technologies.superpersuasion;
