@@ -615,8 +615,9 @@ function showCapabilityIncrease(oldLevel, newLevel) {
     const gain = newLevel - oldLevel;
     if (gain <= 0) return; // No increase to show
     
-    // Determine if this is a major increase (>= 5x gain)
-    const isMajorIncrease = gain >= 5;
+    // Determine if this is a major increase (>= 20% of current AI level)
+    const majorThreshold = oldLevel * 0.2;
+    const isMajorIncrease = gain >= majorThreshold;
     
     // Add glow effect to the AI level number
     playerAIElement.classList.remove('capability-increase-glow', 'capability-major-increase');
@@ -670,8 +671,9 @@ function showRevenueIncrease(oldAmount, newAmount) {
     const gain = newAmount - oldAmount;
     if (gain <= 0) return; // No increase to show
     
-    // Determine if this is a major increase (>= $5B gain)
-    const isMajorIncrease = gain >= 5;
+    // Determine if this is a major increase (>= 100% of current AI level in $B)
+    const majorThreshold = gameState.playerAILevel * 1.0; // 100% of AI level
+    const isMajorIncrease = gain >= majorThreshold;
     
     // Add glow effect to the money amount
     moneyElement.classList.remove('capability-increase-glow', 'capability-major-increase');
