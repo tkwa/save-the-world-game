@@ -12,7 +12,8 @@ import {
     updateStatusBar,
     showPage,
     setSanctions,
-    hasSanctions
+    hasSanctions,
+    showRevenueIncrease
 } from './game-core.js';
 
 
@@ -1223,7 +1224,9 @@ function handleCompetitorAcquisitionChoice(choice, _event, _sanctionsTriggered) 
         
         // Add random resources based on new capability level
         const levelBasedBonus = Math.floor(newAILevel / 4); // Scale with AI level
+        const oldMoney = gameState.money;
         gameState.money += Math.floor(Math.random() * levelBasedBonus + levelBasedBonus);
+        showRevenueIncrease(oldMoney, gameState.money);
         gameState.diplomacyPoints += Math.floor(Math.random() * levelBasedBonus + levelBasedBonus/2);
         gameState.productPoints += Math.floor(Math.random() * levelBasedBonus + levelBasedBonus/2);
         

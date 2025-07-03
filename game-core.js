@@ -661,6 +661,65 @@ function showCapabilityIncrease(oldLevel, newLevel) {
     }, 1000);
 }
 
+// Visual feedback for revenue/money increases
+function showRevenueIncrease(oldAmount, newAmount) {
+    const moneyElement = document.getElementById('money');
+    
+    if (!moneyElement) return;
+    
+    const gain = newAmount - oldAmount;
+    if (gain <= 0) return; // No increase to show
+    
+    // Determine if this is a major increase (>= $5B gain)
+    const isMajorIncrease = gain >= 5;
+    
+    // Add glow effect to the money amount
+    moneyElement.classList.remove('capability-increase-glow', 'capability-major-increase');
+    void moneyElement.offsetWidth; // Force reflow to restart animation
+    
+    if (isMajorIncrease) {
+        moneyElement.classList.add('capability-major-increase');
+    } else {
+        moneyElement.classList.add('capability-increase-glow');
+    }
+    
+    // Create floating "+$XX" text
+    const floatingText = document.createElement('div');
+    floatingText.textContent = `+$${gain.toFixed(0)}B`;
+    floatingText.className = isMajorIncrease ? 'floating-major-increase' : 'floating-increase';
+    
+    // Find the resources column to position the floating text
+    const resourcesColumn = moneyElement.closest('.status-column');
+    if (resourcesColumn) {
+        // Position the floating text relative to the money element
+        const rect = moneyElement.getBoundingClientRect();
+        const containerRect = resourcesColumn.getBoundingClientRect();
+        
+        floatingText.style.left = `${rect.left - containerRect.left + rect.width + 10}px`;
+        floatingText.style.top = `${rect.top - containerRect.top}px`;
+        
+        // Make sure the container is positioned relatively
+        const currentPosition = window.getComputedStyle(resourcesColumn).position;
+        if (currentPosition === 'static') {
+            resourcesColumn.style.position = 'relative';
+        }
+        
+        resourcesColumn.appendChild(floatingText);
+        
+        // Remove the floating text after animation completes
+        setTimeout(() => {
+            if (floatingText.parentNode) {
+                floatingText.parentNode.removeChild(floatingText);
+            }
+        }, isMajorIncrease ? 2500 : 2000);
+    }
+    
+    // Remove glow class after animation completes
+    setTimeout(() => {
+        moneyElement.classList.remove('capability-increase-glow', 'capability-major-increase');
+    }, 1000);
+}
+
 function updateInfrastructure() {
     // Infrastructure icons
     const datacenterElement = document.getElementById('datacenter-icon');
@@ -873,7 +932,9 @@ async function advanceTurn() {
 
     // Apply income bonus from product breakthroughs
     if (gameState.incomeBonus) {
+        const oldMoney = gameState.money;
         gameState.money += gameState.incomeBonus;
+        showRevenueIncrease(oldMoney, gameState.money);
     }
 
     // Apply monthly compounding to international treaty progress (5% growth)
@@ -1375,7 +1436,9 @@ function applyResourceAllocation(resourceType, corporateResources) {
             }
             break;
         case 'revenue':
+            const oldMoney = gameState.money;
             gameState.money += gains.revenue;
+            showRevenueIncrease(oldMoney, gameState.money);
             break;
     }
     updateStatusBar();
@@ -2943,7 +3006,9 @@ export {
     setStatusEffect,
     hasStatusEffect,
     setSanctions,
-    hasSanctions
+    hasSanctions,
+    showCapabilityIncrease,
+    showRevenueIncrease
 };
 
 // Browser-specific initialization

@@ -1,6 +1,6 @@
 // Opening sequence for Critical Path game
 import { COMPANIES, GAME_CONSTANTS, gameState } from './utils.js';
-import { showPage } from './game-core.js';
+import { showPage, showCapabilityIncrease } from './game-core.js';
 import { generateEvent } from './events.js';
 
 // Intro sequence state
@@ -273,7 +273,11 @@ function handleAIRDButtonPress() {
     
     // Increase AI level by percentage of current level
     const increase = (introState.buttonPercentage / 100) * introState.aiLevel;
+    const oldLevel = introState.aiLevel;
     introState.aiLevel += increase;
+    
+    // Show visual feedback for capability increase
+    showCapabilityIncrease(oldLevel, introState.aiLevel);
     
     // Increment step counter first
     introState.currentStep++;
