@@ -1552,7 +1552,7 @@ function testTechnologyEmojiUniqueness() {
     
     suite.test('All technology emojis should be distinct', () => {
         // Read the HTML file to extract technology emojis
-        const htmlContent = fs.readFileSync('./savetheworld.html', 'utf8');
+        const htmlContent = fs.readFileSync('./index.html', 'utf8');
         
         // Extract all technology emoji elements using regex
         const techEmojiRegex = /<span id="([^"]*-tech)"[^>]*>([^<]+)<\/span>/g;

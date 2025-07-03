@@ -223,7 +223,7 @@ function getRiskFactors(safetyPoints = null, alignmentMaxScore = null, interpret
 }
 
 // Game state - shared across all modules
-let gameState = createInitialGameState();
+const gameState = createInitialGameState();
 
 // Risk calculation function used across multiple files
 function calculateAdjustedRiskPercent(safetyPoints = null, alignmentMaxScore = null, interpretabilityProgress = null) {

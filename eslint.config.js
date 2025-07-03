@@ -33,7 +33,15 @@ export default [
       }],
       "no-undef": "error",
       "no-redeclare": "error",
-      "no-implicit-globals": "error"
+      "no-implicit-globals": "error",
+      "eqeqeq": ["warn", "smart"],
+      "prefer-const": "error",
+      "no-var": "error",
+      "no-new-func": "error",
+      "no-global-assign": "error",
+      "no-unreachable": "error",
+      "no-duplicate-case": "error",
+      "no-fallthrough": "error"
     }
   }
 ];

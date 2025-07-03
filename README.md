@@ -3,20 +3,18 @@ A WIP game to represent the AI singularity.
 
 ## To run
 
-Open `savetheworld.html` in a browser, e.g. by using Cursor Live Preview or `python -m http.server 8000`.
+Open `index.html` in a browser, e.g. by using Cursor Live Preview or `python -m http.server 8000`.
 
 ## Status
 
 TODO for Claude (check off when finished):
-- [ ] Decide what other rules should be added to the linter
-
-
-
-
-Still deciding on details...
 - [ ] Move game to index.html
 - [ ] On mobile, add a warning to the home screen saying the game is best experienced on desktop. I'm thinking check for screen width unless there's a better way
 - [ ] Bump patch version
+
+
+Still deciding on details...
+
 
 - [ ] Integrate capabilities minigame as capabilities forecasting
 - [ ] Add Greedy status effect that doubles your own galaxy values but halves humanity galaxy values, when you get $10T
