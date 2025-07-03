@@ -8,7 +8,7 @@ Open `savetheworld.html` in a browser, e.g. by using Cursor Live Preview or `pyt
 ## Status
 
 TODO for Claude (check off when finished):
-
+- [ ] Decide what other rules should be added to the linter
 
 
 

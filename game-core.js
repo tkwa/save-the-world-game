@@ -44,6 +44,7 @@ import {
     calculateEndGameScore
 } from './endgame.js';
 
+
 /* global updateEventPoolOverlay, startDateTicker, MutationObserver, setInterval, clearInterval, prompt, alert */
 /* eslint-disable no-unused-vars */
 /* global continueToNextPhase */
@@ -2413,7 +2414,7 @@ function navigateToPage(page) {
     const dropdown = document.getElementById('debugPageDropdown');
     if (dropdown) dropdown.value = '';
     
-    // Handle special cases for end game navigation
+    // Handle special cases for navigation
     if (page === 'end-game') {
         // Set up minimal endgame state if not already present
         if (!gameState.endGamePhase) {
@@ -2423,6 +2424,10 @@ function navigateToPage(page) {
             // Set up some dummy values for testing
             scaleAILevelsForEndGame();
         }
+    } else if (page === 'alignment-minigame') {
+        // Use the proper minigame initialization
+        startMinigame('alignment-research');
+        return; // startMinigame handles the page showing
     }
     
     // Navigate to the page
@@ -2852,6 +2857,7 @@ if (typeof window !== 'undefined') {
     window.getChoiceAffordability = getChoiceAffordability;
     window.formatChoiceTextWithCosts = formatChoiceTextWithCosts;
     window.showPage = showPage;
+    window.resetGameState = resetGameState;
     window.updateStatusBar = updateStatusBar;
 }
 

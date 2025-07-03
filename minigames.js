@@ -1,5 +1,6 @@
 // Minigame functions for the AI Timeline Game
 import { showPage } from './game-core.js';
+import { gameState } from './utils.js';
 
 /* global alert, updateForecastingDisplay */
 
@@ -10,7 +11,7 @@ function startMinigame(type) {
             startCapabilityEvalsMinigame();
             break;
         case 'alignment-research':
-            startAlignmentMinigame();
+            showAlignmentMinigamePage();
             break;
         case 'forecasting':
             startForecastingEvalsMinigame();
@@ -314,6 +315,7 @@ function calculateRadiusWithSlowdown(ageSeconds, growthRate) {
 }
 
 function drawStartButton(ctx, canvas) {
+    console.log('drawStartButton called', canvas.width, canvas.height);
     // Draw start button in center of canvas
     const buttonWidth = 200;
     const buttonHeight = 60;
@@ -345,7 +347,7 @@ function drawStartButton(ctx, canvas) {
     };
 }
 
-function startAlignmentGame() {
+function beginAlignmentGame() {
     const minigame = gameState.currentMinigame;
     if (!minigame || minigame.type !== 'alignment-research') return;
     
@@ -364,7 +366,8 @@ function startAlignmentGame() {
 }
 
 // Alignment Minigame: Blue vs Red circle area coverage
-function startAlignmentMinigame() {
+function showAlignmentMinigamePage() {
+    console.log('showAlignmentMinigamePage: Creating minigame state');
     gameState.currentMinigame = {
         type: 'alignment-research',
         dotsData: {
@@ -379,18 +382,34 @@ function startAlignmentMinigame() {
             percentageHistory: [] // Track blue/red percentages over time
         }
     };
+    console.log('showAlignmentMinigamePage: State created', gameState.currentMinigame);
     
     gameState.currentPage = 'alignment-minigame';
     showPage('alignment-minigame');
+    
+    console.log('showAlignmentMinigamePage: After showPage, currentMinigame is:', gameState.currentMinigame);
+    
+    // Start the animation loop to show the start button after DOM is ready
+    console.log('showAlignmentMinigamePage: Setting timeout for updateAlignmentMinigame');
+    setTimeout(() => {
+        console.log('showAlignmentMinigamePage: Timeout fired, calling updateAlignmentMinigame');
+        updateAlignmentMinigame();
+    }, 10);
 }
 
 function updateAlignmentMinigame() {
     const minigame = gameState.currentMinigame;
-    if (!minigame || minigame.type !== 'alignment-research') return;
+    if (!minigame || minigame.type !== 'alignment-research') {
+        console.log('updateAlignmentMinigame: No minigame or wrong type', minigame);
+        return;
+    }
     
     const dotsData = minigame.dotsData;
     const gameCanvas = document.getElementById('alignment-canvas');
-    if (!gameCanvas) return;
+    if (!gameCanvas) {
+        console.log('updateAlignmentMinigame: Canvas not found');
+        return;
+    }
     
     const ctx = gameCanvas.getContext('2d');
     
@@ -652,6 +671,12 @@ function spawnAlignmentCircle() {
     dotsData.circles.push(circle);
 }
 
+function endMinigameAndContinue() {
+    gameState.currentMinigame = null;
+    gameState.currentPage = 'main-game';
+    showPage('main-game');
+}
+
 function clickAlignmentCanvas(event) {
     const minigame = gameState.currentMinigame;
     if (!minigame || minigame.type !== 'alignment-research') return;
@@ -666,7 +691,7 @@ function clickAlignmentCanvas(event) {
         const btn = minigame.startButton;
         if (clickX >= btn.x && clickX <= btn.x + btn.width &&
             clickY >= btn.y && clickY <= btn.y + btn.height) {
-            startAlignmentGame();
+            beginAlignmentGame();
             return;
         }
         return; // Don't process other clicks if game hasn't started
@@ -809,6 +834,8 @@ function endAlignmentMinigame() {
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const pixels = imageData.data;
     let bluePixels = 0;
+    let _totalNonBlackPixels = 0;
+    let _redPixels = 0;
     
     // Check every pixel (RGBA = 4 bytes per pixel)
     for (let i = 0; i < pixels.length; i += 4) {
@@ -864,7 +891,7 @@ function endAlignmentMinigame() {
             <div style="font-weight: bold; margin-bottom: 10px;">Training Loss Over Time</div>
             <div id="graph-container"></div>
         </div>
-        <button class="button" onclick="gameState.currentMinigame = null; gameState.currentPage = 'main-game'; showPage('main-game');" style="margin-top: 10px;">Continue</button>
+        <button class="button" onclick="endMinigameAndContinue();" style="margin-top: 10px;">Continue</button>
     `;
     
     // Create the line graph and insert it directly
@@ -1041,9 +1068,11 @@ function createAlignmentGraph(percentageHistory) {
 // Export functions for ES modules
 export {
     startMinigame,
+    showAlignmentMinigamePage,
     clickAlignmentCanvas,
     updateAlignmentMinigame,
-    startAlignmentGame,
+    beginAlignmentGame,
+    endMinigameAndContinue,
     _submitCapabilityEvalsAnswer as submitCapabilityEvalsAnswer,
     _performDailyCoinFlip as performDailyCoinFlip,
     _submitForecastingEvalsAnswer as submitForecastingEvalsAnswer
@@ -1052,7 +1081,9 @@ export {
 // Make functions globally accessible
 if (typeof window !== 'undefined') {
     window.startMinigame = startMinigame;
+    window.showAlignmentMinigamePage = showAlignmentMinigamePage;
     window.clickAlignmentCanvas = clickAlignmentCanvas;
     window.updateAlignmentMinigame = updateAlignmentMinigame;
-    window.startAlignmentGame = startAlignmentGame;
+    window.beginAlignmentGame = beginAlignmentGame;
+    window.endMinigameAndContinue = endMinigameAndContinue;
 }

@@ -448,13 +448,17 @@ function startAlignmentReveal() {
     
     // Reveal restart button after 9.5 seconds (1s after conclusion)
     setTimeout(() => {
-        let restartHTML = `<br><button class="button" onclick="resetGameState(); showPage('start');">Restart</button>`;
+        let restartHTML = `<br><button class="button" onclick="restartGame();">Restart</button>`;
         
         const element = document.getElementById('score-reveal');
         fadeIn(element, restartHTML);
     }, 9500);
 }
 
+function restartGame() {
+    window.resetGameState();
+    showPage('start');
+}
 
 function calculateEndGameScore() {
     // Return cached result if it exists (to avoid re-rolling random events)
@@ -544,4 +548,5 @@ if (typeof window !== 'undefined') {
     window.getEndGamePhaseButtons = getEndGamePhaseButtons;
     window.continueToNextPhase = continueToNextPhase;
     window.calculateEndGameScore = calculateEndGameScore;
+    window.restartGame = restartGame;
 }

@@ -54,8 +54,10 @@ There's a TODO list atop `README.md`.
 - **Test timing**: Execution time is logged in commit messages for performance tracking
 - **Commands**: 
   - `npm test` - Run full test suite with timing
+  - `npm run lint` - Run ESLint for syntax/style validation
   - Manual: `node -e "require('./tests.js').runAllTests()"`
 - **Test categories**: Event logic, merger mechanics, endgame scoring, role indicators, other_texts usage
+- **Linting**: ESLint catches syntax errors like duplicate variable declarations (`no-redeclare` rule)
 - **Commit integration**: Failed tests block commits; passed tests append timing info to commit messages
 - Claude cannot test via `python -m http.server 8000` and should rely on `npm test` and human user testing
 
@@ -77,11 +79,13 @@ Update CHANGELOG.md whenever bumping the version.
 ## Writing style
 
 - The game is meant to be played by a "steely-eyed missile man".
-- **Steely-eyed approach**: Technical precision, jargon-appropriate language, understated gravity, professional detachment, concise factual statements that respect player intelligence
-- **Avoid**: Melodrama, sensationalism, talking down to player, oversimplified moral framing, casual/jokey tone about serious topics
-- Text shouldn't be overly verbose-- less use of adjectives
-- Be specific rather than vague
-- Use game state about the player and world when relevant
+- **Do**:
+  - Technical precision, jargon-appropriate language, understated gravity, concise factual statements that respect player intelligence
+  - Use game state variables about the player and world when relevant
+  - Be specific rather than vague
+- **Don't**:
+  - Avoid melodrama, sensationalism, talking down to player, casual/jokey tone about serious topics
+  - Avoid meaningless adjectives and passive verbs: "substantial", "enhanced", "revolutionary"-- unless you really mean it.
 - Example
   - Original: The acquisition succeeds. Boston Dynamics' bipedal robots, quadrupeds, and manipulation systems are now enhanced with your AI capabilities. The combination enables revolutionary automation solutions, generating substantial revenue from manufacturing, logistics, and specialized applications.
   - Better: The acquisition succeeds. Boston Dynamics' bipedal and quadrupedal robots are now piloted by a specialized version of ${aiVersion}. The new subsidiary ${companyName} Dynamics expands from manufacturing to other unskilled trades; your robots can fold clothes and operate in normal office spaces.

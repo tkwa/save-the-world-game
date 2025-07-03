@@ -31,7 +31,9 @@ export default [
         "argsIgnorePattern": "^_",
         "varsIgnorePattern": "^_"
       }],
-      "no-undef": "error"
+      "no-undef": "error",
+      "no-redeclare": "error",
+      "no-implicit-globals": "error"
     }
   }
 ];

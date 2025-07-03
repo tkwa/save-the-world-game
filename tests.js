@@ -1583,6 +1583,49 @@ function testTechnologyEmojiUniqueness() {
     return suite.runAll();
 }
 
+
+// Test for unsafe inline onclick handlers
+function testInlineOnclickHandlers() {
+    const suite = new TestSuite();
+    
+    suite.test('JavaScript files should not have unsafe inline onclick handlers', () => {
+        const jsFiles = [
+            './game-core.js',
+            './minigames.js',
+            './events.js',
+            './endgame.js'
+        ];
+        
+        const unsafePatterns = [
+            /onclick\s*=\s*["'][^"']*gameState[^"']*["']/g,
+            /onclick\s*=\s*["'][^"']*\w+State[^"']*["']/g
+        ];
+        
+        for (const filePath of jsFiles) {
+            try {
+                const content = fs.readFileSync(filePath, 'utf8');
+                
+                for (const pattern of unsafePatterns) {
+                    const matches = content.match(pattern);
+                    if (matches) {
+                        suite.assertTrue(false, 
+                            `Found unsafe inline onclick handler in ${filePath}: ${matches[0]}`);
+                    }
+                }
+                
+            } catch (error) {
+                if (error.code === 'ENOENT') {
+                    console.warn(`Warning: ${filePath} not found, skipping onclick validation`);
+                } else {
+                    throw error;
+                }
+            }
+        }
+    });
+    
+    return suite.runAll();
+}
+
 // Test intro sequence
 function testIntroSequence() {
     const suite = new TestSuite();
@@ -1709,6 +1752,7 @@ async function runAllTests() {
         testEventHandlerInvocation(),
         testEventTimingBehavior(),
         testTechnologyEmojiUniqueness(),
+        testInlineOnclickHandlers(),
         testIntroSequence()
     ]);
     
