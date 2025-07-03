@@ -250,7 +250,7 @@ function getAISystemVersion(companyName, capabilityLevel) {
             return `Claude ${5 + (band * 2)} Opus`;
         case 'DeepMind':
             // Starts at Gemini 3.0 Pro, increments 1.5 per level
-            if (band == 6) return `OmegaReason`
+            if (band === 6) return `OmegaReason`
             else return `Gemini ${(3.0 + (band * 1.5)).toFixed(1)} Pro`;
         case 'OpenAI':
             // o5, o7, then AGT-9, AGT-10, AGT-12, AGT-14
@@ -265,7 +265,7 @@ function getAISystemVersion(companyName, capabilityLevel) {
             return `Grok ${5 + (band * 2)}`;
         case 'Tencent':
             if (band === 0) return `Hunyuan ${3 + band}.0`;
-            else if (band == 6) return `HunyuanDivine 9.0`
+            else if (band === 6) return `HunyuanDivine 9.0`
             else return `HunyuanAgent ${3 + band}.0`;
         default:
             return 'AI System';

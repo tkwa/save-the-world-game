@@ -4,7 +4,7 @@ import { showPage } from './game-core.js';
 import { generateEvent } from './events.js';
 
 // Intro sequence state
-let introState = {
+const introState = {
     currentStep: 0,
     aiLevel: 3.3,
     currentMonth: "October",

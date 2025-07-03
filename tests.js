@@ -162,7 +162,7 @@ function testSharedUtilityFunctions() {
         try {
             // Test normal state (no disillusioned status)
             gameState.statusEffects = {};
-            let multipliers = getGalaxyMultipliers();
+            const multipliers = getGalaxyMultipliers();
             
             suite.assertTrue(typeof multipliers === 'object', 'getGalaxyMultipliers should return an object');
             suite.assertTrue(typeof multipliers.humanity === 'number', 'humanity multiplier should be a number');
@@ -173,7 +173,7 @@ function testSharedUtilityFunctions() {
             gameState.statusEffects = {
                 disillusioned: { active: true }
             };
-            let disillusionedMultipliers = getGalaxyMultipliers();
+            const disillusionedMultipliers = getGalaxyMultipliers();
             
             suite.assertTrue(disillusionedMultipliers.humanity < multipliers.humanity, 'Disillusioned status should reduce humanity multiplier');
             suite.assertEqual(disillusionedMultipliers.humanity, multipliers.humanity / 2, 'Disillusioned status should halve humanity multiplier');

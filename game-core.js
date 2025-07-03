@@ -524,8 +524,8 @@ function updateStatusEffects() {
     const sanctionsElement = document.getElementById('sanctions-status');
     const sanctionsTooltip = document.getElementById('sanctions-tooltip');
     
-    let statusTexts = [];
-    let tooltipTexts = [];
+    const statusTexts = [];
+    const tooltipTexts = [];
     
     // Legacy sanctions system
     if (gameState.hasSanctions) {
@@ -2741,7 +2741,7 @@ function startContinuousEvasion(element, originalHTML, originalTextContent, onCo
         
         // Add constant gentle return force towards origin (0, 0) - not spring-like
         const constantReturnForce = 0.3; // Constant force magnitude
-        let currentDistance = Math.sqrt(buttonX * buttonX + buttonY * buttonY);
+        const currentDistance = Math.sqrt(buttonX * buttonX + buttonY * buttonY);
         if (currentDistance > 0) {
             // Constant force in direction of home, regardless of distance
             const returnX = (-buttonX / currentDistance) * constantReturnForce;
@@ -2915,7 +2915,7 @@ if (typeof document !== 'undefined') {
             
             // Find the corresponding action button
             const buttons = document.querySelectorAll('.button');
-            let actionButtons = [];
+            const actionButtons = [];
             
             // Filter to find action allocation buttons (they have specific text patterns)
             buttons.forEach(btn => {

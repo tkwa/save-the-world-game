@@ -448,7 +448,7 @@ function startAlignmentReveal() {
     
     // Reveal restart button after 9.5 seconds (1s after conclusion)
     setTimeout(() => {
-        let restartHTML = `<br><button class="button" onclick="restartGame();">Restart</button>`;
+        const restartHTML = `<br><button class="button" onclick="restartGame();">Restart</button>`;
         
         const element = document.getElementById('score-reveal');
         fadeIn(element, restartHTML);
