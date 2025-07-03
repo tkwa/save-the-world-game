@@ -4,6 +4,7 @@ All notable changes to the Save the World Game will be documented in this file.
 
 ## Summary
 
+- **v0.5.1** : Standard web hosting setup with mobile UX warning
 - **v0.5.0** : Add intro sequence
 - **v0.4.0** : Interpretability project; dynamic project unlocking system
 - **v0.3.5** : Refactor consolidating shared functions to utils.js
@@ -12,6 +13,23 @@ All notable changes to the Save the World Game will be documented in this file.
 - **v0.3.0** : Competitor acquisition events and VP Safety role with unit testing
 - **v0.2.0** : Projects panel system and humanoid robotics event chain  
 - **v0.1.0** : Initial AI strategy game with turn-based gameplay and minigames
+
+## [v0.5.1] - 2025-07-03
+
+### Web Standards and Development Improvements
+- **Standard Hosting Setup**: Renamed `savetheworld.html` to `index.html` for conventional web hosting compatibility
+- **Mobile UX Warning**: Added responsive overlay warning users on screens <768px that desktop experience is recommended
+- **Enhanced Code Quality**: Implemented 9 additional ESLint rules including strict equality, const preference, brace requirements, and security protections
+
+### Technical Improvements
+- **ESLint Rules**: Added eqeqeq, prefer-const, no-var, curly, no-new-func, no-global-assign, no-unreachable, no-duplicate-case, no-fallthrough
+- **Code Consistency**: Fixed gameState declaration to use const instead of let per linting recommendations
+- **Test Updates**: Updated test suite to reference new index.html filename for technology emoji validation
+
+### User Experience
+- **Mobile Detection**: JavaScript-based screen width detection with dismissible overlay warning
+- **Professional Presentation**: Warning includes emoji indicator and clear messaging about optimal experience
+- **Seamless Transition**: Existing users can continue playing without interruption on desktop browsers
 
 ## [v0.5.0] - 2025-07-02
 

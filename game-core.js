@@ -50,7 +50,7 @@ import {
 /* global continueToNextPhase */
 /* eslint-enable no-unused-vars */
 
-const VERSION = "v0.5.0"
+const VERSION = "v0.5.1"
 
 
 // Technology visibility conditions - functions that determine if a tech should be visible

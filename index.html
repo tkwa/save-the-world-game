@@ -238,6 +238,16 @@
     </style>
 </head>
 <body>
+    <!-- Mobile warning -->
+    <div id="mobile-warning" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.9); z-index: 9999; color: white; text-align: center; padding: 20px; box-sizing: border-box;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); max-width: 400px;">
+            <h2>⚠️ Desktop Recommended</h2>
+            <p>This game is optimized for desktop browsers with larger screens. You may experience issues on mobile devices.</p>
+            <p>For the best experience, please play on a desktop or laptop computer.</p>
+            <button onclick="document.getElementById('mobile-warning').style.display='none'" style="background-color: #0066a2; color: white; padding: 10px 20px; border: none; border-radius: 5px; margin-top: 20px; cursor: pointer;">Continue Anyway</button>
+        </div>
+    </div>
+    
     <div class="container">
         <h1>Critical Path</h1>
         <p style="text-align: center; color: #666;">An AI Strategy Game</p>
@@ -398,6 +408,14 @@
         </div>
     </div>
 
+    <!-- Mobile detection script -->
+    <script>
+        // Check if screen width is less than 768px (typical mobile breakpoint)
+        if (window.innerWidth < 768) {
+            document.getElementById('mobile-warning').style.display = 'block';
+        }
+    </script>
+    
     <!-- JavaScript Files (ES modules) -->
     <script type="module" src="game-core.js"></script>
 </body>
