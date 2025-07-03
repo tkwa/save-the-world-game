@@ -8,6 +8,7 @@ import {
     boldifyNumbers,
     COMPANIES,
     GAME_CONSTANTS,
+    STATUS_EFFECT_DEFINITIONS,
     INITIAL_TECHNOLOGIES,
     gameState
 } from './utils.js';
@@ -527,19 +528,20 @@ function updateStatusEffects() {
     const statusTexts = [];
     const tooltipTexts = [];
     
-    // Legacy sanctions system
-    if (gameState.hasSanctions) {
-        statusTexts.push('Sanctions');
-        tooltipTexts.push('International sanctions cut your base AI labor by <strong>50%</strong> and prevent you from taking certain diplomatic actions. Overseas datacenters are unaffected.');
-    }
-    
-    // Generic status effects system
+    // Status effects system using centralized dictionary
     for (const [effectName, effectData] of Object.entries(gameState.statusEffects)) {
         if (effectData && effectData.active) {
-            // Format effect name for display (camelCase to Title Case)
-            const displayName = effectName.charAt(0).toUpperCase() + effectName.slice(1).replace(/([A-Z])/g, ' $1');
-            statusTexts.push(displayName);
-            tooltipTexts.push(effectData.description || `${displayName} status effect is active.`);
+            const definition = STATUS_EFFECT_DEFINITIONS[effectName];
+            if (definition) {
+                // Use centralized definition
+                statusTexts.push(definition.displayName);
+                tooltipTexts.push(definition.tooltip);
+            } else {
+                // Fallback for effects not in dictionary yet
+                const displayName = effectName.charAt(0).toUpperCase() + effectName.slice(1).replace(/([A-Z])/g, ' $1');
+                statusTexts.push(displayName);
+                tooltipTexts.push(effectData.description || `${displayName} status effect is active.`);
+            }
         }
     }
     
@@ -564,6 +566,43 @@ function updateStatusEffects() {
     } else {
         body.classList.remove('shaken-background');
     }
+}
+
+// Helper functions for status effects management
+function setStatusEffect(effectName, active = true) {
+    if (active) {
+        const definition = STATUS_EFFECT_DEFINITIONS[effectName];
+        if (definition) {
+            gameState.statusEffects[effectName] = {
+                active: true,
+                ...definition
+            };
+        } else {
+            console.warn(`Status effect '${effectName}' not found in definitions`);
+            gameState.statusEffects[effectName] = {
+                active: true,
+                name: effectName,
+                displayName: effectName.charAt(0).toUpperCase() + effectName.slice(1),
+                tooltip: `${effectName} status effect is active.`,
+                stackable: false
+            };
+        }
+    } else {
+        delete gameState.statusEffects[effectName];
+    }
+}
+
+function hasStatusEffect(effectName) {
+    return gameState.statusEffects[effectName]?.active === true;
+}
+
+// Legacy helper functions for backwards compatibility
+function setSanctions(active = true) {
+    setStatusEffect('sanctions', active);
+}
+
+function hasSanctions() {
+    return hasStatusEffect('sanctions');
 }
 
 function updateInfrastructure() {
@@ -767,7 +806,7 @@ async function advanceTurn() {
     }
 
     // Apply overseas datacenter bonus (disabled during sanctions)
-    if (gameState.aiLevelPerTurn && !gameState.hasSanctions) {
+    if (gameState.aiLevelPerTurn && !hasSanctions()) {
         gameState.playerAILevel += gameState.aiLevelPerTurn;
     }
 
@@ -961,7 +1000,7 @@ function calculateResources() {
     let baseCompute = gameState.playerAILevel;
 
     // Sanctions cut base compute in half (before datacenter boost)
-    if (gameState.hasSanctions) {
+    if (hasSanctions()) {
         baseCompute = baseCompute / GAME_CONSTANTS.SANCTIONS_PENALTY_DIVISOR;
     }
 
@@ -1290,7 +1329,7 @@ function resetGameState() {
     gameState.diplomacyPoints = 0;
     gameState.productPoints = 0;
     gameState.safetyPoints = 0;
-    gameState.hasSanctions = false;
+    setSanctions(false);
     gameState.diplomacyMultiplier = 1;
     gameState.productMultiplier = 1;
     gameState.datacenterCount = 0;
@@ -1451,7 +1490,7 @@ async function showPage(pageId) {
         // Show sanctions calculation if active
         const projectText = gameState.projectsUnlocked ? ' or project' : '';
         let headerText;
-        if (gameState.hasSanctions) {
+        if (hasSanctions()) {
             headerText = `Allocate <strong>${corporateResources}M</strong> AI labor-hours to <strong>one</strong> sector${projectText} this month (base compute cut 50% by sanctions):`;
         } else {
             headerText = `Allocate <strong>${corporateResources}M</strong> AI labor-hours to <strong>one</strong> sector${projectText} this month:`;
@@ -2442,10 +2481,10 @@ function applyStatusEffect(effectType) {
     
     switch(effectType) {
         case 'sanctions':
-            gameState.hasSanctions = true;
+            setSanctions(true);
             break;
         case 'remove-sanctions':
-            gameState.hasSanctions = false;
+            setSanctions(false);
             break;
         case 'set-diplomacy-multiplier-2':
             gameState.diplomacyMultiplier = 2;
@@ -2840,7 +2879,11 @@ export {
     formatAllocationLabelWithCosts,
     canAffordChoice,
     showPage,
-    updateStatusBar
+    updateStatusBar,
+    setStatusEffect,
+    hasStatusEffect,
+    setSanctions,
+    hasSanctions
 };
 
 // Browser-specific initialization

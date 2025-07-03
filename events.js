@@ -10,7 +10,9 @@ import {
 
 import {
     updateStatusBar,
-    showPage
+    showPage,
+    setSanctions,
+    hasSanctions
 } from './game-core.js';
 
 
@@ -39,7 +41,7 @@ async function generateEvent() {
     const events = await loadEventData();
     
     // Sanctions event has 100% probability if sanctions are active
-    if (gameState.hasSanctions) {
+    if (hasSanctions()) {
         const sanctionsEvent = events.specialEvents.sanctions;
         const randomText = sanctionsEvent.text_versions[Math.floor(Math.random() * sanctionsEvent.text_versions.length)];
         
@@ -592,7 +594,7 @@ function applyEventEffects(event) {
         gameState.money = Math.max(0, gameState.money - event.fine);
         // Apply sanctions if required
         if (event.applySanctions) {
-            gameState.hasSanctions = true;
+            setSanctions(true);
         }
     }
     // AI escape events are handled by their custom handler, not here
@@ -660,7 +662,7 @@ function applyChoiceEffects(choice) {
             if (choice.penalty.sanctions) {
                 // Check if player has Regulatory Favor immunity
                 if (!gameState.statusEffects.regulatoryFavor) {
-                    gameState.hasSanctions = true;
+                    setSanctions(true);
                 }
             }
             if (choice.penalty.statusEffect) {
@@ -673,7 +675,7 @@ function applyChoiceEffects(choice) {
             if (choice.risk.sanctions && Math.random() < choice.risk.sanctions) {
                 // Check if player has Regulatory Favor immunity
                 if (!gameState.statusEffects.regulatoryFavor) {
-                    gameState.hasSanctions = true;
+                    setSanctions(true);
                     return true; // Return true if sanctions were triggered
                 }
             }
@@ -1133,7 +1135,7 @@ function handleCorporateEspionageInvestigation(choice, event, _sanctionsTriggere
                 break;
             case 'obstruct':
                 resultKey = "obstruct_result";
-                gameState.hasSanctions = true;
+                setSanctions(true);
                 gameState.diplomacyPoints -= 5;
                 break;
             case 'assist':
@@ -1142,18 +1144,18 @@ function handleCorporateEspionageInvestigation(choice, event, _sanctionsTriggere
                 break;
             case 'silent':
                 resultKey = "silent_result";
-                gameState.hasSanctions = true;
+                setSanctions(true);
                 break;
             case 'trade':
                 resultKey = "trade_result";
-                gameState.hasSanctions = true;
+                setSanctions(true);
                 gameState.hasIntelligenceAgreement = true;
                 break;
             case 'misdirect':
                 const success = Math.random() < 0.4;
                 resultKey = success ? "misdirect_success" : "misdirect_failure";
                 if (!success) {
-                    gameState.hasSanctions = true;
+                    setSanctions(true);
                     gameState.diplomacyPoints -= 8;
                 }
                 break;
@@ -1543,7 +1545,7 @@ function handleSanctionsChoice(choice, _event, _sanctionsTriggered) {
         // Apply costs and remove sanctions (button should only be clickable if affordable)
         gameState.money -= scaledMoneyCost;
         gameState.diplomacyPoints -= scaledDiplomacyCost;
-        gameState.hasSanctions = false;
+        setSanctions(false);
         
         resultText = `Your lobbying campaign succeeds after spending <strong>$${scaledMoneyCost}B</strong> and <strong>${scaledDiplomacyCost} diplomacy points</strong>. International pressure is lifted through back-channel negotiations. Your company can now operate freely again.`;
     } else {

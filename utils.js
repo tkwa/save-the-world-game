@@ -86,6 +86,34 @@ const GAME_CONSTANTS = {
     }
 };
 
+// Status effect definitions - centralized dictionary for all status effects
+const STATUS_EFFECT_DEFINITIONS = {
+    sanctions: {
+        name: "sanctions",
+        displayName: "Sanctions", 
+        tooltip: "International sanctions reduce your diplomatic effectiveness and limit your access to global markets.",
+        stackable: false
+    },
+    shaken: {
+        name: "shaken",
+        displayName: "Shaken",
+        tooltip: "Your company is shaken by the near-escape. AI capabilities development is frozen, and competitors pause their advancement as the industry grapples with the implications.",
+        stackable: false
+    },
+    regulatoryFavor: {
+        name: "regulatoryFavor", 
+        displayName: "Regulatory Favor",
+        tooltip: "Your superior safety approach has earned government trust. You are immune to sanctions and receive preferential treatment in policy discussions.",
+        stackable: false
+    },
+    disillusioned: {
+        name: "disillusioned",
+        displayName: "Disillusioned", 
+        tooltip: "You retain a surprising amount of influence in your parent company's decisions, but the experience makes you disillusioned with humanity. The value of humanity galaxies is halved.",
+        stackable: false
+    }
+};
+
 // Technology configuration
 const INITIAL_TECHNOLOGIES = {
     // General technologies (column 1 - all visible from start)
@@ -140,7 +168,6 @@ function createInitialGameState() {
         safetyPoints: 0,
 
         // Status Effects
-        hasSanctions: false, // TODO: migrate to statusEffects system
         statusEffects: {}, // Generic status effects system
         diplomacyMultiplier: 1,
         productMultiplier: 1,
@@ -338,6 +365,7 @@ export {
     boldifyNumbers,
     COMPANIES,
     GAME_CONSTANTS,
+    STATUS_EFFECT_DEFINITIONS,
     createInitialGameState,
     INITIAL_TECHNOLOGIES,
     gameState
