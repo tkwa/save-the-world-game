@@ -13,7 +13,9 @@ import {
     showPage,
     setSanctions,
     hasSanctions,
-    showRevenueIncrease
+    showRevenueIncrease,
+    showDiplomacyIncrease,
+    showProductIncrease
 } from './game-core.js';
 
 
@@ -1141,7 +1143,9 @@ function handleCorporateEspionageInvestigation(choice, event, _sanctionsTriggere
                 break;
             case 'assist':
                 resultKey = "assist_result";
+                const oldDiplomacyEspionage = gameState.diplomacyPoints;
                 gameState.diplomacyPoints += 1;
+                showDiplomacyIncrease(oldDiplomacyEspionage, gameState.diplomacyPoints);
                 break;
             case 'silent':
                 resultKey = "silent_result";
@@ -1227,8 +1231,14 @@ function handleCompetitorAcquisitionChoice(choice, _event, _sanctionsTriggered) 
         const oldMoney = gameState.money;
         gameState.money += Math.floor(Math.random() * levelBasedBonus + levelBasedBonus);
         showRevenueIncrease(oldMoney, gameState.money);
+        
+        const oldDiplomacy = gameState.diplomacyPoints;
         gameState.diplomacyPoints += Math.floor(Math.random() * levelBasedBonus + levelBasedBonus/2);
+        showDiplomacyIncrease(oldDiplomacy, gameState.diplomacyPoints);
+        
+        const oldProduct = gameState.productPoints;
         gameState.productPoints += Math.floor(Math.random() * levelBasedBonus + levelBasedBonus/2);
+        showProductIncrease(oldProduct, gameState.productPoints);
         
         // Unlock alignment project if not already unlocked
         if (!gameState.projectsUnlocked) {

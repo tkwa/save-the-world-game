@@ -606,107 +606,106 @@ function hasSanctions() {
 }
 
 // Visual feedback for capability increases
-function showCapabilityIncrease(oldLevel, newLevel) {
-    const playerAIElement = document.getElementById('player-ai-level');
-    const aiCapabilitiesSection = document.getElementById('ai-capabilities-section');
-    
-    if (!playerAIElement || !aiCapabilitiesSection) return;
-    
-    const gain = newLevel - oldLevel;
-    if (gain <= 0) return; // No increase to show
-    
-    // Determine if this is a major increase (>= 20% of current AI level)
-    const majorThreshold = oldLevel * 0.2;
-    const isMajorIncrease = gain >= majorThreshold;
-    
-    // Add glow effect to the AI level number
-    playerAIElement.classList.remove('capability-increase-glow', 'capability-major-increase');
-    void playerAIElement.offsetWidth; // Force reflow to restart animation
-    
-    if (isMajorIncrease) {
-        playerAIElement.classList.add('capability-major-increase');
-    } else {
-        playerAIElement.classList.add('capability-increase-glow');
-    }
-    
-    // Create floating "+XX" text
-    const floatingText = document.createElement('div');
-    floatingText.textContent = `+${gain.toFixed(1)}x`;
-    floatingText.className = isMajorIncrease ? 'floating-major-increase' : 'floating-increase';
-    
-    // Position the floating text relative to the AI capabilities section
-    const rect = playerAIElement.getBoundingClientRect();
-    const containerRect = aiCapabilitiesSection.getBoundingClientRect();
-    
-    floatingText.style.left = `${rect.left - containerRect.left + rect.width + 10}px`;
-    floatingText.style.top = `${rect.top - containerRect.top}px`;
-    
-    // Make sure the container is positioned relatively
-    const currentPosition = window.getComputedStyle(aiCapabilitiesSection).position;
-    if (currentPosition === 'static') {
-        aiCapabilitiesSection.style.position = 'relative';
-    }
-    
-    aiCapabilitiesSection.appendChild(floatingText);
-    
-    // Remove the floating text after animation completes
-    setTimeout(() => {
-        if (floatingText.parentNode) {
-            floatingText.parentNode.removeChild(floatingText);
-        }
-    }, isMajorIncrease ? 2500 : 2000);
-    
-    // Remove glow class after animation completes
-    setTimeout(() => {
-        playerAIElement.classList.remove('capability-increase-glow', 'capability-major-increase');
-    }, 1000);
-}
+// Major increase thresholds for visual feedback
+const majorIncreaseThresholds = {
+    capability: { type: 'relative', value: 0.25 },     // 25% of current capability level
+    money: { type: 'ofAILevel', value: 1.0},         // 1x of AI level
+    diplomacy: { type: 'ofAILevel', value: 0.25 },     // 25% of AI level
+    product: { type: 'ofAILevel', value: 0.25 }        // 25% of AI level
+    // Future examples:
+    // safetyPoints: { type: 'absolute', value: 10 },          // Fixed threshold of 10 points
+    // researchProgress: { type: 'relative', value: 0.1 }      // 10% of current progress amount
+};
 
-// Visual feedback for revenue/money increases
-function showRevenueIncrease(oldAmount, newAmount) {
-    const moneyElement = document.getElementById('money');
+// Generic visual feedback for resource increases - reduces code duplication
+function showResourceIncrease(resourceType, oldAmount, newAmount) {
+    // Configuration for different resource types
+    const resourceConfig = {
+        capability: {
+            elementId: 'player-ai-level',
+            containerId: 'ai-capabilities-section',
+            formatText: (gain) => `+${gain.toFixed(1)}x`
+        },
+        money: {
+            elementId: 'money',
+            containerId: null, // Will use closest .status-column
+            formatText: (gain) => `+$${gain.toFixed(0)}B`
+        },
+        diplomacy: {
+            elementId: 'diplomacy-points',
+            containerId: null, // Will use closest .status-column
+            formatText: (gain) => `+${gain.toFixed(0)}`
+        },
+        product: {
+            elementId: 'product-points',
+            containerId: null, // Will use closest .status-column
+            formatText: (gain) => `+${gain.toFixed(0)}`
+        }
+    };
     
-    if (!moneyElement) return;
+    const config = resourceConfig[resourceType];
+    const thresholdConfig = majorIncreaseThresholds[resourceType];
+    
+    if (!config || !thresholdConfig) {
+        console.warn(`Unknown resource type: ${resourceType}`);
+        return;
+    }
+    
+    const element = document.getElementById(config.elementId);
+    if (!element) return;
     
     const gain = newAmount - oldAmount;
     if (gain <= 0) return; // No increase to show
     
-    // Determine if this is a major increase (>= 100% of current AI level in $B)
-    const majorThreshold = gameState.playerAILevel * 1.0; // 100% of AI level
+    // Determine if this is a major increase using threshold dictionary
+    let majorThreshold;
+    if (thresholdConfig.type === 'absolute') {
+        majorThreshold = thresholdConfig.value;
+    } else if (thresholdConfig.type === 'relative') {
+        majorThreshold = oldAmount * thresholdConfig.value;
+    } else if (thresholdConfig.type === 'ofAILevel') {
+        majorThreshold = gameState.playerAILevel * thresholdConfig.value;
+    } else {
+        console.warn(`Unknown threshold type: ${thresholdConfig.type}`);
+        return;
+    }
     const isMajorIncrease = gain >= majorThreshold;
     
-    // Add glow effect to the money amount
-    moneyElement.classList.remove('capability-increase-glow', 'capability-major-increase');
-    void moneyElement.offsetWidth; // Force reflow to restart animation
+    // Add glow effect
+    element.classList.remove('capability-increase-glow', 'capability-major-increase');
+    void element.offsetWidth; // Force reflow to restart animation
     
     if (isMajorIncrease) {
-        moneyElement.classList.add('capability-major-increase');
+        element.classList.add('capability-major-increase');
     } else {
-        moneyElement.classList.add('capability-increase-glow');
+        element.classList.add('capability-increase-glow');
     }
     
-    // Create floating "+$XX" text
+    // Create floating text
     const floatingText = document.createElement('div');
-    floatingText.textContent = `+$${gain.toFixed(0)}B`;
+    floatingText.textContent = config.formatText(gain);
     floatingText.className = isMajorIncrease ? 'floating-major-increase' : 'floating-increase';
     
-    // Find the resources column to position the floating text
-    const resourcesColumn = moneyElement.closest('.status-column');
-    if (resourcesColumn) {
-        // Position the floating text relative to the money element
-        const rect = moneyElement.getBoundingClientRect();
-        const containerRect = resourcesColumn.getBoundingClientRect();
+    // Find container for positioning
+    const container = config.containerId ? 
+        document.getElementById(config.containerId) : 
+        element.closest('.status-column');
+    
+    if (container) {
+        // Position the floating text relative to the element
+        const rect = element.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
         
         floatingText.style.left = `${rect.left - containerRect.left + rect.width + 10}px`;
         floatingText.style.top = `${rect.top - containerRect.top}px`;
         
         // Make sure the container is positioned relatively
-        const currentPosition = window.getComputedStyle(resourcesColumn).position;
+        const currentPosition = window.getComputedStyle(container).position;
         if (currentPosition === 'static') {
-            resourcesColumn.style.position = 'relative';
+            container.style.position = 'relative';
         }
         
-        resourcesColumn.appendChild(floatingText);
+        container.appendChild(floatingText);
         
         // Remove the floating text after animation completes
         setTimeout(() => {
@@ -718,8 +717,25 @@ function showRevenueIncrease(oldAmount, newAmount) {
     
     // Remove glow class after animation completes
     setTimeout(() => {
-        moneyElement.classList.remove('capability-increase-glow', 'capability-major-increase');
+        element.classList.remove('capability-increase-glow', 'capability-major-increase');
     }, 1000);
+}
+
+// Convenience wrapper functions for backward compatibility
+function showCapabilityIncrease(oldLevel, newLevel) {
+    showResourceIncrease('capability', oldLevel, newLevel);
+}
+
+function showRevenueIncrease(oldAmount, newAmount) {
+    showResourceIncrease('money', oldAmount, newAmount);
+}
+
+function showDiplomacyIncrease(oldAmount, newAmount) {
+    showResourceIncrease('diplomacy', oldAmount, newAmount);
+}
+
+function showProductIncrease(oldAmount, newAmount) {
+    showResourceIncrease('product', oldAmount, newAmount);
 }
 
 function updateInfrastructure() {
@@ -1401,10 +1417,14 @@ function applyResourceAllocation(resourceType, corporateResources) {
             gameState.money = Math.max(0, gameState.money - gains.aiCost);
             break;
         case 'diplomacy':
+            const oldDiplomacy = gameState.diplomacyPoints;
             gameState.diplomacyPoints += gains.diplomacy * (gameState.diplomacyMultiplier || 1);
+            showDiplomacyIncrease(oldDiplomacy, gameState.diplomacyPoints);
             break;
         case 'product':
+            const oldProduct = gameState.productPoints;
             gameState.productPoints += gains.product * (gameState.productMultiplier || 1);
+            showProductIncrease(oldProduct, gameState.productPoints);
             break;
         case 'safety-rd':
             gameState.safetyPoints += gains.safety;
@@ -3010,7 +3030,9 @@ export {
     setSanctions,
     hasSanctions,
     showCapabilityIncrease,
-    showRevenueIncrease
+    showRevenueIncrease,
+    showDiplomacyIncrease,
+    showProductIncrease
 };
 
 // Browser-specific initialization

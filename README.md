@@ -8,7 +8,7 @@ Open `index.html` in a browser, e.g. by using Cursor Live Preview or `python -m 
 ## Status
 
 TODO for Claude (check off when finished):
-
+- [ ] 
 
 Still deciding on details...
 - [ ] Capability milestone events
