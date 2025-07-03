@@ -8,12 +8,10 @@ Open `index.html` in a browser, e.g. by using Cursor Live Preview or `python -m 
 ## Status
 
 TODO for Claude (check off when finished):
-- [x] Move game to index.html
-- [x] On mobile, add a warning to the home screen saying the game is best experienced on desktop. I'm thinking check for screen width unless there's a better way
-- [x] Bump patch version
 
 
 Still deciding on details...
+- [ ] Capability milestone events
 
 
 - [ ] Integrate capabilities minigame as capabilities forecasting

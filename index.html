@@ -235,6 +235,100 @@
         #intro-skip-button:hover {
             background-color: #555;
         }
+        
+        /* Capability increase visual effects */
+        .capability-increase-glow {
+            animation: capabilityGlow 1.5s ease-out;
+        }
+        
+        @keyframes capabilityGlow {
+            0% {
+                box-shadow: 0 0 5px #4caf50;
+                background-color: rgba(76, 175, 80, 0.2);
+                transform: scale(1);
+            }
+            50% {
+                box-shadow: 0 0 20px #4caf50, 0 0 30px #4caf50;
+                background-color: rgba(76, 175, 80, 0.4);
+                transform: scale(1.05);
+            }
+            100% {
+                box-shadow: none;
+                background-color: transparent;
+                transform: scale(1);
+            }
+        }
+        
+        .floating-increase {
+            position: absolute;
+            color: #4caf50;
+            font-weight: bold;
+            font-size: 14px;
+            pointer-events: none;
+            z-index: 1000;
+            animation: floatUp 2s ease-out forwards;
+        }
+        
+        @keyframes floatUp {
+            0% {
+                opacity: 1;
+                transform: translateY(0px) scale(1);
+            }
+            20% {
+                transform: translateY(-5px) scale(1.1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-30px) scale(0.9);
+            }
+        }
+        
+        /* Enhanced effects for larger gains */
+        .capability-major-increase {
+            animation: capabilityMajorGlow 2s ease-out;
+        }
+        
+        @keyframes capabilityMajorGlow {
+            0% {
+                box-shadow: 0 0 10px #ffa726;
+                background-color: rgba(255, 167, 38, 0.2);
+                transform: scale(1);
+            }
+            30% {
+                box-shadow: 0 0 30px #ffa726, 0 0 50px #ffa726;
+                background-color: rgba(255, 167, 38, 0.4);
+                transform: scale(1.1);
+            }
+            100% {
+                box-shadow: none;
+                background-color: transparent;
+                transform: scale(1);
+            }
+        }
+        
+        .floating-major-increase {
+            position: absolute;
+            color: #ffa726;
+            font-weight: bold;
+            font-size: 16px;
+            pointer-events: none;
+            z-index: 1000;
+            animation: floatUpMajor 2.5s ease-out forwards;
+        }
+        
+        @keyframes floatUpMajor {
+            0% {
+                opacity: 1;
+                transform: translateY(0px) scale(1);
+            }
+            15% {
+                transform: translateY(-8px) scale(1.2);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-40px) scale(0.8);
+            }
+        }
     </style>
 </head>
 <body>

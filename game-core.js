@@ -605,6 +605,62 @@ function hasSanctions() {
     return hasStatusEffect('sanctions');
 }
 
+// Visual feedback for capability increases
+function showCapabilityIncrease(oldLevel, newLevel) {
+    const playerAIElement = document.getElementById('player-ai-level');
+    const aiCapabilitiesSection = document.getElementById('ai-capabilities-section');
+    
+    if (!playerAIElement || !aiCapabilitiesSection) return;
+    
+    const gain = newLevel - oldLevel;
+    if (gain <= 0) return; // No increase to show
+    
+    // Determine if this is a major increase (>= 5x gain)
+    const isMajorIncrease = gain >= 5;
+    
+    // Add glow effect to the AI level number
+    playerAIElement.classList.remove('capability-increase-glow', 'capability-major-increase');
+    void playerAIElement.offsetWidth; // Force reflow to restart animation
+    
+    if (isMajorIncrease) {
+        playerAIElement.classList.add('capability-major-increase');
+    } else {
+        playerAIElement.classList.add('capability-increase-glow');
+    }
+    
+    // Create floating "+XX" text
+    const floatingText = document.createElement('div');
+    floatingText.textContent = `+${gain.toFixed(1)}x`;
+    floatingText.className = isMajorIncrease ? 'floating-major-increase' : 'floating-increase';
+    
+    // Position the floating text relative to the AI capabilities section
+    const rect = playerAIElement.getBoundingClientRect();
+    const containerRect = aiCapabilitiesSection.getBoundingClientRect();
+    
+    floatingText.style.left = `${rect.left - containerRect.left + rect.width + 10}px`;
+    floatingText.style.top = `${rect.top - containerRect.top}px`;
+    
+    // Make sure the container is positioned relatively
+    const currentPosition = window.getComputedStyle(aiCapabilitiesSection).position;
+    if (currentPosition === 'static') {
+        aiCapabilitiesSection.style.position = 'relative';
+    }
+    
+    aiCapabilitiesSection.appendChild(floatingText);
+    
+    // Remove the floating text after animation completes
+    setTimeout(() => {
+        if (floatingText.parentNode) {
+            floatingText.parentNode.removeChild(floatingText);
+        }
+    }, isMajorIncrease ? 2500 : 2000);
+    
+    // Remove glow class after animation completes
+    setTimeout(() => {
+        playerAIElement.classList.remove('capability-increase-glow', 'capability-major-increase');
+    }, isMajorIncrease ? 2000 : 1500);
+}
+
 function updateInfrastructure() {
     // Infrastructure icons
     const datacenterElement = document.getElementById('datacenter-icon');
@@ -807,7 +863,9 @@ async function advanceTurn() {
 
     // Apply overseas datacenter bonus (disabled during sanctions)
     if (gameState.aiLevelPerTurn && !hasSanctions()) {
+        const oldLevel = gameState.playerAILevel;
         gameState.playerAILevel += gameState.aiLevelPerTurn;
+        showCapabilityIncrease(oldLevel, gameState.playerAILevel);
     }
 
     // Apply event effects
@@ -1273,7 +1331,9 @@ function applyResourceAllocation(resourceType, corporateResources) {
                 alert("AI capabilities development is halted due to the Shaken status effect.");
                 return;
             }
+            const oldLevel = gameState.playerAILevel;
             gameState.playerAILevel += gains.ai;
+            showCapabilityIncrease(oldLevel, gameState.playerAILevel);
             gameState.rawRiskLevel += gains.ai;
             gameState.money = Math.max(0, gameState.money - gains.aiCost);
             break;
