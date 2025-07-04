@@ -1,11 +1,4 @@
-A WIP game to represent the AI singularity.
-
-
-## To run
-
-Open `index.html` in a browser, e.g. by using Cursor Live Preview or `python -m http.server 8000`.
-
-## Status
+## TODO list and ideas queue
 
 TODO for Claude (check off when finished):
 - [ ] 

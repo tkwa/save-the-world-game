@@ -168,4 +168,6 @@ Available Executive Orders randomly replace normal allocation buttons.
 - Presidential seal/imagery integration
 - Updated status bar styling
 
-### 
+### Possible Changes
+
+- Race contested by other AI companies?
