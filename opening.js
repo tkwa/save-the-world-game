@@ -80,7 +80,7 @@ function initializeIntro() {
     introState.currentYear = 2024;
     introState.buttonCooldown = false;
     introState.buttonPercentage = 3;
-    introState.cooldownTime = 2500;
+    introState.cooldownTime = 1500;
     introState.isButtonPressed = false;
     
     updateIntroDisplay();
@@ -102,7 +102,7 @@ function resetIntroState() {
     introState.currentYear = 2024;
     introState.buttonCooldown = false;
     introState.buttonPercentage = 3;
-    introState.cooldownTime = 2500;
+    introState.cooldownTime = 1500;
     introState.isButtonPressed = false;
     introState.initializing = false;
     introState.isNewGame = true; // Set flag to indicate this is a new game
