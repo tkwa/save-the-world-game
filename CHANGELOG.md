@@ -1,3 +1,12 @@
+# 0.6.0-beta.2 — September 20, 2026
+
+- Replace Paired replay with a short evaluation investigation: choose experiments, read tool traces, and file a scoped report before the explanation is revealed.
+- Record the evaluation reward when the report is filed; dismissing the explanation cannot reopen the result.
+- Show capability, quarterly gains, and lab leads in Epoch Capabilities Index points; the scenario starts at 155 and reaches superintelligence at 225 without changing the underlying progression or save format.
+- Add the Critical Path logo to the header and browser tab.
+
+Still in beta. Human playtesting and revisions remain required before 1.0.
+
 # 0.6.0-beta.1 — September 20, 2026
 
 Beta for human playtesting. Automated checks do not establish readiness for 1.0.

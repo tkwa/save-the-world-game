@@ -2,7 +2,7 @@ import {
     LABS, SECTORS, createCampaign, setAllocation, setPlan, getForecast,
     advanceQuarter, getCurrentEvent, getChoiceAvailability, resolveDecision,
     getTransitionDecision, resolveTransition, serializeCampaign, restoreCampaign,
-    startResearchTrial, completeResearchTrial, cancelResearchTrial
+    startResearchTrial, completeResearchTrial, cancelResearchTrial, recordEvaluationProgress, capabilityToECI, ECI_START, ECI_ASI
 } from './campaign.js';
 import { createCosmos } from './cosmos.js';
 import { mountResearchGame, RESEARCH_TYPES } from './research-games.js';
@@ -148,14 +148,14 @@ function renderWelcome() {
     </main>`;
 }
 function renderFooterLinks() {
-    return '<footer class="footer-links"><a href="/projects/">← Projects</a><a href="https://github.com/tkwa/save-the-world-game" target="_blank" rel="noopener">Source code</a><span>0.6.0-beta.1</span></footer>';
+    return '<footer class="footer-links"><a href="/projects/">← Projects</a><a href="https://github.com/tkwa/save-the-world-game" target="_blank" rel="noopener">Source code</a><span>0.6.0-beta.2</span></footer>';
 }
 function renderMetrics(forecast) {
-    const rivals = Math.max(...campaign.rivals.map(r => r.capability), 1);
-    const lead = campaign.player.capability / rivals;
-    const position = lead === 0 ? 'Research capacity must be rebuilt' : lead >= 1 ? `${number(lead,1)}× ahead of nearest rival` : `${number(1/lead,1)}× behind the leader`;
+    const rivals = Math.max(...campaign.rivals.map(r => r.capability));
+    const lead = capabilityToECI(campaign.player.capability) - capabilityToECI(rivals);
+    const position = Math.abs(lead) < 0.05 ? 'Level with the nearest rival' : `${number(Math.abs(lead),1)} points ${lead > 0 ? 'ahead of nearest rival' : 'behind the leader'}`;
     return `<div class="metrics" aria-label="Campaign indicators">
-      <div class="metric"><span class="metric-label">Capability index</span><span class="metric-value number">${number(campaign.player.capability,1)}</span><span class="metric-detail">${position}</span></div>
+      <div class="metric"><span class="metric-label" title="Epoch Capabilities Index">ECI</span><span class="metric-value number">${number(capabilityToECI(campaign.player.capability),1)}</span><span class="metric-detail">${position}</span></div>
       <div class="metric"><span class="metric-label">Transition risk estimate</span><span class="metric-value number ${forecast.risk > .35 ? 'negative' : ''}">${percent(forecast.riskLow)}–${percent(forecast.riskHigh)}</span><span class="metric-detail">World-level risk if ASI arrived now</span></div>
       <div class="metric"><span class="metric-label">Available funds</span><span class="metric-value number">${money(campaign.resources.funds)}</span><span id="forecast-net" class="metric-detail">${signed(forecast.quarterlyRevenue - forecast.quarterlyCost)}B expected next quarter</span></div>
       <div class="metric coordination-metric"><span class="metric-label">International coordination</span><span class="metric-value">${escape(forecast.treatyStatus)}</span><span class="metric-detail">${escape(coordinationObstacle())}</span></div>
@@ -176,7 +176,13 @@ function renderDecision() {
 }
 function renderReport() {
     if (!campaign.latestReport?.length) return '';
-    return `<section class="report" aria-label="Last quarter"><h3>Quarterly report</h3><ul>${campaign.latestReport.slice(0,5).map(text => `<li>${escape(text)}</li>`).join('')}</ul></section>`;
+    return `<section class="report" aria-label="Last quarter"><h3>Quarterly report</h3><ul>${campaign.latestReport.slice(0,5).map(text => {
+        // Old saves retain their original report strings; translate only the
+        // retired capability sentence without altering saved simulation state.
+        const legacy = /^Capability increased by \d+(?:\.\d+)? to (\d+(?:\.\d+)?)\.$/.exec(text);
+        const previousCapability = legacy ? Number(legacy[1]) : NaN;
+        return `<li>${escape(Number.isFinite(previousCapability) ? `ECI reached ${number(capabilityToECI(previousCapability),1)}.` : text)}</li>`;
+    }).join('')}</ul></section>`;
 }
 function renderPlan(forecast) {
     const disabled = campaign.phase !== 'planning' || saveConflict;
@@ -193,7 +199,7 @@ function renderStandingPlan() {
 }
 function renderRace() {
     const labs = [{ id:campaign.labId, name:LABS.find(l => l.id === campaign.labId)?.name || campaign.labId, capability:campaign.player.capability }, ...campaign.rivals].sort((a,b) => b.capability-a.capability);
-    return `<section class="section" aria-labelledby="race-heading"><div class="section-heading"><h3 id="race-heading">The frontier</h3><span class="small muted">ASI at 1,000</span></div>${labs.map(lab => `<div class="race-row ${lab.id === campaign.labId ? 'player' : ''}"><div class="race-label"><strong>${escape(lab.name)}${lab.id === campaign.labId ? ' · you' : ''}</strong><span class="mono">${number(lab.capability,1)}</span></div><div class="race-track"><div class="race-fill" style="width:${Math.min(100,Math.log(Math.max(1,lab.capability))/Math.log(1000)*100)}%"></div></div></div>`).join('')}<p class="small muted">Bars use a logarithmic scale.</p></section>`;
+    return `<section class="section" aria-labelledby="race-heading"><div class="section-heading"><h3 id="race-heading">The frontier</h3><span class="small muted">ASI at ${ECI_ASI} ECI</span></div>${labs.map(lab => `<div class="race-row ${lab.id === campaign.labId ? 'player' : ''}"><div class="race-label"><strong>${escape(lab.name)}${lab.id === campaign.labId ? ' · you' : ''}</strong><span class="mono">${number(capabilityToECI(lab.capability),1)}</span></div><div class="race-track"><div class="race-fill" style="width:${Math.min(100,(capabilityToECI(lab.capability)-capabilityToECI(0))/(ECI_ASI-capabilityToECI(0))*100)}%"></div></div></div>`).join('')}<p class="small muted">Epoch Capabilities Index. The ASI threshold is a scenario assumption.</p></section>`;
 }
 function coordinationObstacle() {
     if (!campaign.flags.computeRegistry) return 'No shared registry of frontier compute';
@@ -209,9 +215,9 @@ function renderProductCashflow(forecast) {
     return (forecast.productCashflow || []).map(item => `<div class="cashflow-row"><span>${date(item.turn)}</span><span>${money(item.revenue)}</span></div>`).join('');
 }
 function renderResearchTrials() {
-    return `<section class="research-trials"><div class="section-heading"><h3>Technical research</h3><span class="small muted">Optional · 1–2 minutes each</span></div>${Object.entries(RESEARCH_TYPES).map(([type,info]) => {
+    return `<section class="research-trials"><div class="section-heading"><h3>Technical research</h3><span class="small muted">Optional</span></div>${Object.entries(RESEARCH_TYPES).map(([type,info]) => {
         const completed = campaign.researchTrials.completed[type];
-        return `<div class="trial-row"><span>${escape(info.title)}</span><span class="muted small">${completed ? `${percent(completed.score)} · complete` : info.name}</span>${button(completed ? 'Complete' : 'Investigate','start-trial',`id="trial-${type}" data-trial="${type}" aria-label="${escape(info.title)}: ${completed ? 'complete' : 'investigate'}" ${completed || campaign.phase !== 'planning' || saveConflict ? 'disabled' : ''}`)}</div>`;
+        return `<div class="trial-row"><span>${marker()}${escape(info.title)}</span><span class="muted small">${completed ? `${percent(completed.score)} · complete` : escape(info.duration)}</span>${button(completed ? 'Complete' : 'Investigate','start-trial',`id="trial-${type}" data-trial="${type}" aria-label="${escape(info.title)}: ${completed ? 'complete' : 'investigate'}" ${completed || campaign.phase !== 'planning' || saveConflict ? 'disabled' : ''}`)}</div>`;
     }).join('')}</section>`;
 }
 function renderResearch() {
@@ -230,7 +236,7 @@ function renderCampaign() {
       ${!onboardingDismissed && campaign.turn === 0 ? `<div class="notice onboarding">Set a standing plan, then advance a quarter. Moving a slider redistributes the budget.${button('Got it','dismiss-onboarding','','ghost')}</div>` : ''}
       <nav class="tab-bar" role="tablist" aria-label="Campaign views">${[['overview','Overview'],['research','Research'],['history','Log']].map(([id,label]) => `<button type="button" role="tab" id="tab-${id}" tabindex="${activeTab === id ? '0' : '-1'}" aria-selected="${activeTab === id}" aria-controls="campaign-view" data-action="tab" data-tab="${id}">${label}${id === 'overview' && pending ? ' · decision' : ''}</button>`).join('')}</nav>
       <div id="campaign-view" role="tabpanel" aria-labelledby="tab-${activeTab}">${activeTab === 'overview' ? `<div class="dashboard"><div class="primary-column">${pending ? renderDecision()+renderStandingPlan() : renderPlan(forecast)+renderReport()}</div><aside class="sidebar" aria-label="World and research">${renderRace()}${renderProducts(forecast)}</aside></div>` : activeTab === 'research' ? renderResearch() : renderHistory()}</div>
-    </main><div class="footer-bar"><div class="footer-inner"><div class="footer-summary"><span>Next quarter: <strong id="forecast-capability">${signed(forecast.capabilityGain,1)} capability</strong></span><span>Receipts <strong id="forecast-income">${money(forecast.quarterlyRevenue)}</strong> − costs <strong id="forecast-cost">${money(forecast.quarterlyCost)}</strong></span></div>${button(pending ? 'Decision required' : 'Advance quarter →', pending ? 'show-decision' : 'advance', `id="advance-button" ${saveConflict ? 'disabled' : ''}`, '')}</div></div>`;
+    </main><div class="footer-bar"><div class="footer-inner"><div class="footer-summary"><span>Next quarter: <strong id="forecast-capability">${signed(forecast.eciGain,1)} ECI</strong></span><span>Receipts <strong id="forecast-income">${money(forecast.quarterlyRevenue)}</strong> − costs <strong id="forecast-cost">${money(forecast.quarterlyCost)}</strong></span></div>${button(pending ? 'Decision required' : 'Advance quarter →', pending ? 'show-decision' : 'advance', `id="advance-button" ${saveConflict ? 'disabled' : ''}`, '')}</div></div>`;
 }
 function renderEnding() {
     const outcome = campaign.outcome;
@@ -255,7 +261,7 @@ function renderModal() {
     if (modal === 'research') return '<div class="modal-backdrop" data-action="modal-backdrop"><section class="modal research-modal" role="dialog" aria-modal="true" aria-label="Technical research"><div id="research-game"></div></section></div>';
     if (modal === 'help') content = `${heading('How to play',2,'dialog-title')}<ol class="help-list"><li>Choose a lab and set the standing allocation of AI labor. Moving a slider redistributes the remaining budget; lock a share to protect it.</li><li>Advance one quarter. Research, income, rivals, and negotiations develop together. Respond to decisions when they arrive.</li><li>Watch what your lead is buying. Safety evidence, security, international agreements, and legitimate authority address different problems.</li><li>When a lab reaches superintelligence, make a few final choices about control, access, and expansion. Human flourishing and your ownership are reported separately.</li></ol><p class="small muted">Progress saves automatically in this browser. Export a save before switching devices. Keyboard: Tab between controls, arrow keys adjust sliders, N advances a quarter, ? opens this guide.</p>`;
     else if (modal === 'history') content = `${heading('Campaign log',2,'dialog-title')}${renderHistory()}`;
-    else content = `${heading('Model notes',2,'dialog-title')}<div class="text-block"><p>This game explores a worldview; it is not a forecasting tool. Its default trajectory starts in January 2026 and reaches superintelligence between late 2027 and 2034. Strong, sustained coordination can push that date later.</p><details><summary>Campaign indices</summary><p>Capability is an abstract game index, starting at 10 for your lab; 1,000 triggers the transition. It is not a measured multiplier of intelligence. Research and institutional indices likewise summarize mechanisms rather than measuring them directly.</p></details><details open><summary>Risk and uncertainty</summary><p>The reference worldview assigns roughly 20% probability to existential catastrophe. A campaign's risk changes with safety research, deployment, security, and institutions. The displayed range reflects limited evidence; the ending resolves uncertainty once and preserves that result in the save.</p></details><details><summary>Research and international coordination</summary><p>Alignment, control, evaluations, interpretability, and security do different work. Agreements depend on incentives and verification. Diplomacy without enforcement does not stop hidden development; public safety work can help rival labs as well as your own.</p></details><details><summary>After superintelligence</summary><p>Successful transitions can double economic output in the first year and accelerate thereafter. Aging and nanotechnology can be solved within two years. Dyson-swarm construction begins in the ASI year and can take 3.5–80 years, depending on industrial expansion and institutions.</p></details><details><summary>Outcomes and values</summary><p>Human flourishing, human control, and personal ownership are separate. The game does not collapse them into a combined score. A company's market lead is not a measure of human welfare.</p></details><details><summary>Sources and scenario framing</summary><p>Critical Path draws primarily on Thomas Kwa's worldview and the original game, with mechanisms inspired by <a href="https://ai-2027.com/" target="_blank" rel="noopener">AI 2027</a> and <a href="https://ai-2040.com/" target="_blank" rel="noopener">AI 2040</a>. The latter is a proposed coordination path, not the default timeline. Future events involving real labs are fictional possibilities, viewed from January 2026.</p></details><p class="small muted">${campaign ? `World seed: ${escape(campaign.seed)} · ${escape(date())}` : 'The same lab, seed, and decisions reproduce the same campaign.'}</p></div>`;
+    else content = `${heading('Model notes',2,'dialog-title')}<div class="text-block"><p>This game explores a worldview; it is not a forecasting tool. Its default trajectory starts in January 2026 and reaches superintelligence between late 2027 and 2034. Strong, sustained coordination can push that date later.</p><details><summary>Campaign indices</summary><p>Capability uses the <a href="https://epoch.ai/eci" target="_blank" rel="noopener">Epoch Capabilities Index (ECI)</a> scale. Your lab begins at ${ECI_START} in January 2026; this scenario assumes superintelligence at ${ECI_ASI}. The starting scale is anchored to Epoch’s current data, while future scores and the ASI threshold are game assumptions. Research and institutional indices summarize mechanisms rather than measuring them directly.</p></details><details open><summary>Risk and uncertainty</summary><p>The reference worldview assigns roughly 20% probability to existential catastrophe. A campaign's risk changes with safety research, deployment, security, and institutions. The displayed range reflects limited evidence; the ending resolves uncertainty once and preserves that result in the save.</p></details><details><summary>Research and international coordination</summary><p>Alignment, control, evaluations, interpretability, and security do different work. Agreements depend on incentives and verification. Diplomacy without enforcement does not stop hidden development; public safety work can help rival labs as well as your own.</p></details><details><summary>After superintelligence</summary><p>Successful transitions can double economic output in the first year and accelerate thereafter. Aging and nanotechnology can be solved within two years. Dyson-swarm construction begins in the ASI year and can take 3.5–80 years, depending on industrial expansion and institutions.</p></details><details><summary>Outcomes and values</summary><p>Human flourishing, human control, and personal ownership are separate. The game does not collapse them into a combined score. A company's market lead is not a measure of human welfare.</p></details><details><summary>Sources and scenario framing</summary><p>Critical Path draws primarily on Thomas Kwa's worldview and the original game, with mechanisms inspired by <a href="https://ai-2027.com/" target="_blank" rel="noopener">AI 2027</a> and <a href="https://ai-2040.com/" target="_blank" rel="noopener">AI 2040</a>. The latter is a proposed coordination path, not the default timeline. Future events involving real labs are fictional possibilities, viewed from January 2026.</p></details><p class="small muted">${campaign ? `World seed: ${escape(campaign.seed)} · ${escape(date())}` : 'The same lab, seed, and decisions reproduce the same campaign.'}</p></div>`;
     return `<div class="modal-backdrop" data-action="modal-backdrop"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="dialog-title">${content}<div class="close-row">${button('Close','close-modal','id="close-modal"','')}</div></section></div>`;
 }
 
@@ -290,6 +296,9 @@ function activateModal() {
     first?.focus({preventScroll:true});
 }
 function closeModal() {
+    const wasResearch = modal === 'research';
+    const researchFinished = wasResearch && !campaign?.researchTrials.active;
+    const returnFocus = researchFinished ? 'tab-research' : modalOpener?.id;
     if (modal === 'research' && campaign?.researchTrials.active) { cancelResearchTrial(campaign); persist(); }
     researchGame?.dispose();
     researchGame = null;
@@ -301,21 +310,37 @@ function closeModal() {
     modalOpener = null;
     if (modalResumeCosmos && screen === 'campaign' && !saveConflict) cosmos?.play();
     modalResumeCosmos = false;
+    if (wasResearch && screen === 'campaign') {
+        activeTab = 'research';
+        render({focus:returnFocus || 'tab-research'});
+    }
 }
 function setupResearchTrial() {
     const owner = campaign;
     const trial = owner?.researchTrials.active;
     const container = document.getElementById('research-game');
     if (!trial || !container) return;
+    const currentMount = () => campaign === owner && !saveConflict && modal === 'research'
+        && document.getElementById('research-game') === container;
     researchGame = mountResearchGame(container, { type:trial.type, seed:trial.seed, reducedMotion:reducedMotion.matches,
-        onComplete(score) {
-            if (campaign !== owner || saveConflict || owner.researchTrials.active?.id !== trial.id) return;
-            const result = completeResearchTrial(owner,trial.id,score);
-            closeModal();
-            applyResult(result,'tab-research');
-            announce('Research recorded.');
+        evaluationState: { probes: [...(trial.probes || [])] },
+        onEvaluationProgress(state) {
+            if (!currentMount() || owner.researchTrials.active?.id !== trial.id) return false;
+            const result = recordEvaluationProgress(owner, trial.id, state);
+            if (!result.ok) return false;
+            persist();
+            return true;
         },
-        onCancel() { closeModal(); render({focus:`trial-${trial.type}`}); }
+        onComplete(score, {keepOpen = false} = {}) {
+            if (!currentMount() || owner.researchTrials.active?.id !== trial.id) return false;
+            const result = completeResearchTrial(owner,trial.id,score);
+            if (!result.ok) { closeModal(); applyResult(result,'tab-research'); return false; }
+            persist();
+            if (!keepOpen) closeModal();
+            if (!saveFailed) announce('Research recorded.');
+            return true;
+        },
+        onCancel() { if (!currentMount()) return false; closeModal(); return true; }
     });
 }
 function updatePlanReadouts() {
@@ -330,7 +355,7 @@ function updatePlanReadouts() {
     const forecast = getForecast(campaign);
     const products = document.getElementById('product-cashflow');
     if (products) products.innerHTML = renderProductCashflow(forecast);
-    const updates = { 'diversity-readout':`${percent(forecast.diversityBonus)} diversity bonus`, 'forecast-capability':`${signed(forecast.capabilityGain,1)} capability`, 'forecast-income':money(forecast.quarterlyRevenue), 'forecast-cost':money(forecast.quarterlyCost), 'forecast-net':`${signed(forecast.quarterlyRevenue - forecast.quarterlyCost)}B expected next quarter` };
+    const updates = { 'diversity-readout':`${percent(forecast.diversityBonus)} diversity bonus`, 'forecast-capability':`${signed(forecast.eciGain,1)} ECI`, 'forecast-income':money(forecast.quarterlyRevenue), 'forecast-cost':money(forecast.quarterlyCost), 'forecast-net':`${signed(forecast.quarterlyRevenue - forecast.quarterlyCost)}B expected next quarter` };
     for (const [id,text] of Object.entries(updates)) { const node = document.getElementById(id); if (node) node.textContent = text; }
     for (const control of document.querySelectorAll('[data-preset]')) {
         control.setAttribute('aria-pressed',Object.entries(presets[control.dataset.preset]).every(([key,value]) => campaign.allocations[key] === value));

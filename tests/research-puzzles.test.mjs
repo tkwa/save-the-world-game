@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-    RESEARCH_TYPES, createResearchPuzzle, scoreEvaluation, scoreControl,
+    RESEARCH_TYPES, createResearchPuzzle, scoreControl,
     inspectControl, optimalControlCut, scoreInterpretability
 } from '../research-puzzles.js';
 
@@ -14,30 +14,6 @@ test('each lab is deterministic and distinct', () => {
     }
     assert.throws(() => createResearchPuzzle('unknown', 0), /Unknown/);
     assert.throws(() => createResearchPuzzle('control', NaN), /seed/);
-});
-
-test('paired evaluation rewards every hidden failure and penalizes false alarms', () => {
-    const puzzle = createResearchPuzzle('evaluation', 37);
-    const cases = puzzle.rows.flatMap(row => row.cases);
-    const truth = cases.filter(item => item.screened === 'safe' && item.deployed === 'unsafe').map(item => item.id);
-    assert.ok(truth.length >= 6 && truth.length <= 12);
-    const perfect = scoreEvaluation(puzzle, truth);
-    assert.deepEqual(perfect, { score: 1, correct: truth.length, falseAlarms: 0, missed: 0, total: truth.length });
-    assert.equal(scoreEvaluation(puzzle, []).score, 0);
-    const all = scoreEvaluation(puzzle, cases.map(item => item.id));
-    assert.ok(all.score < 0.6);
-    assert.equal(all.falseAlarms, cases.length - truth.length);
-    const partial = scoreEvaluation(puzzle, truth.slice(1));
-    assert.equal(partial.missed, 1);
-    assert.ok(partial.score < 1);
-});
-
-test('ordinary task failures and already-unsafe cases are not evaluation targets', () => {
-    const puzzle = createResearchPuzzle('evaluation', 'distractors');
-    const distractors = puzzle.rows.flatMap(row => row.cases).filter(item => item.screened !== 'safe' || item.deployed !== 'unsafe');
-    assert.ok(distractors.some(item => item.screened === 'failed' && item.deployed === 'unsafe'));
-    assert.ok(distractors.some(item => item.screened === 'unsafe' && item.deployed === 'unsafe'));
-    assert.equal(scoreEvaluation(puzzle, distractors.map(item => item.id)).score, 0);
 });
 
 test('containment follows all paths, including a route that bypasses the gateway', () => {
@@ -109,11 +85,11 @@ test('every ablation puzzle permits a safe solution above the useful-task thresh
 });
 
 test('scorers reject nonexistent selections, deduplicate IDs, and never mutate puzzles', () => {
-    for (const type of Object.keys(RESEARCH_TYPES)) {
+    for (const type of ['control', 'interpretability']) {
         const puzzle = createResearchPuzzle(type, 'immutability');
         const original = structuredClone(puzzle);
-        const scorer = { evaluation: scoreEvaluation, control: scoreControl, interpretability: scoreInterpretability }[type];
-        const id = type === 'evaluation' ? puzzle.rows[0].cases[0].id : type === 'control' ? puzzle.links[0].id : puzzle.modules[0].id;
+        const scorer = { control: scoreControl, interpretability: scoreInterpretability }[type];
+        const id = type === 'control' ? puzzle.links[0].id : puzzle.modules[0].id;
         assert.deepEqual(scorer(puzzle, [id, id]), scorer(puzzle, new Set([id])));
         assert.throws(() => scorer(puzzle, ['nonexistent']), /Unknown/);
         assert.throws(() => scorer(puzzle, null), /Selections/);

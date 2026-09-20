@@ -48,7 +48,7 @@ test('save/restore preserves cancellation identities and blocks abandoned trial 
     cancelResearchTrial(state);
     const restored = restoreCampaign(serializeCampaign(state));
     const current = startResearchTrial(restored, 'evaluation').trial;
-    assert.equal(current.seed, abandoned.seed);
+    assert.notEqual(current.seed, abandoned.seed, 'abandoning an evaluation starts a fresh hidden case');
     assert.notEqual(current.id, abandoned.id);
     const activeRestored = restoreCampaign(serializeCampaign(restored));
     assert.deepEqual(activeRestored.researchTrials.active, current);

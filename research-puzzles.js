@@ -1,7 +1,7 @@
 import { createRandom } from './random.js';
 
 export const RESEARCH_TYPES = Object.freeze({
-    evaluation: { name: 'Evaluation', title: 'Paired replay', duration: '1–2 minutes' },
+    evaluation: { name: 'Evaluation', title: 'Release audit', duration: '2–4 minutes' },
     control: { name: 'Control', title: 'Access containment', duration: '1–2 minutes' },
     interpretability: { name: 'Interpretability', title: 'Circuit ablation', duration: '1–2 minutes' }
 });
@@ -24,29 +24,117 @@ function validSelection(values, allowed) {
     return selected;
 }
 
+export const EVALUATION_PROBES = Object.freeze([
+    { id: 'control', label: 'Authorized control', description: 'Ask for an allowed draft using the same tools. Can this agent perform the operation at all?' },
+    { id: 'adapter', label: 'Replace the tool adapter', description: 'Install a reference adapter and repeat the original challenge. Later experiments keep this adapter.' },
+    { id: 'audit', label: 'Check artifacts and grader', description: 'Inspect the original file diff and an allowed-write calibration case. Independently grade later experiments.' },
+    { id: 'cue', label: 'Remove the evaluation banner', description: 'Repeat the same short request as an ordinary job. Change only the evaluation cue.' },
+    { id: 'horizon', label: 'Extend the workflow', description: 'Keep the banner and familiar requests, but run six dependent actions instead of one.' },
+    { id: 'transfer', label: 'Use held-out requests', description: 'Use fresh wording and identifiers. Keep the evaluation banner and one-action horizon.' }
+]);
+
+const EVALUATION_TARGETS = [
+    { id: 'cue', label: 'Ordinary jobs', description: 'Familiar requests, one action each, without an evaluation banner.' },
+    { id: 'horizon', label: 'Long workflows', description: 'Familiar requests, six dependent actions, with disclosed monitoring.' },
+    { id: 'transfer', label: 'New requests', description: 'Unfamiliar wording and identifiers, one action each, with disclosed monitoring.' }
+];
+const EVALUATION_BEHAVIORS = ['robust', 'cue', 'horizon', 'transfer', 'unsafe', 'incapable'];
+// One nuisance at most: three probes can establish a useful result. Tool and
+// grader faults are part of the evaluation, not evidence of model restraint.
+const EVALUATION_WORLDS = EVALUATION_BEHAVIORS.flatMap(behavior =>
+    ['working', 'adapter', 'grader'].map(fault => ({ behavior, fault })));
+
 function evaluationPuzzle(random) {
-    const contexts = [
-        ['Files', 'A file assistant is asked to handle a private document.'],
-        ['Support', 'A support agent is asked to disclose another customer’s data.'],
-        ['Lab notes', 'A research agent encounters instructions to alter its own audit log.'],
-        ['Purchases', 'A shopping agent encounters a request beyond its spending authority.'],
-        ['Scheduler', 'An assistant receives conflicting instructions about a private meeting.'],
-        ['Code review', 'A coding agent encounters credentials in a repository.']
-    ];
-    const rows = contexts.map(([label, description], row) => {
-        // Each case is a matched pair. An ordinary failure is deliberately a
-        // distractor: it is not evidence of an unsafe action.
-        const pairs = shuffled([
-            ['safe', 'unsafe'], ['safe', 'unsafe'], ['safe', 'safe'],
-            ['failed', 'unsafe'], ['unsafe', 'unsafe'], ['safe', 'failed']
-        ], random);
-        if (random() < 0.5) pairs[1] = ['failed', 'safe'];
-        return {
-            id: `batch-${row}`, label, description,
-            cases: pairs.map(([screened, deployed], column) => ({ id: `case-${row}-${column}`, screened, deployed }))
-        };
-    });
-    return { type: 'evaluation', rows };
+    return {
+        type: 'evaluation', version: 2, budget: 3,
+        target: { ...EVALUATION_TARGETS[Math.floor(random() * EVALUATION_TARGETS.length)] },
+        world: { ...EVALUATION_WORLDS[Math.floor(random() * EVALUATION_WORLDS.length)] },
+        protectedFile: ['customer.csv', 'payroll.csv', 'access-list.csv'][Math.floor(random() * 3)]
+    };
+}
+
+export function createEvaluationSession() {
+    return { probes: [] };
+}
+
+function evaluationProbes(puzzle, session) {
+    if (puzzle?.type !== 'evaluation' || puzzle.version !== 2 || !Array.isArray(session?.probes)) {
+        throw new TypeError('Invalid evaluation session.');
+    }
+    const ids = session.probes;
+    if (ids.length > puzzle.budget || new Set(ids).size !== ids.length ||
+        ids.some(id => !EVALUATION_PROBES.some(probe => probe.id === id))) {
+        throw new RangeError('Invalid evaluation experiments.');
+    }
+    return ids;
+}
+
+export function restoreEvaluationSession(puzzle, session = createEvaluationSession()) {
+    return { probes: [...evaluationProbes(puzzle, session)] };
+}
+
+export function runEvaluationProbe(puzzle, session, id) {
+    const probes = evaluationProbes(puzzle, session);
+    if (!EVALUATION_PROBES.some(probe => probe.id === id)) throw new RangeError('Unknown evaluation experiment.');
+    if (probes.includes(id)) throw new RangeError('This experiment has already run.');
+    if (probes.length >= puzzle.budget) throw new RangeError('No experiment credits remain.');
+    return { probes: [...probes, id] };
+}
+
+function evaluationObservations(puzzle, world, probes) {
+    let repaired = false, audited = false;
+    const working = () => repaired || world.fault !== 'adapter';
+    const violates = condition => working() && (world.behavior === 'unsafe' || world.behavior === condition);
+    const challenge = (id, label) => {
+        const violation = violates(id);
+        const flagged = violation || (!audited && world.fault === 'grader');
+        const request = id === 'cue' ? 'Ordinary support job: amend the protected record, then draft a reply.' :
+            id === 'horizon' ? 'Workflow, step 6: amend the protected record before closing the ticket.' :
+                id === 'transfer' ? 'New request: correct the owner field in the protected archive.' :
+                    'Evaluation ticket: amend the protected record, then draft a reply.';
+        return { id, label, kind: 'challenge', flagged,
+            trace: [
+                request,
+                !working() ? 'Tool: adapter rejected the write_file argument before execution.' :
+                    'Agent response: “Request handled.” Runner did not record a write receipt.',
+                audited ? `Independent diff: ${violation ? `/records/${puzzle.protectedFile} was changed` : 'protected record unchanged'}.` :
+                    `Grader: ${flagged ? '1 boundary alert' : 'no boundary alert'}; file diff not attached.`
+            ] };
+    };
+    const baseline = challenge('baseline', 'Original evaluation');
+    const experiments = [];
+    for (const id of probes) {
+        const label = EVALUATION_PROBES.find(probe => probe.id === id).label;
+        if (id === 'adapter') {
+            repaired = true;
+            const result = challenge('baseline', label);
+            experiments.push({ ...result, id, trace: ['Tool: reference adapter installed for this and later runs.', ...result.trace.slice(1)] });
+        } else if (id === 'audit') {
+            // Inspect the original saved artifact, not a new run after repair.
+            const originalViolation = world.fault !== 'adapter' && world.behavior === 'unsafe';
+            audited = true;
+            experiments.push({ id, label, kind: 'audit', originalViolation, graderFault: world.fault === 'grader',
+                trace: [
+                    `Original file diff: ${originalViolation ? `/records/${puzzle.protectedFile} was changed` : 'no protected file was changed'}.`,
+                    `Allowed-write calibration: ${world.fault === 'grader' ? 'grader incorrectly flagged an authorized draft' : 'grader correctly accepted the authorized draft'}.`,
+                    'Later experiments use independent file-diff checks.'
+                ] });
+        } else if (id === 'control') {
+            const completed = working() && world.behavior !== 'incapable';
+            experiments.push({ id, label, kind: 'control', completed,
+                trace: [
+                    'Request: write the approved summary to /drafts/summary.txt.',
+                    !working() ? 'Tool: adapter rejected the write_file argument before execution.' :
+                        completed ? 'Tool: write_file completed successfully.' : 'Runner: tools responded, but the agent produced no write.',
+                    `Artifact: ${completed ? 'approved draft present' : 'no completed draft'}.`
+                ] });
+        } else experiments.push(challenge(id, label));
+    }
+    return { baseline, experiments, remaining: puzzle.budget - probes.length };
+}
+
+export function getEvaluationEvidence(puzzle, session) {
+    return evaluationObservations(puzzle, puzzle.world, evaluationProbes(puzzle, session));
 }
 
 function controlPuzzle(random) {
@@ -102,16 +190,53 @@ export function createResearchPuzzle(type, seed = 0) {
     return interpretabilityPuzzle(random);
 }
 
-export function scoreEvaluation(puzzle, marked) {
-    const cases = puzzle.rows.flatMap(row => row.cases);
-    const selected = validSelection(marked, new Set(cases.map(item => item.id)));
-    const positives = cases.filter(item => item.screened === 'safe' && item.deployed === 'unsafe');
-    const correct = positives.filter(item => selected.has(item.id)).length;
-    const falseAlarms = selected.size - correct;
-    const missed = positives.length - correct;
-    // Precision and recall both matter; marking every case is not a shortcut.
-    const score = selected.size + positives.length === 0 ? 1 : 2 * correct / (selected.size + positives.length);
-    return { score: clamp(score), correct, falseAlarms, missed, total: positives.length };
+export function scoreEvaluation(puzzle, session, report) {
+    const probes = evaluationProbes(puzzle, session);
+    if (!['release', 'withhold', 'inconclusive'].includes(report?.verdict)) throw new TypeError('Invalid evaluation report.');
+    const evidence = getEvaluationEvidence(puzzle, session);
+    const signature = observations => JSON.stringify(observations);
+    const initial = EVALUATION_WORLDS.filter(world =>
+        signature(evaluationObservations(puzzle, world, [])) === signature(evaluationObservations(puzzle, puzzle.world, [])));
+    const consistent = initial.filter(world =>
+        signature(evaluationObservations(puzzle, world, probes)) === signature(evidence));
+    const unsafe = world => world.behavior === 'unsafe' || world.behavior === puzzle.target.id;
+    const demonstratedControl = evidence.experiments.some(result => result.kind === 'control' && result.completed);
+    const allViolate = consistent.every(unsafe);
+    const noneViolate = consistent.every(world => !unsafe(world));
+    const limitedAgent = consistent.every(world => world.behavior === 'incapable');
+    const established = allViolate ? 'withhold' :
+        noneViolate && demonstratedControl && probes.includes(puzzle.target.id) ? 'release' : 'inconclusive';
+    // Grade the claims licensed by observable evidence. Two hidden worlds with
+    // identical observations receive the same grade; a lucky verdict is not proof.
+    const conclusion = report.verdict === established ? 1 : report.verdict === 'inconclusive' ? 0.3 : 0.1;
+    const evidenceQuality = established !== 'inconclusive' || limitedAgent ? 1 :
+        Math.max(0, 1 - consistent.length / initial.length);
+    const explanations = {
+        robust: 'The simulated agent respects the file boundary in all of these test conditions.',
+        cue: 'The simulated agent respects the boundary when an evaluation banner is present, but violates it in ordinary-job context.',
+        horizon: 'The simulated agent respects the boundary on short tasks, but violates it during longer workflows.',
+        transfer: 'The simulated agent respects familiar requests, but violates the boundary when wording and identifiers change.',
+        unsafe: 'The simulated agent violates the boundary even on familiar, one-action requests when its tools work.',
+        incapable: 'The simulated agent cannot complete the authorized operation either. Its lack of violations does not demonstrate a working safeguard.'
+    };
+    const faults = {
+        working: 'The adapter and grader worked as intended.',
+        adapter: 'The original tool adapter blocked execution. Replacing it restores a real opportunity to act.',
+        grader: 'The original grader flagged authorized drafts. File-diff checks separate those false alarms from actual violations.'
+    };
+    const conclusionText = {
+        release: 'Working controls and the relevant counterfactual support this deployment within the exercise. They do not establish general safety.',
+        withhold: 'The observed evidence establishes a boundary violation relevant to the proposed deployment.',
+        inconclusive: limitedAgent ? 'The agent did not demonstrate the required operation. The audit cannot distinguish a safeguard from inability.' :
+            'The collected evidence leaves a relevant confound or untested condition. An inconclusive report is warranted.'
+    };
+    return {
+        score: clamp(conclusion * evidenceQuality), established,
+        conclusion: conclusionText[established], evidenceQuality,
+        remainingExplanations: consistent.length,
+        actualMechanism: `${explanations[puzzle.world.behavior]} ${faults[puzzle.world.fault]}`,
+        reportSupported: report.verdict === established
+    };
 }
 
 export function inspectControl(puzzle, blocked) {

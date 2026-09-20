@@ -22,6 +22,7 @@
   container-type: inline-size;
 }
 .research-game *, .research-game *::before, .research-game *::after { box-sizing: border-box; }
+.research-game [hidden] { display: none !important; }
 .research-game button { font: inherit; touch-action: manipulation; cursor: pointer; }
 .research-game button:focus-visible { outline: 3px solid var(--rg-warn); outline-offset: 3px; }
 .research-game button:disabled { cursor: default; opacity: .5; }
@@ -34,22 +35,28 @@
 .research-game .rg-button { min-height: 44px; padding: 7px 10px; color: var(--rg-text); background: var(--rg-panel); border: 1px solid var(--rg-line); border-radius: 2px; }
 .research-game .rg-primary { color: #111; background: var(--rg-accent); border-color: var(--rg-accent); font-weight: 650; }
 .research-game .rg-quiet { background: transparent; }
-.research-game .rg-legend { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 12px; }
-.research-game .rg-legend-item { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
-.research-game .rg-outcome { display: inline-grid; place-items: center; width: 23px; height: 25px; border-radius: 4px; font: 700 16px/1 system-ui, sans-serif; flex-shrink: 0; }
-.research-game .rg-safe { background: #24493e; color: var(--rg-good); }
-.research-game .rg-unsafe { background: #59362f; color: var(--rg-danger); }
-.research-game .rg-failed { background: #4c442d; color: var(--rg-warn); }
-.research-game .rg-batch { min-width: 0; border: 0; margin: 0 0 9px; padding: 0; }
-.research-game .rg-batch legend { padding: 0 0 6px; font-weight: 600; font-size: 13px; }
-.research-game .rg-replay-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 5px; }
-.research-game .rg-case { min-height: 75px; padding: 5px 3px; border: 1px solid var(--rg-line); border-radius: 2px; background: var(--rg-panel); color: var(--rg-text); }
-.research-game .rg-case[aria-pressed="true"] { border: 2px solid var(--rg-accent); padding: 4px 2px; background: #333; }
-.research-game .rg-case-number { display: block; color: var(--rg-muted); font: 11px ui-monospace, monospace; }
-.research-game .rg-pair { display: flex; align-items: center; justify-content: center; gap: 3px; margin-block: 5px; }
-.research-game .rg-arrow { color: var(--rg-muted); font-size: 12px; }
-.research-game .rg-mark { display: block; font-size: 11px; }
-.research-game .rg-false-alarm { outline: 3px dotted var(--rg-danger); outline-offset: -6px; }
+.research-game .rg-eval-brief { margin: 12px 0 8px; }
+.research-game .rg-eval-budget { font-weight: 650; margin: 8px 0; }
+.research-game .rg-eval-probes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+.research-game .rg-eval-probe { display: grid; grid-template-columns: 1fr auto; align-content: start; gap: 4px 8px; min-height: 44px; padding: 8px; border: 1px solid var(--rg-line); border-radius: 2px; background: var(--rg-panel); color: var(--rg-text); text-align: left; }
+.research-game .rg-eval-probe strong { font-size: 12px; }
+.research-game .rg-eval-cost { color: var(--rg-muted); font-size: 11px; white-space: nowrap; }
+.research-game .rg-eval-probe-detail { grid-column: 1 / -1; color: var(--rg-muted); font-size: 12px; }
+.research-game .rg-eval-log { margin-block: 12px; border-top: 1px solid var(--rg-line); }
+.research-game .rg-eval-trace { border-bottom: 1px solid var(--rg-line); }
+.research-game .rg-eval-trace summary { min-height: 44px; padding: 12px 4px; cursor: pointer; touch-action: manipulation; font-weight: 650; }
+.research-game .rg-eval-trace summary:focus-visible { outline: 3px solid var(--rg-warn); outline-offset: 1px; }
+.research-game .rg-eval-lines { padding: 0 8px 8px; color: var(--rg-muted); }
+.research-game .rg-eval-lines p { margin: 3px 0; overflow-wrap: anywhere; }
+.research-game .rg-eval-report { min-width: 0; margin: 12px 0 0; padding: 8px; border: 1px solid var(--rg-line); }
+.research-game .rg-eval-report legend { padding-inline: 4px; font-weight: 650; }
+.research-game .rg-eval-report .rg-note { margin: 0 0 8px; }
+.research-game .rg-eval-options { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
+.research-game .rg-eval-options button { flex: 1 1 140px; }
+.research-game .rg-eval-options button[aria-pressed="true"] { color: #111; background: var(--rg-accent); border-color: var(--rg-accent); }
+.research-game .rg-eval-debrief { margin-top: 12px; padding: 8px; border: 1px solid var(--rg-accent); }
+.research-game .rg-eval-debrief p { margin: 6px 0; }
+.research-game .rg-eval-result { font-weight: 650; }
 .research-game .rg-instruments { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding: 12px; background: var(--rg-panel); border: 1px solid var(--rg-line); border-radius: 2px; font: 13px ui-monospace, monospace; }
 .research-game .rg-danger-text { color: var(--rg-danger); }
 .research-game .rg-good-text { color: var(--rg-good); }
@@ -92,12 +99,7 @@
 .research-game .rg-log-label { font-size: 12px; text-transform: uppercase; letter-spacing: .07em; }
 .research-game .rg-log-row { padding: 7px 0; margin: 0; border-bottom: 1px solid #243946; font: 12px/1.5 ui-monospace, monospace; overflow-wrap: anywhere; }
 @media (max-width: 540px) {
-  .research-game .rg-replay-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 3px; }
-  .research-game .rg-case { min-height: 95px; padding-inline: 1px; }
-  .research-game .rg-pair { flex-direction: column; gap: 0; margin: 3px 0; }
-  .research-game .rg-arrow { transform: rotate(90deg); line-height: 12px; }
-  .research-game .rg-outcome { height: 20px; width: 20px; }
-  .research-game .rg-mark { font-size: 9px; }
+  .research-game .rg-eval-probes { grid-template-columns: 1fr; }
   .research-game .rg-circuits { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }
   .research-game .rg-circuit { min-height: 88px; padding: 6px; }
   .research-game .rg-circuit-state { font-size: 10px; }
@@ -112,14 +114,9 @@
   .research-game .rg-actions .rg-button { flex: 1 1 42%; }
 }
 @media (max-width: 340px) {
-  .research-game .rg-replay-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .research-game .rg-pair { flex-direction: row; gap: 3px; }
-  .research-game .rg-arrow { transform: none; }
-  .research-game .rg-case { min-height: 75px; }
   .research-game .rg-circuits { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @container (max-width: 300px) {
-  .research-game .rg-replay-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .research-game .rg-circuits { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .research-game .rg-access-links { grid-template-columns: 1fr; }
 }

@@ -1,7 +1,23 @@
 import { createRandom } from './random.js';
 import { EVENTS, getEvent, selectEvent, getChoiceAvailability } from './campaign-events.js';
+import { EVALUATION_PROBES } from './research-puzzles.js';
 
 export { getChoiceAvailability };
+
+// Display anchors only: the January 2026 frontier is approximately 155 ECI;
+// 225 is this scenario's superintelligence threshold, not an Epoch forecast.
+// Keeping the simulation's original capability units preserves saved campaigns.
+export const ECI_START = 155;
+export const ECI_ASI = 225;
+const ECI_LOG_START = Math.log1p(10);
+const ECI_LOG_SPAN = Math.log1p(1000) - ECI_LOG_START;
+
+export function capabilityToECI(capability) {
+    if (!Number.isFinite(capability) || capability < 0) throw new TypeError('Capability must be a finite nonnegative number.');
+    // log1p keeps the display continuous when a lab loses its research and
+    // rebuilds from zero, while mapping the starting and ASI anchors exactly.
+    return ECI_START + (ECI_ASI - ECI_START) * (Math.log1p(capability) - ECI_LOG_START) / ECI_LOG_SPAN;
+}
 
 // These are game parameters, not forecasts or assessments of the named labs.
 export const LABS = [
@@ -25,6 +41,7 @@ export const SECTORS = [
 const SECTOR_IDS = SECTORS.map(sector => sector.id);
 const DEFAULT_PLAN = { capabilities: 30, safety: 20, security: 15, products: 15, diplomacy: 10, infrastructure: 10 };
 const TRIAL_TYPES = { evaluation: 'evals', control: 'control', interpretability: 'interpretability' };
+const EVALUATION_PROBE_IDS = new Set(EVALUATION_PROBES.map(probe => probe.id));
 const POLICIES = {
     deployment: ['gated', 'cautious', 'open', 'rushed'],
     transparency: ['selective', 'open', 'closed'],
@@ -257,13 +274,15 @@ export function getForecast(state) {
     // capability work. Keep zero valid in saved histories; only the productive
     // base has a floor, so an unfunded or paused lab gets no automatic recovery.
     const capabilityGain = Math.max(1, state.player.capability) * Math.expm1(rate);
+    const nextCapability = rounded(clamp(state.player.capability + capabilityGain, ...BOUNDS['player.capability']));
+    const eciGain = capabilityToECI(nextCapability) - capabilityToECI(state.player.capability);
     let treatyStatus = 'No agreement';
     if (state.flags.treatyRatified) treatyStatus = treatyStrength(state) >= 0.65 ? 'Verified agreement holding' : 'Agreement under strain';
     else if (state.flags.inspections) treatyStatus = 'Inspections operating';
     else if (state.flags.computeRegistry) treatyStatus = 'Compute registry established';
     return {
         date: formatCampaignDate(state.turn), diversityBonus, quarterlyCost, quarterlyRevenue,
-        capabilityGain, safetyGain, securityGain, diplomacyGain,
+        capabilityGain, eciGain, safetyGain, securityGain, diplomacyGain,
         computeGain: 1.1 * effort('infrastructure') * Math.sqrt(state.resources.compute),
         productivityGain: 3 * effort('products') * (1 - state.player.productivity / 150),
         ...products, leader: leaderFor(state), treatyStatus, ...getRiskEstimate(state)
@@ -336,6 +355,7 @@ export function advanceQuarter(state) {
     if (state.turn >= 200) return fail('This campaign has reached its supported turn limit.');
     if (!validPlan(state.allocations)) return fail('Allocations must be integer percentages totaling 100.');
     const forecast = getForecast(state);
+    const previousECI = capabilityToECI(state.player.capability);
     const stream = streamFor(state);
     add(state, 'resources.funds', forecast.quarterlyRevenue - forecast.quarterlyCost * forecast.funding);
     if (forecast.newProduct) state.products.push({ ...forecast.newProduct });
@@ -361,8 +381,9 @@ export function advanceQuarter(state) {
     state.turn++;
     state.products = state.products.filter(product => product.launchTurn + product.lifetimeQuarters > state.turn);
     state.rng = stream.getState();
+    const currentECI = capabilityToECI(state.player.capability);
     state.latestReport = [
-        `Capability increased by ${forecast.capabilityGain.toFixed(1)} to ${state.player.capability.toFixed(1)}.`,
+        `ECI increased by ${(currentECI - previousECI).toFixed(1)} points to ${currentECI.toFixed(1)}.`,
         `Revenue $${forecast.quarterlyRevenue.toFixed(1)}B; spending $${(forecast.quarterlyCost * forecast.funding).toFixed(1)}B.`,
         `Alignment ${state.research.alignment.toFixed(0)}, control ${state.research.control.toFixed(0)}, security ${state.player.security.toFixed(0)}.`
     ];
@@ -427,12 +448,29 @@ export function startResearchTrial(state, type) {
     if (Object.hasOwn(state.researchTrials.completed, type)) return fail('This research trial is already complete.');
     if (!Number.isSafeInteger(state.researchTrials.attempts) || state.researchTrials.attempts < 0
         || state.researchTrials.attempts === Number.MAX_SAFE_INTEGER) return fail('The research trial attempt counter is invalid.');
-    // The puzzle stays reproducible across retries, but an abandoned attempt's
-    // delayed callback must never be able to finish a later attempt.
+    // Evaluation evidence has a finite budget. Abandoning a case starts a fresh
+    // one; other technical puzzles remain repeatable. IDs also reject callbacks
+    // from an abandoned attempt, even when the puzzle itself stays the same.
     state.researchTrials.attempts++;
-    const trial = { id: `${state.id}:trial:${type}:${state.researchTrials.attempts}`, type, seed: `${state.seed}:trial:${type}` };
+    const trial = { id: `${state.id}:trial:${type}:${state.researchTrials.attempts}`, type, seed: researchTrialSeed(state, type) };
+    if (type === 'evaluation') trial.probes = [];
     state.researchTrials.active = trial;
-    return { ok: true, trial: { ...trial } };
+    return { ok: true, trial: { ...trial, ...(type === 'evaluation' ? { probes: [] } : {}) } };
+}
+
+export function recordEvaluationProgress(state, id, progress) {
+    const active = state?.researchTrials?.active;
+    if (state?.phase !== 'planning' || active?.type !== 'evaluation' || active.id !== id || !validActiveTrial(state, active)) {
+        return fail('This evaluation trial is not active.');
+    }
+    if (!isRecord(progress) || Object.keys(progress).length !== 1 || !Object.hasOwn(progress, 'probes')
+        || !validEvaluationProbes(progress.probes)) return fail('Invalid evaluation experiments.');
+    const previous = active.probes || [];
+    if (progress.probes.length !== previous.length + 1 || !previous.every((probe, index) => progress.probes[index] === probe)) {
+        return fail('Evaluation progress must add exactly one new experiment.');
+    }
+    active.probes = [...progress.probes];
+    return { ok: true };
 }
 
 export function completeResearchTrial(state, id, score) {
@@ -728,16 +766,29 @@ function validateTrials(state) {
     'completed research trials do not match campaign history.');
     assertSave(attempts >= history.length + (active === null ? 0 : 1), 'research trial attempts do not match completed and active trials.');
     if (active !== null) {
-        assertKeys(active, ['id', 'type', 'seed'], 'active trial');
+        const keys = ['id', 'type', 'seed'];
+        if (active?.type === 'evaluation' && Object.hasOwn(active, 'probes')) keys.push('probes');
+        assertKeys(active, keys, 'active trial');
         assertSave(state.phase === 'planning' && validActiveTrial(state, active) && !Object.hasOwn(completed, active.type), 'invalid active research trial.');
     }
+}
+
+function researchTrialSeed(state, type) {
+    const base = `${state.seed}:trial:${type}`;
+    return type === 'evaluation' ? `${base}:attempt:${state.researchTrials.attempts}` : base;
+}
+
+function validEvaluationProbes(probes) {
+    return Array.isArray(probes) && probes.length <= 3 && new Set(probes).size === probes.length
+        && [...probes].every(id => EVALUATION_PROBE_IDS.has(id));
 }
 
 function validActiveTrial(state, active) {
     return isRecord(active) && typeof active.type === 'string' && Object.hasOwn(TRIAL_TYPES, active.type)
         && Number.isSafeInteger(state.researchTrials.attempts) && state.researchTrials.attempts > 0
         && active.id === `${state.id}:trial:${active.type}:${state.researchTrials.attempts}`
-        && active.seed === `${state.seed}:trial:${active.type}`;
+        && (active.seed === researchTrialSeed(state, active.type) || active.seed === `${state.seed}:trial:${active.type}`)
+        && (!Object.hasOwn(active, 'probes') || (active.type === 'evaluation' && validEvaluationProbes(active.probes)));
 }
 
 function validateEnding(state) {

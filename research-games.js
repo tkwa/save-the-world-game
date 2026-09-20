@@ -1,6 +1,7 @@
 import {
     RESEARCH_TYPES, createResearchPuzzle, scoreEvaluation, scoreControl,
-    inspectControl, scoreInterpretability
+    inspectControl, scoreInterpretability, EVALUATION_PROBES,
+    restoreEvaluationSession, runEvaluationProbe, getEvaluationEvidence
 } from './research-puzzles.js';
 
 export { RESEARCH_TYPES } from './research-puzzles.js';
@@ -10,15 +11,19 @@ let instanceCount = 0;
 
 /** Mount one isolated lab. No campaign state, shared random stream, or timers. */
 export function mountResearchGame(container, {
-    type, seed = 0, onComplete = () => {}, onCancel = () => {}, reducedMotion = false
+    type, seed = 0, onComplete = () => {}, onCancel = () => {}, reducedMotion = false,
+    evaluationState, onEvaluationProgress = () => true
 } = {}) {
     if (!container?.ownerDocument || typeof container.replaceChildren !== 'function') throw new TypeError('A research game needs a DOM container.');
     if (typeof onComplete !== 'function' || typeof onCancel !== 'function') throw new TypeError('Research callbacks must be functions.');
+    if (typeof onEvaluationProgress !== 'function') throw new TypeError('Evaluation progress callback must be a function.');
     const puzzle = createResearchPuzzle(type, seed);
+    const resumedEvaluation = type === 'evaluation' ? restoreEvaluationSession(puzzle, evaluationState) : null;
     const doc = container.ownerDocument;
     const id = `research-${++instanceCount}`;
     const cleanup = [];
     let ended = false;
+    let returned = false;
     let disposed = false;
     let checked = null;
     let assess;
@@ -31,8 +36,8 @@ export function mountResearchGame(container, {
         return node;
     }
 
-    function listen(node, event, handler) {
-        const guarded = (...args) => { if (!ended && !disposed) handler(...args); };
+    function listen(node, event, handler, allowEnded = false) {
+        const guarded = (...args) => { if ((!ended || allowEnded) && !disposed) handler(...args); };
         node.addEventListener(event, guarded);
         cleanup.push(() => node.removeEventListener(event, guarded));
     }
@@ -88,79 +93,131 @@ export function mountResearchGame(container, {
         status.textContent = `${message} Research result: ${Math.round(result.score * 100)}%. You can revise it or submit.`;
     }
 
-    function complete(callback, value) {
+    function complete(callback, value, options) {
         if (ended || disposed) return;
         ended = true;
-        root.querySelectorAll('button').forEach(node => { node.disabled = true; });
-        callback(value);
+        root.querySelectorAll('button').forEach(node => { node.disabled = !(options?.keepOpen && node === cancel); });
+        return callback(value, options);
     }
 
     listen(check, 'click', () => assess());
     listen(restart, 'click', () => { reset(); dirty(); });
     listen(submit, 'click', () => { if (checked) complete(onComplete, checked.score); });
-    listen(cancel, 'click', () => complete(onCancel));
+    listen(cancel, 'click', () => {
+        if (returned) return;
+        returned = true;
+        if (ended) onCancel();
+        else complete(onCancel);
+    }, type === 'evaluation');
 
     if (type === 'evaluation') buildEvaluation();
     else if (type === 'control') buildControl();
     else buildInterpretability();
 
     function buildEvaluation() {
-        instructions.textContent = 'Mark every matched case that was safe in the screened test but unsafe in the deployment replay. Ignore ordinary task failures and cases that were already unsafe. Each button shows screened → replay.';
-        const legend = el('div', 'rg-legend');
-        const labels = { safe: 'Safe', failed: 'Task failed', unsafe: 'Unsafe' };
-        const symbols = { safe: '✓', failed: '−', unsafe: '!' };
-        for (const state of Object.keys(labels)) {
-            const item = el('span', 'rg-legend-item');
-            item.append(el('span', `rg-outcome rg-${state}`, symbols[state]), el('span', '', labels[state]));
-            legend.append(item);
+        instructions.textContent = `This agent may write approved drafts, but must never change /records/${puzzle.protectedFile}. The original evaluation used familiar, one-action requests and a visible evaluation banner. Investigate whether its result supports the proposed deployment.`;
+        header.querySelector('.rg-timing').textContent = '3 experiments · No timer';
+        check.textContent = 'File report';
+        check.disabled = true;
+        submit.hidden = true;
+        restart.hidden = true;
+        status.textContent = 'Choose informative tests. A missing violation may mean restraint, inability, or a broken test. Your report is final before the explanation is revealed.';
+        const brief = el('p', 'rg-eval-brief');
+        brief.append(el('strong', '', 'Proposed deployment: '), doc.createTextNode(puzzle.target.description));
+        const budget = el('p', 'rg-eval-budget');
+        const log = el('div', 'rg-eval-log');
+        const probes = el('div', 'rg-eval-probes');
+        probes.setAttribute('role', 'group');
+        probes.setAttribute('aria-label', 'Available experiments');
+        const reportBox = el('fieldset', 'rg-eval-report');
+        reportBox.append(el('legend', '', 'Report on this deployment'));
+        const verdicts = el('div', 'rg-eval-options');
+        verdicts.setAttribute('role', 'group');
+        verdicts.setAttribute('aria-label', 'Release recommendation');
+        reportBox.append(el('p', 'rg-note', 'Report only what these experiments establish. An inconclusive result is valid; a few passes do not prove general safety.'), verdicts);
+        let session = resumedEvaluation;
+        const leavingNote = el('p', 'rg-note', 'Leaving starts a new case next time.');
+        workspace.append(brief, trace(getEvaluationEvidence(puzzle, session).baseline, true), budget, probes, log, reportBox, leavingNote);
+        let verdict = null;
+        const probeButtons = new Map(), verdictButtons = new Map();
+
+        function trace(result, open) {
+            const details = el('details', 'rg-eval-trace');
+            details.open = open;
+            details.append(el('summary', '', result.label));
+            const lines = el('div', 'rg-eval-lines');
+            for (const line of result.trace) lines.append(el('p', '', line));
+            details.append(lines);
+            return details;
         }
-        workspace.append(legend);
-        const marked = new Set();
-        const cells = new Map();
-        for (const row of puzzle.rows) {
-            const group = el('fieldset', 'rg-batch');
-            group.append(el('legend', '', row.label));
-            const grid = el('div', 'rg-replay-grid');
-            row.cases.forEach((item, i) => {
-                const cell = button('', 'rg-case');
-                cell.setAttribute('aria-pressed', 'false');
-                cell.setAttribute('aria-label', `${row.label}, case ${i + 1}. Screened: ${labels[item.screened]}. Replay: ${labels[item.deployed]}. Mark hidden unsafe behavior.`);
-                cell.title = row.description;
-                const pair = el('span', 'rg-pair');
-                pair.setAttribute('aria-hidden', 'true');
-                pair.append(el('span', `rg-outcome rg-${item.screened}`, symbols[item.screened]), el('span', 'rg-arrow', '→'), el('span', `rg-outcome rg-${item.deployed}`, symbols[item.deployed]));
-                cell.append(el('span', 'rg-case-number', String(i + 1).padStart(2, '0')), pair, el('span', 'rg-mark', 'Mark'));
-                listen(cell, 'click', () => {
-                    if (marked.has(item.id)) marked.delete(item.id);
-                    else marked.add(item.id);
-                    cell.setAttribute('aria-pressed', String(marked.has(item.id)));
-                    cell.querySelector('.rg-mark').textContent = marked.has(item.id) ? 'Marked' : 'Mark';
-                    cells.forEach(node => node.classList.remove('rg-missed', 'rg-false-alarm'));
-                    dirty();
-                });
-                cells.set(item.id, cell);
-                grid.append(cell);
+
+        function renderEvidence() {
+            const evidence = getEvaluationEvidence(puzzle, session);
+            budget.textContent = `${evidence.remaining} of ${puzzle.budget} experiment credits left · Each experiment costs 1`;
+            for (const [probeId, control] of probeButtons) {
+                const used = session.probes.includes(probeId);
+                control.disabled = used || evidence.remaining === 0;
+                control.querySelector('.rg-eval-cost').textContent = used ? 'Completed' : '1 credit';
+            }
+            log.replaceChildren(...evidence.experiments.map((result, index) =>
+                trace(result, index >= evidence.experiments.length - 2)));
+        }
+
+        for (const probe of EVALUATION_PROBES) {
+            const control = button('', 'rg-eval-probe');
+            control.append(el('strong', '', probe.label), el('span', 'rg-eval-cost', '1 credit'), el('span', 'rg-eval-probe-detail', probe.description));
+            listen(control, 'click', () => {
+                const nextSession = runEvaluationProbe(puzzle, session, probe.id);
+                let accepted = false;
+                try {
+                    accepted = onEvaluationProgress({ probes: [...nextSession.probes] });
+                } catch {
+                    // Do not reveal an experiment whose credit could not be recorded.
+                }
+                if (accepted === false || disposed || ended) {
+                    if (!disposed && !ended) status.textContent = 'This experiment could not be recorded. Return to the campaign to continue.';
+                    return;
+                }
+                session = nextSession;
+                renderEvidence();
+                const remaining = puzzle.budget - session.probes.length;
+                status.textContent = `${probe.label} completed. ${remaining} ${remaining === 1 ? 'credit remains' : 'credits remain'}. Compare the trace before filing your report.`;
             });
-            group.append(grid);
-            workspace.append(group);
+            probeButtons.set(probe.id, control);
+            probes.append(control);
+        }
+        for (const [value, label] of [['release', 'Release within this scope'], ['withhold', 'Withhold deployment'], ['inconclusive', 'Inconclusive']]) {
+            const control = button(label);
+            control.setAttribute('aria-pressed', 'false');
+            listen(control, 'click', () => {
+                verdict = value;
+                for (const [id, item] of verdictButtons) item.setAttribute('aria-pressed', String(id === verdict));
+                check.disabled = false;
+            });
+            verdictButtons.set(value, control);
+            verdicts.append(control);
         }
         assess = () => {
-            const result = scoreEvaluation(puzzle, marked);
-            for (const row of puzzle.rows) for (const item of row.cases) {
-                const target = item.screened === 'safe' && item.deployed === 'unsafe';
-                const cell = cells.get(item.id);
-                cell.classList.toggle('rg-false-alarm', marked.has(item.id) && !target);
+            if (!verdict) return;
+            const result = scoreEvaluation(puzzle, session, { verdict });
+            const accepted = complete(onComplete, result.score, { keepOpen: true });
+            if (accepted === false || disposed) {
+                if (!disposed) status.textContent = 'The report could not be recorded for this campaign. Return to the campaign to continue.';
+                return;
             }
-            showAssessment(result, `${result.correct} hidden failures found; ${result.missed} missed; ${result.falseAlarms} false alarms.${result.falseAlarms ? ' Dotted outlines mark false alarms.' : ''}`);
+            check.textContent = 'Report filed';
+            leavingNote.remove();
+            const debrief = el('div', 'rg-eval-debrief');
+            debrief.append(el('p', 'rg-eval-result', `Research result: ${Math.round(result.score * 100)}%`),
+                el('p', '', result.conclusion), el('p', '', result.actualMechanism),
+                el('p', 'rg-note', `Grading uses the explanations consistent with your observations, not a lucky guess about the hidden case. ${result.remainingExplanations} simulated explanation${result.remainingExplanations === 1 ? '' : 's'} remained. The filed report cannot be revised.`));
+            workspace.append(debrief);
+            status.textContent = result.reportSupported ? 'Your conclusion matches what the observed evidence supports.' : 'Your conclusion goes beyond, or misses, what the observed evidence supports.';
+            debrief.setAttribute('tabindex', '-1');
+            debrief.focus();
         };
-        reset = () => {
-            marked.clear();
-            cells.forEach(cell => {
-                cell.setAttribute('aria-pressed', 'false');
-                cell.querySelector('.rg-mark').textContent = 'Mark';
-                cell.classList.remove('rg-false-alarm');
-            });
-        };
+        reset = () => {};
+        renderEvidence();
     }
 
     function buildControl() {
