@@ -30,7 +30,8 @@
 }
 @layer layout {
   .site-header { max-width:1240px; padding:6px 18px; margin:auto; display:flex; align-items:center; justify-content:space-between; gap:12px; border-bottom:1px solid var(--line); }
-  .brand { text-decoration:none; font-weight:700; white-space:nowrap; }
+  .brand { display:inline-flex; align-items:center; gap:7px; text-decoration:none; font-weight:700; white-space:nowrap; }
+  .brand::before { content:''; width:24px; height:24px; flex:none; background:url('./logo.svg') center / contain no-repeat; }
   .header-actions { display:flex; align-items:center; gap:6px; }
   .shell { max-width:1240px; margin:auto; padding:14px 18px 78px; }
   .welcome { max-width:940px; margin:auto; padding:30px 18px; }
