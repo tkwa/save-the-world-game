@@ -211,7 +211,7 @@ function renderProductCashflow(forecast) {
 function renderResearchTrials() {
     return `<section class="research-trials"><div class="section-heading"><h3>Technical research</h3><span class="small muted">Optional · 1–2 minutes each</span></div>${Object.entries(RESEARCH_TYPES).map(([type,info]) => {
         const completed = campaign.researchTrials.completed[type];
-        return `<div class="trial-row"><span>${escape(info.title)}</span><span class="muted small">${completed ? `${percent(completed.score)} · complete` : info.name}</span>${button(completed ? 'Complete' : 'Investigate','start-trial',`id="trial-${type}" data-trial="${type}" ${completed || campaign.phase !== 'planning' || saveConflict ? 'disabled' : ''}`)}</div>`;
+        return `<div class="trial-row"><span>${escape(info.title)}</span><span class="muted small">${completed ? `${percent(completed.score)} · complete` : info.name}</span>${button(completed ? 'Complete' : 'Investigate','start-trial',`id="trial-${type}" data-trial="${type}" aria-label="${escape(info.title)}: ${completed ? 'complete' : 'investigate'}" ${completed || campaign.phase !== 'planning' || saveConflict ? 'disabled' : ''}`)}</div>`;
     }).join('')}</section>`;
 }
 function renderResearch() {
