@@ -148,7 +148,7 @@ function renderWelcome() {
     </main>`;
 }
 function renderFooterLinks() {
-    return '<footer class="footer-links"><a href="/projects/">← Projects</a><a href="https://github.com/tkwa/save-the-world-game" target="_blank" rel="noopener">Source code</a><span>Critical Path</span></footer>';
+    return '<footer class="footer-links"><a href="/projects/">← Projects</a><a href="https://github.com/tkwa/save-the-world-game" target="_blank" rel="noopener">Source code</a><span>0.6.0-beta.1</span></footer>';
 }
 function renderMetrics(forecast) {
     const rivals = Math.max(...campaign.rivals.map(r => r.capability), 1);

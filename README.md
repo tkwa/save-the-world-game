@@ -2,6 +2,8 @@
 
 A compact strategy game about leading an AI lab through the arrival of superintelligence. Set a standing allocation of AI labor, advance one quarter, and respond to decisions. Optional technical research puzzles improve safeguards. The ending reports human flourishing, human control, and personal ownership separately.
 
+**Beta:** This build is awaiting human playtesting. Version 1.0 will follow that feedback and any necessary revisions.
+
 [Play on tkwa.me](https://tkwa.me/games/critical-path/) · [Model assumptions](docs/MODEL.md)
 
 ## <span class="ai-marker" role="img" aria-label="AI-written title or heading" title="This title or heading was written by AI. Sparkles mark AI-written titles and headings.">✨</span> Run locally

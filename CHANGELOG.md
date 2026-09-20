@@ -1,4 +1,6 @@
-# 1.0.0 — September 20, 2026
+# 0.6.0-beta.1 — September 20, 2026
+
+Beta for human playtesting. Automated checks do not establish readiness for 1.0.
 
 - Replace repeated allocation clicks with a persistent quarterly plan.
 - Products earn revenue over a nine-month lifecycle.
