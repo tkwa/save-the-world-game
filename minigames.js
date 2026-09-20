@@ -1,48 +1,94 @@
 // Minigame functions for the AI Timeline Game
 import { showPage } from './game-core.js';
 import { gameState } from './utils.js';
+import { random } from './random.js';
+import { createTaskScope } from './task-scope.js';
 
-/* global alert, updateForecastingDisplay */
+/* global alert, AbortController */
+
+const minigameTasks = createTaskScope();
+let datasetRequest = null;
+let animationFramePending = false;
+
+function disposeMinigame() {
+    minigameTasks.cancel();
+    datasetRequest?.abort();
+    datasetRequest = null;
+    animationFramePending = false;
+    if (gameState.currentMinigame?.dotsData) {
+        gameState.currentMinigame.dotsData.gameActive = false;
+    }
+    if (gameState.coinFlipData) gameState.coinFlipData.active = false;
+    gameState.currentMinigame = null;
+}
+
+function afterMinigameDelay(callback, delay) {
+    const minigame = gameState.currentMinigame;
+    const page = gameState.currentPage;
+    minigameTasks.timeout(() => {
+        if (gameState.currentMinigame === minigame && gameState.currentPage === page) callback();
+    }, delay);
+}
+
+function scheduleAlignmentFrame() {
+    if (animationFramePending) return;
+    const minigame = gameState.currentMinigame;
+    animationFramePending = true;
+    minigameTasks.frame(() => {
+        animationFramePending = false;
+        if (gameState.currentMinigame === minigame) updateAlignmentMinigame();
+    });
+}
 
 // Generic minigame starter - dispatches to specific minigame functions
 function startMinigame(type) {
     switch (type) {
         case 'capability-evals':
-            startCapabilityEvalsMinigame();
-            break;
+            return startCapabilityEvalsMinigame();
         case 'alignment-research':
-            showAlignmentMinigamePage();
-            break;
+            return showAlignmentMinigamePage();
         case 'forecasting':
-            startForecastingEvalsMinigame();
-            break;
+            return startForecastingEvalsMinigame();
         default:
             console.error(`Unknown minigame type: ${type}`);
     }
 }
 
-async function loadCorrelationDataset() {
+async function loadCorrelationDataset(signal) {
     if (gameState.correlationDataset) return gameState.correlationDataset;
     
     try {
-        const response = await fetch('minigames/correlations/data.json');
-        gameState.correlationDataset = await response.json();
-        return gameState.correlationDataset;
+        const response = await fetch('minigames/correlations/data.json', { signal });
+        if (!response.ok) throw new Error(`Correlation dataset returned ${response.status}.`);
+        return await response.json();
     } catch (error) {
+        if (signal.aborted) return null;
         console.error('Failed to load correlation dataset:', error);
         return null;
     }
 }
 
 async function startCapabilityEvalsMinigame() {
-    const dataset = await loadCorrelationDataset();
-    if (!dataset || !dataset.images) {
+    if (gameState.capabilityEvalsCooldown > 0) return;
+    disposeMinigame();
+    const token = minigameTasks.token();
+    const campaignEvents = gameState.eventsSeen;
+    const startingPage = gameState.currentPage;
+    const request = new AbortController();
+    datasetRequest = request;
+    const dataset = await loadCorrelationDataset(request.signal);
+    if (!minigameTasks.isCurrent(token) || gameState.eventsSeen !== campaignEvents
+        || gameState.currentPage !== startingPage) return;
+    datasetRequest = null;
+    if (!dataset || !Array.isArray(dataset.images) || dataset.images.length === 0
+        || dataset.images.some(image => !Number.isFinite(image.correlation) || typeof image.filename !== 'string')) {
         alert('Error: Could not load minigame data.');
         return;
     }
+    gameState.correlationDataset = dataset;
     
     // Select random image
-    const randomImage = dataset.images[Math.floor(Math.random() * dataset.images.length)];
+    const randomImage = dataset.images[Math.floor(random() * dataset.images.length)];
     gameState.currentMinigame = {
         type: 'capability-evals',
         image: randomImage,
@@ -55,7 +101,8 @@ async function startCapabilityEvalsMinigame() {
 
 function _submitCapabilityEvalsAnswer(selectedCorrelation, buttonElement) {
     const minigame = gameState.currentMinigame;
-    if (!minigame || minigame.type !== 'capability-evals') return;
+    if (!minigame || minigame.type !== 'capability-evals' || minigame.submitted) return;
+    minigame.submitted = true;
     
     const correctAnswer = minigame.image.correlation;
     const isCorrect = Math.abs(selectedCorrelation - correctAnswer) < 0.001;
@@ -96,12 +143,8 @@ function _submitCapabilityEvalsAnswer(selectedCorrelation, buttonElement) {
         feedbackDiv.style.border = '1px solid #c3e6cb';
         
         // Complete the eval after a delay
-        setTimeout(() => {
-            gameState.evalsBuilt.capability = true;
-            gameState.currentMinigame = null;
-            gameState.currentPage = '2026';
-            showPage('2026');
-        }, 2000);
+        gameState.evalsBuilt.capability = true;
+        afterMinigameDelay(endMinigameAndContinue, 2000);
         
     } else {
         // Failure - highlight correct answer and show error
@@ -122,12 +165,8 @@ function _submitCapabilityEvalsAnswer(selectedCorrelation, buttonElement) {
         feedbackDiv.style.border = '1px solid #f5c6cb';
         
         // Set cooldown and return after delay
-        setTimeout(() => {
-            gameState.capabilityEvalsCooldown = 15;
-            gameState.currentMinigame = null;
-            gameState.currentPage = '2026';
-            showPage('2026');
-        }, 3000);
+        gameState.capabilityEvalsCooldown = 15;
+        afterMinigameDelay(endMinigameAndContinue, 3000);
     }
 }
 
@@ -135,10 +174,11 @@ function startForecastingEvalsMinigame() {
     if (gameState.forecastingEvalsCooldown > 0) {
         return; // Should not reach here due to UI checks, but safety check
     }
+    disposeMinigame();
     
     // Initialize coin flip data with random weighted probability
     const trueProbabilities = [0.5, 0.6, 0.7, 0.8];
-    const randomProb = trueProbabilities[Math.floor(Math.random() * trueProbabilities.length)];
+    const randomProb = trueProbabilities[Math.floor(random() * trueProbabilities.length)];
     
     gameState.coinFlipData = {
         trueProbability: randomProb,
@@ -158,14 +198,14 @@ function startForecastingEvalsMinigame() {
 }
 
 function _performDailyCoinFlip() {
-    if (!gameState.coinFlipData.active) {
+    if (!gameState.coinFlipData?.active) {
         console.log('Coin flip not active');
         return;
     }
     
     for (let i = 0; i < 2; i++) {
         console.log('Performing daily coin flip...');
-        const isHeads = Math.random() < gameState.coinFlipData.trueProbability;
+        const isHeads = random() < gameState.coinFlipData.trueProbability;
         
         if (isHeads) {
             gameState.coinFlipData.heads++;
@@ -212,6 +252,9 @@ function updateForecastingMinigameDisplay() {
 }
 
 function _submitForecastingEvalsAnswer(selectedPercentage, buttonElement) {
+    const minigame = gameState.currentMinigame;
+    if (!minigame || minigame.type !== 'forecasting-evals' || minigame.submitted || !gameState.coinFlipData) return;
+    minigame.submitted = true;
     const trueProbability = gameState.coinFlipData.trueProbability;
     const correctPercentage = trueProbability * 100;
     const isCorrect = Math.abs(selectedPercentage - correctPercentage) < 0.1;
@@ -255,13 +298,8 @@ function _submitForecastingEvalsAnswer(selectedPercentage, buttonElement) {
         feedbackDiv.style.border = '1px solid #c3e6cb';
         
         // Complete the eval after a delay
-        setTimeout(() => {
-            gameState.evalsBuilt.forecasting = true;
-            gameState.currentMinigame = null;
-            gameState.currentPage = '2026';
-            updateForecastingDisplay(); // This function is in game-core.js
-            showPage('2026');
-        }, 2000);
+        gameState.evalsBuilt.forecasting = true;
+        afterMinigameDelay(endMinigameAndContinue, 2000);
         
     } else {
         // Failure - highlight correct answer and show error
@@ -282,12 +320,8 @@ function _submitForecastingEvalsAnswer(selectedPercentage, buttonElement) {
         feedbackDiv.style.border = '1px solid #f5c6cb';
         
         // Set cooldown and return after delay
-        setTimeout(() => {
-            gameState.forecastingEvalsCooldown = 15;
-            gameState.currentMinigame = null;
-            gameState.currentPage = '2026';
-            showPage('2026');
-        }, 3000);
+        gameState.forecastingEvalsCooldown = 15;
+        afterMinigameDelay(endMinigameAndContinue, 3000);
     }
 }
 
@@ -295,7 +329,7 @@ function _submitForecastingEvalsAnswer(selectedPercentage, buttonElement) {
 function getNextSpawnDelay(averageInterval) {
     // Exponential distribution for random intervals
     // Returns delay in milliseconds
-    return -Math.log(Math.random()) * averageInterval;
+    return -Math.log(1 - random()) * averageInterval;
 }
 
 // Helper function to calculate radius with slowdown after 120px
@@ -367,6 +401,7 @@ function beginAlignmentGame() {
 
 // Alignment Minigame: Blue vs Red circle area coverage
 function showAlignmentMinigamePage() {
+    disposeMinigame();
     console.log('showAlignmentMinigamePage: Creating minigame state');
     gameState.currentMinigame = {
         type: 'alignment-research',
@@ -391,13 +426,14 @@ function showAlignmentMinigamePage() {
     
     // Start the animation loop to show the start button after DOM is ready
     console.log('showAlignmentMinigamePage: Setting timeout for updateAlignmentMinigame');
-    setTimeout(() => {
+    afterMinigameDelay(() => {
         console.log('showAlignmentMinigamePage: Timeout fired, calling updateAlignmentMinigame');
         updateAlignmentMinigame();
     }, 10);
 }
 
 function updateAlignmentMinigame() {
+    if (animationFramePending || gameState.currentPage !== 'alignment-minigame') return;
     const minigame = gameState.currentMinigame;
     if (!minigame || minigame.type !== 'alignment-research') {
         console.log('updateAlignmentMinigame: No minigame or wrong type', minigame);
@@ -420,7 +456,7 @@ function updateAlignmentMinigame() {
     // If game hasn't started, show start button and continue animation loop
     if (!dotsData.gameStarted) {
         drawStartButton(ctx, gameCanvas);
-        requestAnimationFrame(updateAlignmentMinigame);
+        scheduleAlignmentFrame();
         return;
     }
     
@@ -514,7 +550,7 @@ function updateAlignmentMinigame() {
     
     // Continue animation
     if (dotsData.gameActive) {
-        requestAnimationFrame(updateAlignmentMinigame);
+        scheduleAlignmentFrame();
     }
 }
 
@@ -599,7 +635,7 @@ function updateCirclePhysics(circle, currentTime, canvas) {
     // Change direction every second
     if (currentTime - circle.lastDirectionChange > 1000) {
         // Random direction (angle in radians)
-        const angle = Math.random() * 2 * Math.PI;
+        const angle = random() * 2 * Math.PI;
         // Red circles have 1.5x acceleration
         const baseAcceleration = 0.2 * canvas.width; // 0.2 screenwidth per second per second
         const accelerationMagnitude = circle.color === 'red' ? baseAcceleration * 1.5 : baseAcceleration;
@@ -644,17 +680,17 @@ function spawnAlignmentCircle() {
     const canvas = document.getElementById('alignment-canvas');
     
     // 1.8x as many blue circles as red (64.3% blue, 35.7% red)
-    const isBlue = Math.random() < 0.643;
+    const isBlue = random() < 0.643;
     
     // Random initial velocity - red circles start faster
     const initialSpeed = isBlue ? 
-        Math.random() * 100 + 50 : // Blue: 50-150 pixels/second
-        Math.random() * 100 + 120; // Red: 120-220 pixels/second
-    const initialAngle = Math.random() * 2 * Math.PI;
+        random() * 100 + 50 : // Blue: 50-150 pixels/second
+        random() * 100 + 120; // Red: 120-220 pixels/second
+    const initialAngle = random() * 2 * Math.PI;
     
     const circle = {
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
+        x: random() * canvas.width,
+        y: random() * canvas.height,
         vx: Math.cos(initialAngle) * initialSpeed, // velocity x
         vy: Math.sin(initialAngle) * initialSpeed, // velocity y
         ax: 0, // acceleration x
@@ -672,7 +708,7 @@ function spawnAlignmentCircle() {
 }
 
 function endMinigameAndContinue() {
-    gameState.currentMinigame = null;
+    disposeMinigame();
     gameState.currentPage = 'main-game';
     showPage('main-game');
 }
@@ -1067,6 +1103,7 @@ function createAlignmentGraph(percentageHistory) {
 
 // Export functions for ES modules
 export {
+    disposeMinigame,
     startMinigame,
     showAlignmentMinigamePage,
     clickAlignmentCanvas,

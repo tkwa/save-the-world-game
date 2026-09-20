@@ -18,81 +18,40 @@ import {
     showProductIncrease
 } from './game-core.js';
 
+import { random } from './random.js';
 
-let eventData = null;
+import {
+    eventWeight,
+    createEventDataLoader,
+    selectEventTemplate,
+    createEventInstance,
+    getChoiceCosts,
+    payChoiceCosts
+} from './event-selection.js';
 
-// Load event data from JSON file
-async function loadEventData() {
-    if (eventData) return eventData;
-    
-    try {
-        const response = await fetch('events.json');
-        eventData = await response.json();
-        return eventData;
-    } catch (error) {
-        console.error('Failed to load event data:', error);
-        // Fallback data in case of load failure
-        return {
-            safetyIncidents: ["A safety incident occurs."],
-            nothingEvents: ["Nothing significant happens this month."]
-        };
-    }
+const loadEventData = createEventDataLoader(
+    url => fetch(url),
+    error => console.warn('Using fallback events; the next event load will retry:', error)
+);
+
+let eventGenerationVersion = 0;
+
+// A reset invalidates requests that started in the previous campaign.
+function invalidateEventGeneration() {
+    eventGenerationVersion++;
+    loadEventData.reset();
+    multiStageManager.stageData.clear();
 }
 
 // Generate a random event based on current game state
 async function generateEvent() {
+    const generationVersion = eventGenerationVersion;
     const events = await loadEventData();
+    if (generationVersion !== eventGenerationVersion) return null;
     
     // Sanctions event has 100% probability if sanctions are active
     if (hasSanctions()) {
-        const sanctionsEvent = events.specialEvents.sanctions;
-        const randomText = sanctionsEvent.text_versions[Math.floor(Math.random() * sanctionsEvent.text_versions.length)];
-        
-        // Calculate scaled costs for dynamic choice text
-        const aiLevel = gameState.playerAILevel;
-        const scaledMoneyCost = Math.max(3, Math.round(aiLevel * 0.2));
-        const scaledDiplomacyCost = Math.max(3, Math.round(aiLevel * 0.15));
-        
-        // Check affordability for dynamic choice text
-        const canAfford = gameState.money >= scaledMoneyCost && gameState.diplomacyPoints >= scaledDiplomacyCost;
-        
-        // Create choices with dynamic costs and affordability feedback
-        const dynamicChoices = sanctionsEvent.choices.map(choice => {
-            if (choice.action === 'accept') {
-                // Style costs based on affordability (red if missing, normal if affordable)
-                const moneyMissing = gameState.money < scaledMoneyCost;
-                const diplomacyMissing = gameState.diplomacyPoints < scaledDiplomacyCost;
-                
-                const moneyCostText = moneyMissing ? 
-                    `<span style="color: #ff6b6b; font-weight: bold;">-$${scaledMoneyCost}B</span>` : 
-                    `-$${scaledMoneyCost}B`;
-                    
-                const diplomacyCostText = diplomacyMissing ? 
-                    `<span style="color: #ff6b6b; font-weight: bold;">-${scaledDiplomacyCost} Diplomacy</span>` : 
-                    `-${scaledDiplomacyCost} Diplomacy`;
-                
-                const choiceText = `Remove sanctions (${moneyCostText}, ${diplomacyCostText})`;
-                
-                return {
-                    ...choice,
-                    text: choiceText,
-                    canAfford: canAfford,
-                    // Store pre-calculated costs to avoid recalculation inconsistencies
-                    precalculatedCosts: {
-                        money: scaledMoneyCost,
-                        diplomacy: scaledDiplomacyCost
-                    }
-                };
-            }
-            return choice;
-        });
-        
-        const event = {
-            type: sanctionsEvent.type,
-            text: randomText,
-            choices: dynamicChoices,
-            customHandler: sanctionsEvent.customHandler
-        };
+        const event = generateSanctionsEvent(events);
         trackEventSeen(event);
         return event;
     }
@@ -102,12 +61,12 @@ async function generateEvent() {
     const safetyIncidentChance = Math.pow(adjustedRiskPercent / 100.0, 2);
     const severeIncidentChance = Math.pow(adjustedRiskPercent / 100.0, 3) * gameState.playerAILevel / 1000;
     
-    if (Math.random() < severeIncidentChance) {
+    if (random() < severeIncidentChance) {
         // Severe safety incident occurs
         const event = generateSevereSecurityIncident(events);
         trackEventSeen(event);
         return event;
-    } else if (Math.random() < safetyIncidentChance) {
+    } else if (random() < safetyIncidentChance) {
         // Regular safety incident occurs
         const event = generateSafetyIncident(events);
         trackEventSeen(event);
@@ -124,6 +83,59 @@ async function generateEvent() {
         trackEventSeen(event);
         return event;
     }
+}
+
+// Use the same dynamic costs for normal play and debug-generated sanctions.
+function generateSanctionsEvent(events) {
+    const sanctionsEvent = events.specialEvents.sanctions;
+    const randomText = sanctionsEvent.text_versions[Math.floor(random() * sanctionsEvent.text_versions.length)];
+
+    // Calculate scaled costs for dynamic choice text
+    const aiLevel = gameState.playerAILevel;
+    const scaledMoneyCost = Math.max(3, Math.round(aiLevel * 0.2));
+    const scaledDiplomacyCost = Math.max(3, Math.round(aiLevel * 0.15));
+
+    // Check affordability for dynamic choice text
+    const canAfford = gameState.money >= scaledMoneyCost && gameState.diplomacyPoints >= scaledDiplomacyCost;
+
+    // Create choices with dynamic costs and affordability feedback
+    const dynamicChoices = sanctionsEvent.choices.map(choice => {
+        if (choice.action === 'accept') {
+            // Style costs based on affordability (red if missing, normal if affordable)
+            const moneyMissing = gameState.money < scaledMoneyCost;
+            const diplomacyMissing = gameState.diplomacyPoints < scaledDiplomacyCost;
+
+            const moneyCostText = moneyMissing ?
+                `<span style="color: #ff6b6b; font-weight: bold;">-$${scaledMoneyCost}B</span>` :
+                `-$${scaledMoneyCost}B`;
+
+            const diplomacyCostText = diplomacyMissing ?
+                `<span style="color: #ff6b6b; font-weight: bold;">-${scaledDiplomacyCost} Diplomacy</span>` :
+                `-${scaledDiplomacyCost} Diplomacy`;
+
+            const choiceText = `Remove sanctions (${moneyCostText}, ${diplomacyCostText})`;
+
+            return {
+                ...choice,
+                text: choiceText,
+                canAfford: canAfford,
+                // Store pre-calculated costs to avoid recalculation inconsistencies
+                precalculatedCosts: {
+                    money: scaledMoneyCost,
+                    diplomacy: scaledDiplomacyCost
+                }
+            };
+        }
+        return choice;
+    });
+
+    return {
+        type: sanctionsEvent.type,
+        title: sanctionsEvent.title,
+        text: randomText,
+        choices: dynamicChoices,
+        customHandler: sanctionsEvent.customHandler
+    };
 }
 
 // Track that an event has been seen
@@ -146,6 +158,7 @@ function trackEventSeen(event) {
 // Check if event requirements are met and hasn't been accepted yet
 function getAvailableEvents(allEvents) {
     return allEvents.filter(event => {
+        if (eventWeight(event) <= 0) return false;
         // Check if event has requirements
         if (event.requires) {
             for (const requirement of event.requires) {
@@ -194,7 +207,7 @@ function getAvailableEvents(allEvents) {
         }
         
         // Check if this event has exceeded maxTimes appearances
-        if (event.maxTimes) {
+        if (event.maxTimes !== undefined) {
             const appearanceCount = gameState.eventAppearanceCounts.get(event.type) || 0;
             if (appearanceCount >= event.maxTimes) {
                 return false; // Already appeared maximum times
@@ -223,10 +236,11 @@ function generateSafetyIncident(events) {
     const fine = Math.floor(gameState.safetyIncidentCount ** 1.5);
     
     const safetyEvent = events.safetyIncidents;
-    const randomText = safetyEvent.text_versions[Math.floor(Math.random() * safetyEvent.text_versions.length)];
+    const randomText = safetyEvent.text_versions[Math.floor(random() * safetyEvent.text_versions.length)];
     
     return {
         type: 'safety-incident',
+        title: safetyEvent.title,
         text: boldifyNumbers(`${randomText} The incident draws regulatory scrutiny and ${gameState.companyName} is fined $${fine}B. Your legal team recommends increased safety measures.`),
         fine: fine
     };
@@ -330,7 +344,7 @@ function createEventVariables(eventType) {
         if (eventType === 'overseas-datacenter') {
             // Pick a random country for the datacenter event and store it
             const countries = GAME_CONSTANTS.DATACENTER_COUNTRIES;
-            const country = countries[Math.floor(Math.random() * countries.length)];
+            const country = countries[Math.floor(random() * countries.length)];
             gameState.datacenterCountry = country;
             variables.country = country;
             
@@ -355,7 +369,7 @@ function createEventVariables(eventType) {
         const marketShareBefore = (1 / (1 + competitorPenaltyBefore)) * 100;
         
         // Randomly select a competitor and store for later use
-        const randomCompetitorIndex = Math.floor(Math.random() * gameState.competitorAILevels.length);
+        const randomCompetitorIndex = Math.floor(random() * gameState.competitorAILevels.length);
         const competitorName = gameState.competitorNames[randomCompetitorIndex] || `Competitor ${randomCompetitorIndex + 1}`;
         gameState.breakthroughCompetitorIndex = randomCompetitorIndex;
         
@@ -388,7 +402,7 @@ function createEventVariables(eventType) {
     if (eventType === 'competitor-warning-shot') {
         // Select competitor proportional to AI level (weighted random)
         const totalWeight = gameState.competitorAILevels.reduce((sum, level) => sum + level, 0);
-        const randomValue = Math.random() * totalWeight;
+        const randomValue = random() * totalWeight;
         
         let selectedIndex = 0;
         let cumulativeWeight = 0;
@@ -430,7 +444,7 @@ function createEventVariables(eventType) {
             const fairValue = (playerLevel ** 2) / (playerLevel ** 2 + competitorLevel ** 2);
             
             // Random offer between 30% and 100% of fair value for the TOTAL company
-            const offerMultiplier = 0.3 + Math.random() * 0.7; // 0.3 to 1.0
+            const offerMultiplier = 0.3 + random() * 0.7; // 0.3 to 1.0
             const totalCompanyEquityOffered = fairValue * offerMultiplier;
             
             // Player owns 10% of their current company, so they get 10% of the total equity offered
@@ -494,48 +508,11 @@ function filterChoicesByCondition(choices) {
 
 // Select a random event from an array using weighted probabilities
 function selectWeightedEvent(eventArray) {
-    const totalWeight = eventArray.reduce((sum, event) => sum + (event.weight || 1), 0);
-    let randomValue = Math.random() * totalWeight;
-    
-    for (const event of eventArray) {
-        randomValue -= (event.weight || 1);
-        if (randomValue <= 0) {
-            // Select random text from text_versions
-            let randomText = event.text_versions[Math.floor(Math.random() * event.text_versions.length)];
-            
-            // Apply variable substitution
-            randomText = substituteEventVariables(randomText, event.type);
-            
-            // Filter choices based on conditions
-            const filteredChoices = filterChoicesByCondition(event.choices);
-            
-            return {
-                type: event.type,
-                text: randomText,
-                choices: filteredChoices,
-                customHandler: event.customHandler || null,
-                originalEventData: event // Preserve original data for multi-stage access
-            };
-        }
-    }
-    
-    // Fallback to last event if something goes wrong
-    const fallbackEvent = eventArray[eventArray.length - 1];
-    let randomText = fallbackEvent.text_versions[Math.floor(Math.random() * fallbackEvent.text_versions.length)];
-    
-    // Apply variable substitution to fallback
-    randomText = substituteEventVariables(randomText, fallbackEvent.type);
-    
-    // Filter choices based on conditions for fallback too
-    const filteredChoices = filterChoicesByCondition(fallbackEvent.choices);
-    
-    return {
-        type: fallbackEvent.type,
-        text: randomText,
-        choices: filteredChoices,
-        customHandler: fallbackEvent.customHandler || null,
-        originalEventData: fallbackEvent // Preserve original data for multi-stage access
-    };
+    return createEventInstance(selectEventTemplate(eventArray, random), {
+        random,
+        transformText: substituteEventVariables,
+        filterChoices: filterChoicesByCondition
+    });
 }
 
 // Handle AI escape event choice
@@ -543,8 +520,8 @@ function selectWeightedEvent(eventArray) {
 function handleAIEscapeChoice(choice, _event, _sanctionsTriggered) {
     if (choice.action === 'nuke') {
         // 50% chance to stop singularity, always causes Disillusioned status
-        const success = Math.random() < 0.5;
-        const casualties = Math.floor(Math.random() * (25000000 - 2000000) + 2000000); // 2M-25M
+        const success = random() < 0.5;
+        const casualties = Math.floor(random() * (25000000 - 2000000) + 2000000); // 2M-25M
         const casualtiesText = (casualties / 1000000).toFixed(1) + 'M';
         
         applyStatusEffect('disillusioned');
@@ -627,14 +604,10 @@ function _populateDebugDropdown() {
 
 // Helper function to apply choice effects (costs, benefits, penalties, risks)
 function applyChoiceEffects(choice) {
+    // All declared costs use one path, including custom actions. Handlers only
+    // implement the outcome; they must not charge the same costs again.
+    if (!payChoiceCosts(gameState, choice)) return false;
     if (choice.action === 'accept' || choice.action === 'accept-sanctions') {
-        // Apply costs
-        if (choice.cost) {
-            if (choice.cost.productPoints) gameState.productPoints -= choice.cost.productPoints;
-            if (choice.cost.diplomacyPoints) gameState.diplomacyPoints -= choice.cost.diplomacyPoints;
-            if (choice.cost.money) gameState.money -= choice.cost.money;
-        }
-        
         // Apply benefits
         if (choice.benefit) {
             if (choice.benefit.incomeBonus) {
@@ -675,14 +648,14 @@ function applyChoiceEffects(choice) {
         
         // Apply risks (probability-based negative effects)
         if (choice.risk) {
-            if (choice.risk.sanctions && Math.random() < choice.risk.sanctions) {
+            if (choice.risk.sanctions && random() < choice.risk.sanctions) {
                 // Check if player has Regulatory Favor immunity
                 if (!gameState.statusEffects.regulatoryFavor) {
                     setSanctions(true);
                     return true; // Return true if sanctions were triggered
                 }
             }
-            if (choice.risk.statusEffect && Math.random() < choice.risk.statusEffect.probability) {
+            if (choice.risk.statusEffect && random() < choice.risk.statusEffect.probability) {
                 applyStatusEffect(choice.risk.statusEffect.name);
                 return true; // Return true if status effect was triggered
             }
@@ -760,6 +733,7 @@ class MultiStageEventManager {
         // Update current event with new stage content
         gameState.currentEvent = {
             type: eventType,
+            title: gameState.currentEvent?.title,
             text: text,
             choices: choices,
             customHandler: gameState.currentEvent?.customHandler || null,
@@ -994,7 +968,7 @@ function handleCompetitorBreakthroughChoice(choice, _event, _sanctionsTriggered)
     
     if (choice.action === 'accept') {
         // 25% chance to gain player capability, 75% chance the competitor was careful
-        const scanSuccessful = Math.random() < 0.25;
+        const scanSuccessful = random() < 0.25;
         
         // Get current AI system name for result text
         const currentAISystemName = getAISystemVersion(gameState.companyName || 'Company', gameState.playerAILevel);
@@ -1040,11 +1014,14 @@ function handleCompetitorBreakthroughChoice(choice, _event, _sanctionsTriggered)
         }
         
         // 25% chance to add investigation event to pool (independent of scan success)
-        if (Math.random() < 0.25) {
+        if (random() < 0.25) {
             // Add investigation event to the available pool by adding it to the loaded events
+            const generationVersion = eventGenerationVersion;
             loadEventData().then(events => {
+                if (generationVersion !== eventGenerationVersion) return;
                 const investigationEvent = {
                     type: 'corporate-espionage-investigation',
+                    title: 'Espionage Investigation',
                     weight: 1,
                     oneTimeAccept: true,
                     text_versions: [
@@ -1102,7 +1079,7 @@ function handleCorporateEspionageInvestigation(choice, event, _sanctionsTriggere
     // Stage 1: Initial discovery - use other_texts for stage content
     if (!stages.currentStage) {
         multiStageManager.initStage(event.type, 'discovery', {
-            evidenceLevel: Math.random() * 100,
+            evidenceLevel: random() * 100,
             investigatorSuspicion: 50
         });
         
@@ -1157,7 +1134,7 @@ function handleCorporateEspionageInvestigation(choice, event, _sanctionsTriggere
                 gameState.hasIntelligenceAgreement = true;
                 break;
             case 'misdirect':
-                const success = Math.random() < 0.4;
+                const success = random() < 0.4;
                 resultKey = success ? "misdirect_success" : "misdirect_failure";
                 if (!success) {
                     setSanctions(true);
@@ -1211,33 +1188,33 @@ function handleCompetitorAcquisitionChoice(choice, _event, _sanctionsTriggered) 
         
         if (availableCompanies.length > 0) {
             // Pick a random available company
-            const newCompanyName = availableCompanies[Math.floor(Math.random() * availableCompanies.length)];
+            const newCompanyName = availableCompanies[Math.floor(random() * availableCompanies.length)];
             
             // Set new capability level between 0.1 and 0.4 of the new (merged) player level
             const minLevel = newAILevel * 0.1;
             const maxLevel = newAILevel * 0.4;
-            const newCompetitorLevel = minLevel + Math.random() * (maxLevel - minLevel);
+            const newCompetitorLevel = minLevel + random() * (maxLevel - minLevel);
             
             // Replace the acquired competitor
             gameState.competitorNames[competitorIndex] = newCompanyName;
             gameState.competitorAILevels[competitorIndex] = newCompetitorLevel;
         } else {
             // Fallback: just reduce the capability significantly if no companies available
-            gameState.competitorAILevels[competitorIndex] = newAILevel * (0.1 + Math.random() * 0.3);
+            gameState.competitorAILevels[competitorIndex] = newAILevel * (0.1 + random() * 0.3);
         }
         
         // Add random resources based on new capability level
         const levelBasedBonus = Math.floor(newAILevel / 4); // Scale with AI level
         const oldMoney = gameState.money;
-        gameState.money += Math.floor(Math.random() * levelBasedBonus + levelBasedBonus);
+        gameState.money += Math.floor(random() * levelBasedBonus + levelBasedBonus);
         showRevenueIncrease(oldMoney, gameState.money);
         
         const oldDiplomacy = gameState.diplomacyPoints;
-        gameState.diplomacyPoints += Math.floor(Math.random() * levelBasedBonus + levelBasedBonus/2);
+        gameState.diplomacyPoints += Math.floor(random() * levelBasedBonus + levelBasedBonus/2);
         showDiplomacyIncrease(oldDiplomacy, gameState.diplomacyPoints);
         
         const oldProduct = gameState.productPoints;
-        gameState.productPoints += Math.floor(Math.random() * levelBasedBonus + levelBasedBonus/2);
+        gameState.productPoints += Math.floor(random() * levelBasedBonus + levelBasedBonus/2);
         showProductIncrease(oldProduct, gameState.productPoints);
         
         // Unlock alignment project if not already unlocked
@@ -1295,7 +1272,7 @@ function handleCompetitorWarningShot(choice, event, _sanctionsTriggered) {
         const interpProgress = gameState.interpretabilityProgress || 0;
         const alignmentProgress = gameState.alignmentMaxScore || 0;
         const successProbability = (interpProgress + alignmentProgress) / 100;
-        const success = Math.random() < successProbability;
+        const success = random() < successProbability;
         
         // Apply safety research boosts regardless of regulatory success
         gameState.interpretabilityProgressMultiplier = (gameState.interpretabilityProgressMultiplier || 1) * 1.25;
@@ -1334,19 +1311,14 @@ function handleCompetitorWarningShot(choice, event, _sanctionsTriggered) {
 async function forceEvent(eventType) {
     if (!eventType) return;
     
+    const generationVersion = eventGenerationVersion;
     const events = await loadEventData();
+    if (generationVersion !== eventGenerationVersion) return;
     let event = null;
     
     // Handle special events
     if (eventType === 'sanctions') {
-        const sanctionsEvent = events.specialEvents.sanctions;
-        const randomText = sanctionsEvent.text_versions[Math.floor(Math.random() * sanctionsEvent.text_versions.length)];
-        
-        event = {
-            type: sanctionsEvent.type,
-            text: randomText,
-            choices: sanctionsEvent.choices
-        };
+        event = generateSanctionsEvent(events);
     } else if (eventType === 'safety-incident') {
         event = generateSafetyIncident(events);
     } else if (eventType === 'warning-shot') {
@@ -1357,7 +1329,7 @@ async function forceEvent(eventType) {
         // Handle default events
         const eventTemplate = events.defaultEvents.find(e => e.type === eventType);
         if (eventTemplate && getAvailableEvents([eventTemplate]).length > 0) {
-            let randomText = eventTemplate.text_versions[Math.floor(Math.random() * eventTemplate.text_versions.length)];
+            let randomText = eventTemplate.text_versions[Math.floor(random() * eventTemplate.text_versions.length)];
             
             // Apply variable substitution
             randomText = substituteEventVariables(randomText, eventTemplate.type);
@@ -1367,6 +1339,7 @@ async function forceEvent(eventType) {
             
             event = {
                 type: eventTemplate.type,
+                title: eventTemplate.title,
                 text: randomText,
                 choices: filteredChoices,
                 customHandler: eventTemplate.customHandler || null,
@@ -1444,7 +1417,7 @@ function debugShowEventPool() {
         
         // Compact format: weight | event-name (AI range)
         availableEvents.forEach(e => {
-            const weight = (e.weight || 1).toString().padStart(2);
+            const weight = eventWeight(e).toString().padStart(2);
             let aiRange = '';
             if (e.aiLevelRange) {
                 const min = e.aiLevelRange.min !== undefined ? e.aiLevelRange.min : '∞';
@@ -1507,7 +1480,7 @@ function updateEventPoolOverlay() {
         
         // Compact format: weight | event-name (AI range)
         availableEvents.forEach(e => {
-            const weight = (e.weight || 1).toString().padStart(2);
+            const weight = eventWeight(e).toString().padStart(2);
             let aiRange = '';
             if (e.aiLevelRange) {
                 const min = e.aiLevelRange.min !== undefined ? e.aiLevelRange.min : '∞';
@@ -1543,21 +1516,10 @@ function handleSanctionsChoice(choice, _event, _sanctionsTriggered) {
     let resultText;
     
     if (choice.action === 'accept') {
-        // Use pre-calculated costs from event generation to ensure consistency
-        let scaledMoneyCost, scaledDiplomacyCost;
-        if (choice.precalculatedCosts) {
-            scaledMoneyCost = choice.precalculatedCosts.money;
-            scaledDiplomacyCost = choice.precalculatedCosts.diplomacy;
-        } else {
-            // Fallback: calculate costs if precalculated values not available
-            const aiLevel = gameState.playerAILevel;
-            scaledMoneyCost = Math.max(3, Math.round(aiLevel * 0.2));
-            scaledDiplomacyCost = Math.max(3, Math.round(aiLevel * 0.15));
-        }
-        
-        // Apply costs and remove sanctions (button should only be clickable if affordable)
-        gameState.money -= scaledMoneyCost;
-        gameState.diplomacyPoints -= scaledDiplomacyCost;
+        // applyChoiceEffects already charged these costs before this handler.
+        const costs = getChoiceCosts(choice);
+        const scaledMoneyCost = costs.money || 0;
+        const scaledDiplomacyCost = costs.diplomacyPoints || 0;
         setSanctions(false);
         
         resultText = `Your lobbying campaign succeeds after spending <strong>$${scaledMoneyCost}B</strong> and <strong>${scaledDiplomacyCost} diplomacy points</strong>. International pressure is lifted through back-channel negotiations. Your company can now operate freely again.`;
@@ -1577,6 +1539,7 @@ function handleSanctionsChoice(choice, _event, _sanctionsTriggered) {
 // Export functions for ES modules
 export {
     generateEvent,
+    invalidateEventGeneration,
     applyChoiceEffects,
     applyEventEffects,
     forceEvent,

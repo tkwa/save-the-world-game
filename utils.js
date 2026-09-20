@@ -1,4 +1,5 @@
 // Shared utility functions for Critical Path AI Strategy Game
+import { random } from './random.js';
 
 // Game constants
 const GAME_CONSTANTS = {
@@ -171,6 +172,9 @@ function createInitialGameState() {
         statusEffects: {}, // Generic status effects system
         diplomacyMultiplier: 1,
         productMultiplier: 1,
+        incomeBonus: 0,
+        aiLevelPerTurn: 0,
+        resourceMultiplier: null,
         
         // Infrastructure
         datacenterCount: 0,
@@ -184,7 +188,7 @@ function createInitialGameState() {
 
         // Other game state
         currentPage: "start",
-        alignmentLevel: Math.random(), // 0-1 float for alignment
+        alignmentLevel: random(), // 0-1 float for alignment
         evalsBuilt: {
             capability: false,
             corrigibility: false,
@@ -193,14 +197,21 @@ function createInitialGameState() {
         },
         correlationDataset: null,
         currentMinigame: null,
+        coinFlipData: null,
+        capabilityEvalsCooldown: 0,
+        forecastingEvalsCooldown: 0,
         companyName: null,
         currentTurn: GAME_CONSTANTS.INITIAL_TURN,
         currentMonth: "January",
         currentYear: GAME_CONSTANTS.INITIAL_YEAR,
+        currentDate: `${GAME_CONSTANTS.INITIAL_YEAR}-01-01T00:00:00.000Z`,
         money: GAME_CONSTANTS.INITIAL_MONEY, // Starting money
         gameOverReason: null,
+        outcome: null,
         endGameResult: null, // Stores calculated end game score to avoid re-rolling
         endGamePhase: 1, // Current phase of end game display (1-5)
+        alignmentRolls: null,
+        galaxyDistribution: null,
         currentEvent: null,
         safetyIncidentCount: 0,
         severeIncidentCount: 0,
@@ -213,12 +224,17 @@ function createInitialGameState() {
         eventsAccepted: new Set(), // Tracks which DSA events have been accepted
         eventAppearanceCounts: new Map(), // Tracks how many times each event has appeared
         alignmentMaxScore: 0, // Maximum score achieved in alignment minigame
+        alignmentProjectStarted: false,
+        currentAlignmentProject: 'Interpretability',
         interpretabilityProgress: 0, // Progress towards 100% interpretability (0-100)
         interpretabilityLaborHours: 0, // Total labor hours invested in interpretability (in millions)
         interpretabilityProgressMultiplier: 1, // Multiplier for interpretability progress gains
         alignmentRedCircleReduction: 0, // Reduction in alignment minigame red circle growth rate
         internationalTreatyProgress: 0, // Progress towards international treaty completion (0-2000)
         internationalTreatyUnlocked: false, // Whether International Treaty project is unlocked
+        internationalTreatyRatified: false,
+        internationalTreatyRatifiedTurn: null,
+        hasIntelligenceAgreement: false,
         plotTrack: null, // Current plot track: null, "pause", "alignment", "dsa", etc.
         endgameAdjustedRisk: null, // Adjusted risk level at endgame trigger
         projectsUnlocked: false, // Whether Projects panel is unlocked (at 80 safety points)
@@ -232,7 +248,10 @@ function createInitialGameState() {
         companyFlag: null, // Company flag emoji
         offeredEquity: null, // Equity player receives in acquisition event (player's share)
         totalEquityOffered: null, // Total equity offered to the old company
+        acquisitionCompetitorIndex: null,
+        breakthroughCompetitorIndex: null,
         hasEverFallenBehind: false, // Whether player has ever fallen behind the top competitor
+        debugShowAllTechs: false,
         mainGameStarted: false // Whether the main game has started (affects tech visibility during intro)
     };
 }
@@ -251,6 +270,17 @@ function getRiskFactors(safetyPoints = null, alignmentMaxScore = null, interpret
 
 // Game state - shared across all modules
 const gameState = createInitialGameState();
+
+// Modules retain this object by reference. Replacing it would leave them with
+// stale state; deleting old keys also removes fields introduced during a run.
+function resetSharedGameState() {
+    const freshState = createInitialGameState();
+    for (const key of Reflect.ownKeys(gameState)) {
+        delete gameState[key];
+    }
+    Object.assign(gameState, freshState);
+    return gameState;
+}
 
 // Risk calculation function used across multiple files
 function calculateAdjustedRiskPercent(safetyPoints = null, alignmentMaxScore = null, interpretabilityProgress = null) {
@@ -367,6 +397,7 @@ export {
     GAME_CONSTANTS,
     STATUS_EFFECT_DEFINITIONS,
     createInitialGameState,
+    resetSharedGameState,
     INITIAL_TECHNOLOGIES,
     gameState
 };

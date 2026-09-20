@@ -4,7 +4,7 @@
   "description": "AI Strategy Game",
   "type": "module",
   "scripts": {
-    "test": "node tests.js",
+    "test": "node tests.js && node --test tests/*.test.mjs",
     "test:coverage": "c8 --exclude='tests.js' --exclude='validate-events.js' --exclude='eslint.config.js' node tests.js",
     "test:coverage:html": "c8 --exclude='tests.js' --exclude='validate-events.js' --exclude='eslint.config.js' --reporter=html --reporter=text node tests.js",
     "validate": "node validate-events.js",

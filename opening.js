@@ -2,6 +2,17 @@
 import { COMPANIES, GAME_CONSTANTS, gameState } from './utils.js';
 import { showPage, showCapabilityIncrease } from './game-core.js';
 import { generateEvent } from './events.js';
+import { random } from './random.js';
+import { createTaskScope } from './task-scope.js';
+
+const introTasks = createTaskScope();
+let transitioningToMainGame = false;
+
+function disposeIntro() {
+    introTasks.cancel();
+    transitioningToMainGame = false;
+    introState.buttonCooldown = false;
+}
 
 // Intro sequence state
 const introState = {
@@ -65,7 +76,7 @@ function initializeIntro() {
     console.log('initializeIntro called');
     
     // Randomly select a company for the intro
-    const selectedCompany = COMPANIES[Math.floor(Math.random() * COMPANIES.length)];
+    const selectedCompany = COMPANIES[Math.floor(random() * COMPANIES.length)];
     console.log('Selected company:', selectedCompany);
     
     introState.companyName = selectedCompany.name;
@@ -89,11 +100,12 @@ function initializeIntro() {
     introState.isNewGame = false;
     
     // Update the title to show the selected company
-    setTimeout(() => updateIntroTitle(), 0);
+    introTasks.timeout(() => updateIntroTitle(), 0);
 }
 
 // Reset intro state for a new game
 function resetIntroState() {
+    disposeIntro();
     introState.companyName = null;
     introState.selectedCompany = null;
     introState.currentStep = 0;
@@ -110,6 +122,7 @@ function resetIntroState() {
     introState.riskLevel = 9; // Reset risk level
     introState.statusBarSetup = false; // Reset status bar setup flag for new game
     introState.permanentlyDisabled = false; // Reset permanent disabled flag for new game
+    introState.debugSpeedMode = false;
 }
 
 // Update just the intro title without re-rendering the whole page
@@ -354,7 +367,7 @@ function handleAIRDButtonPress() {
         // Update animation duration to match cooldown time
         button.style.animationDuration = `${actualCooldownTime}ms`;
         
-        setTimeout(() => {
+        introTasks.timeout(() => {
             introState.buttonCooldown = false;
             button.classList.remove('filling');
             button.style.animationDuration = ''; // Reset to default
@@ -429,7 +442,7 @@ function fadeInRogueAIRisk() {
         updateRiskDisplay();
         console.log('Set initial risk level to', introState.riskLevel + '%');
         
-        setTimeout(() => {
+        introTasks.timeout(() => {
             riskElement.style.opacity = '1';
             console.log('After fade: display =', riskElement.style.display, 'opacity =', riskElement.style.opacity);
         }, 100);
@@ -467,7 +480,7 @@ function showTransitionButton() {
         transitionButton.style.display = 'inline-block';
         transitionButton.style.transition = 'opacity 1s ease-in';
         
-        setTimeout(() => {
+        introTasks.timeout(() => {
             transitionButton.style.opacity = '1';
         }, 500);
     }
@@ -475,6 +488,11 @@ function showTransitionButton() {
 
 // Transition to main game  
 async function startMainGame() {
+    if (transitioningToMainGame) return;
+    disposeIntro();
+    transitioningToMainGame = true;
+    const token = introTasks.token();
+    const campaignEvents = gameState.eventsSeen;
     console.log('startMainGame called');
     
     // Restore full status bar before transitioning
@@ -485,7 +503,7 @@ async function startMainGame() {
         
         // Use the company selected during intro, or select random if intro was skipped
         const selectedCompany = introState.selectedCompany || 
-            COMPANIES[Math.floor(Math.random() * COMPANIES.length)];
+            COMPANIES[Math.floor(random() * COMPANIES.length)];
             
         gameState.companyName = selectedCompany.name;
         gameState.companyLongName = selectedCompany.longName;
@@ -497,7 +515,7 @@ async function startMainGame() {
         const remainingCompanies = COMPANIES.filter(c => c.name !== gameState.companyName);
         gameState.competitorNames = [];
         for (let i = 0; i < GAME_CONSTANTS.MAX_COMPETITORS; i++) {
-            const randomIndex = Math.floor(Math.random() * remainingCompanies.length);
+            const randomIndex = Math.floor(random() * remainingCompanies.length);
             gameState.competitorNames.push(remainingCompanies.splice(randomIndex, 1)[0].name);
         }
         
@@ -521,16 +539,21 @@ async function startMainGame() {
         gameState.mainGameStarted = true;
         
         // Generate first event (this is crucial!)
-        gameState.currentEvent = await generateEvent();
+        const event = await generateEvent();
+        if (!introTasks.isCurrent(token) || gameState.eventsSeen !== campaignEvents || !event) return;
+        gameState.currentEvent = event;
         
         console.log('Transitioning to main game with company:', gameState.companyName);
         
         // Navigate to main game
         showPage('main-game');
     } catch (error) {
+        if (!introTasks.isCurrent(token) || gameState.eventsSeen !== campaignEvents) return;
         console.error('Error in startMainGame:', error);
         // Fallback to standard game setup
         showPage('game-setup');
+    } finally {
+        if (introTasks.isCurrent(token)) transitioningToMainGame = false;
     }
 }
 
@@ -571,7 +594,7 @@ function skipIntroToMainGame() {
     
     // Set up company if not already done
     if (!introState.companyName) {
-        const selectedCompany = COMPANIES[Math.floor(Math.random() * COMPANIES.length)];
+        const selectedCompany = COMPANIES[Math.floor(random() * COMPANIES.length)];
         introState.companyName = selectedCompany.name;
         introState.selectedCompany = selectedCompany;
     }
@@ -595,6 +618,7 @@ export {
     skipIntroToMainGame,
     startNewGame,
     resetIntroState,
+    disposeIntro,
     restoreFullStatusBar,
     toggleIntroDebugSpeed,
     updateIntroDebugButtonVisibility

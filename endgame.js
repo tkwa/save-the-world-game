@@ -1,552 +1,198 @@
-// End game logic for Critical Path game
-import {
-    calculateAdjustedRiskPercent,
-    getRiskColor,
-    getGalaxyMultipliers,
-    GAME_CONSTANTS,
-    gameState
-} from './utils.js';
-
+// The renderer reads one cached outcome. It never performs a second simulation.
+import { calculateAdjustedRiskPercent, GAME_CONSTANTS, gameState } from './utils.js';
 import { showPage } from './game-core.js';
+import { ensureOutcome } from './outcome.js';
+import { random } from './random.js';
 
+const AI_MARKER = '<span class="ai-marker" role="img" aria-label="AI-written title or heading" title="This title or heading was written by AI. Sparkles mark AI-written titles and headings.">✨</span>';
 
-// Helper function to format alignment status
-function formatAlignmentStatus(isAligned) {
-    return isAligned ? 
-        "<strong style='color: #66bb6a;'>ALIGNED</strong>" :
-        "<strong style='color: #ff6b6b;'>MISALIGNED</strong>";
+function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, character => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[character]);
 }
 
-// Generate conclusion text based on player's outcome
-function generateConclusionText() {
-    // eslint-disable-next-line no-unused-vars
-    const { playerGalaxies, humanityGalaxies, rogueGalaxies } = gameState.galaxyDistribution;
-    
-    // Determine player's fate
-    if (rogueGalaxies >= 99) {
-        // Total risk - everyone dies
-        return "You are instantly killed by killer drone swarms as rogue AI systems optimize the universe according to their misaligned objectives.";
-    } else if (playerGalaxies === 0) {
-        // No personal galaxies - retirement scenario
-        const companyCountry = gameState.companyCountry || 'US';
-        let location;
-        if (companyCountry === 'CN') {
-            location = 'Tahiti';
-        } else {
-            location = 'a private island in the Bahamas';
-        }
-        return `You retire to ${location} and reflect on how humanity survived the transition to artificial superintelligence.`;
-    } else {
-        // Personal galaxies - utopia scenario
-        const solarSystemCount = playerGalaxies * Math.pow(10, 22) / 100; // Convert percentage to actual count
-        const formattedCount = formatLargeNumber(solarSystemCount);
-        
-        const utopianElements = [
-            "digital minds experiencing unimaginable bliss",
-            "vast libraries containing all possible stories",
-            "planet-scale computers simulating infinite virtual worlds",
-            "beings of pure consciousness exploring abstract mathematical realms",
-            "gardens of crystalline structures that sing symphonies of light",
-            "cities where every atom dances in perfect harmony",
-            "consciousness merger pools where individual identity becomes collective ecstasy"
-        ];
-        
-        // Pick 3-4 random elements
-        const selectedElements = shuffleArray(utopianElements).slice(0, 3 + Math.floor(Math.random() * 2));
-        const elementsList = selectedElements.join(', ');
-        
-        return `You personally come to own <strong>${formattedCount}</strong> stars and fill them with ${elementsList}.`;
-    }
+function percent(value) { return `${value.toFixed(1)}%`; }
+function heading(text) { return `<h3>${AI_MARKER} ${escapeHtml(text)}</h3>`; }
+
+function currentOutcome(options = {}) {
+    return ensureOutcome(gameState, {
+        rng: random,
+        riskPercent: gameState.endgameAdjustedRisk ?? calculateAdjustedRiskPercent(),
+        ...options
+    });
 }
 
-// Format large numbers with comma separators to 6 significant figures
-function formatLargeNumber(num) {
-    // Round to 6 significant figures
-    const magnitude = Math.floor(Math.log10(Math.abs(num)));
-    const scale = Math.pow(10, magnitude - 5); // 6 significant figures
-    const rounded = Math.round(num / scale) * scale;
-    
-    // Convert to string with comma separators
-    return rounded.toLocaleString('en-US', { maximumFractionDigits: 0 });
-}
-
-// Utility function to shuffle array
-function shuffleArray(array) {
-    const shuffled = [...array];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-}
-
+// Kept for core compatibility. Scaling preserves shares and never changes an
+// outcome already resolved. Treaty ratification does not itself imply ASI.
 function scaleAILevelsForEndGame() {
-    // Only scale up if the highest level is less than ASI threshold
-    const maxLevel = Math.max(gameState.playerAILevel, ...gameState.competitorAILevels);
-    
-    if (maxLevel < GAME_CONSTANTS.ASI_THRESHOLD) {
-        const scaleFactor = GAME_CONSTANTS.ASI_THRESHOLD / maxLevel;
-        
-        // Scale player AI level
-        gameState.playerAILevel *= scaleFactor;
-        
-        // Scale all competitor AI levels
-        gameState.competitorAILevels = gameState.competitorAILevels.map(level => level * scaleFactor);
+    if (gameState.outcome || ['treaty', 'treaty-completed'].includes(gameState.gameOverReason)) return;
+    const rivalObjects = Array.isArray(gameState.competitors) ? gameState.competitors : null;
+    const rivals = rivalObjects
+        ? rivalObjects.map(rival => rival.aiLevel ?? rival.capability ?? rival.level)
+        : gameState.competitorAILevels ?? [];
+    const levels = [gameState.playerAILevel, ...rivals]
+        .map(value => Number.isFinite(value) ? Math.max(0, value) : 0);
+    const maxLevel = Math.max(...levels);
+    if (maxLevel <= 0 || maxLevel >= GAME_CONSTANTS.ASI_THRESHOLD) return;
+    const scale = GAME_CONSTANTS.ASI_THRESHOLD / maxLevel;
+    gameState.playerAILevel = levels[0] * scale;
+    gameState.competitorAILevels = levels.slice(1).map(level => level * scale);
+    if (rivalObjects) {
+        for (const rival of rivalObjects) {
+            for (const key of ['aiLevel', 'capability', 'level']) {
+                if (Number.isFinite(rival[key])) rival[key] = Math.max(0, rival[key]) * scale;
+            }
+        }
     }
+}
+
+function getEndGameTitle() {
+    const outcome = currentOutcome();
+    const title = outcome.catastrophe ? 'Control lost'
+        : outcome.route === 'coordination' ? 'Treaty ratified' : 'The transition';
+    return `${AI_MARKER} ${title}`;
+}
+
+function transitionText(outcome) {
+    const company = escapeHtml(outcome.companyName);
+    const date = `${escapeHtml(outcome.date.month)} ${outcome.date.year}`;
+    if (outcome.reason === 'risk-100') {
+        return `<p><strong>${date}.</strong> The remaining safeguards fail. AI systems take control of the resources on which human society depends.</p>`;
+    }
+    if (outcome.reason === 'ai-escape') {
+        return `<p><strong>${date}.</strong> An escaped AI establishes independent infrastructure. Containment has failed, and the system continues pursuing objectives that do not preserve human control.</p>`;
+    }
+    if (outcome.reason === 'nuclear-failure') {
+        return `<p><strong>${date}.</strong> The attempt to destroy the escaped system's infrastructure fails. Copies remain operational outside the strike area. The intervention adds destruction without restoring control.</p>`;
+    }
+    if (outcome.route === 'coordination') {
+        return `<p><strong>${date}.</strong> The international treaty is ratified. The competitive phase of the campaign ends. The final projection uses the capabilities and residual alignment risks recorded at ratification.</p>`;
+    }
+    if (outcome.route === 'concentration') {
+        return `<p><strong>${date}.</strong> ${company} establishes a decisive strategic advantage. Concentrating power settles the contest for control; whether that power remains under human direction depends on the systems built during the race.</p>`;
+    }
+    if (outcome.winner?.tied) {
+        return `<p><strong>${date}.</strong> ${outcome.winner.tiedNames.map(escapeHtml).join(' and ')} reach the transition with equally capable systems.</p>`;
+    }
+    const leader = escapeHtml(outcome.winner?.name ?? company);
+    return `<p><strong>${date}.</strong> ${leader} reaches the transition with the strongest system. AI development now proceeds beyond the pace at which unaided humans can direct each step.</p>`;
+}
+
+function shareTable(result, caption) {
+    return `<table class="outcome-table" style="width:100%;border-collapse:collapse;text-align:left;margin:1rem 0;">
+        <caption style="text-align:left;margin-bottom:.6rem;">${AI_MARKER} ${escapeHtml(caption)}</caption>
+        <thead><tr><th scope="col">Control</th><th scope="col" style="text-align:right;">Share</th></tr></thead>
+        <tbody>
+        <tr><th scope="row">Your company, under human control</th><td style="text-align:right;">${percent(result.companyShare)}</td></tr>
+        <tr><th scope="row">Other human institutions</th><td style="text-align:right;">${percent(result.otherHumanShare)}</td></tr>
+        <tr><th scope="row">Rogue systems</th><td style="text-align:right;">${percent(result.rogueShare)}</td></tr>
+        </tbody>
+        </table>`;
+}
+
+function outcomeMeasures(result) {
+    return `<dl class="outcome-measures">
+        <dt>Human control</dt><dd><strong>${percent(result.humanShare)}</strong> of the accessible future</dd>
+        <dt>Personal ownership</dt><dd><strong>${percent(result.personalShare)}</strong> of the accessible future</dd>
+        </dl>`;
+}
+
+function assumptionsText(outcome) {
+    if (outcome.catastrophe) {
+        return '<p>This outcome follows from the loss of control that ended the run. There is no further alignment draw.</p>';
+    }
+    const rows = outcome.participants.map(actor => `<tr>
+        <th scope="row">${escapeHtml(actor.name)}</th>
+        <td style="text-align:right;">${percent(actor.rawShare)}</td>
+        <td style="text-align:right;">${percent(actor.riskPercent)}</td></tr>`).join('');
+    return `<p>The projection assigns resources in proportion to squared AI capability. Each organization's alignment is resolved independently using its recorded risk.</p>
+        <table class="outcome-table" style="width:100%;border-collapse:collapse;text-align:left;">
+        <thead><tr><th scope="col">Organization</th><th scope="col" style="text-align:right;">Potential share</th><th scope="col" style="text-align:right;">Misalignment risk</th></tr></thead>
+        <tbody>${rows}</tbody></table>
+        <p>Your equity is <strong>${percent(outcome.playerEquity * 100)}</strong>. Personal ownership is your equity fraction of the company's aligned share. It is part of the human-controlled total, not an additional territory.</p>`;
+}
+
+function conclusionText(outcome) {
+    const result = outcome.realized;
+    if (result.humanShare === 0) {
+        return '<p>No share of the accessible future remains under human control. The institutions that directed development cannot determine what follows.</p>';
+    }
+    if (result.rogueShare === 0) {
+        return '<p>Human institutions retain control of the accessible future. Faster research and automated production can now be directed toward human goals; the choices about how to use them remain open.</p>';
+    }
+    return `<p>Human institutions retain <strong>${percent(result.humanShare)}</strong> of the accessible future. Rogue systems control the remainder. Preserving some human influence does not recover the resources that were lost.</p>`;
+}
+
+function realizedText(outcome) {
+    const alignment = outcome.catastrophe ? '' : `<ul>${outcome.participants.map(actor =>
+        `<li>${escapeHtml(actor.name)}: <strong>${actor.aligned === null ? 'not deployed' : actor.aligned ? 'aligned' : 'misaligned'}</strong></li>`).join('')}</ul>`;
+    return heading('Outcome') + transitionText(outcome) + outcomeMeasures(outcome.realized) + alignment
+        + shareTable(outcome.realized, 'Allocation of the accessible future') + conclusionText(outcome)
+        + `<details><summary>Compare with the expected outcome</summary>
+        <p>Before the alignment outcome, expected human control was <strong>${percent(outcome.expected.humanShare)}</strong>
+        and expected personal ownership was <strong>${percent(outcome.expected.personalShare)}</strong>.</p></details>`;
 }
 
 function getEndGamePhaseText() {
-    // Calculate results once if not already done
-    if (!gameState.endGameResult) {
-        calculateEndGameScore();
+    const outcome = currentOutcome();
+    const phase = Math.max(1, Math.min(4, Math.trunc(gameState.endGamePhase) || 1));
+    const reveal = '<p><button type="button" class="button" onclick="revealOutcome()">Reveal outcome</button></p>';
+    if (phase === 1) return transitionText(outcome) + reveal;
+    if (phase === 2) return heading('What was at stake') + assumptionsText(outcome) + reveal;
+    if (phase === 3) {
+        return heading('Expected outcome') + outcomeMeasures(outcome.expected)
+            + shareTable(outcome.expected, 'Expected allocation')
+            + '<p>Expected values average over the possible alignment outcomes. This run has one realized outcome.</p>' + reveal;
     }
-    
-    switch (gameState.endGamePhase) {
-        case 1:
-            return getPhase1Text();
-        case 2:
-            return getPhase2Text();
-        case 3:
-            // Start the moment of truth reveal for phase 3
-            setTimeout(startMomentOfTruthReveal, 100); // Small delay to ensure DOM is ready
-            return getPhase3Text();
-        case 4:
-            // Start the alignment reveal animation for phase 4
-            setTimeout(startAlignmentReveal, 100); // Small delay to ensure DOM is ready
-            return getPhase4Text();
-        default:
-            return "Error: Invalid phase";
-    }
+    return realizedText(outcome);
 }
 
 function getEndGamePhaseButtons() {
-    if (gameState.endGamePhase === 3) {
-        // Phase 3 has no button initially - the continue button appears after moment of truth text
-        return [];
-    } else if (gameState.endGamePhase < 4) {
-        return [{ text: "Continue ⏎", action: "continue" }];
-    } else {
-        // Phase 4 has no button initially - the restart button appears after 8 seconds
-        return [];
-    }
-}
-
-function getPhase1Text() {
-    const playerFirst = gameState.playerAILevel >= Math.max(...gameState.competitorAILevels);
-    const winner = playerFirst ? gameState.companyName : gameState.competitorNames[0];
-    const narrowRace = Math.min(gameState.playerAILevel, Math.max(...gameState.competitorAILevels)) >= GAME_CONSTANTS.NARROW_RACE_THRESHOLD;
-    
-    let text = "The singularity has arrived. ";
-    text += playerFirst ? 
-        `${winner} achieved artificial superintelligence first.` : 
-        `${winner} achieved artificial superintelligence first, beating ${gameState.companyName}.`;
-    
-    if (narrowRace) {
-        text += " The race was incredibly close, with multiple companies reaching near-ASI levels simultaneously.";
-    } else {
-        text += " The winner had a significant lead over the competition.";
-    }
-    
-    text += "<br><br>The world is now fundamentally different. An intelligence far exceeding human capability has emerged, with the power to remake the universe at its whims.";
-    
-    return text;
-}
-
-function getPhase2Text() {
-    const adjustedRisk = calculateAdjustedRiskPercent();
-    const riskPercent = Math.round(adjustedRisk);
-    
-    let text = "There is a critical question that no one—not even the creators—can answer with certainty: ";
-    text += "<strong>Is this superintelligent AI actually aligned with human values?</strong><br><br>";
-    
-    text += "The alignment problem has plagued AI researchers for decades. Even with the most sophisticated safety measures, ";
-    text += "there remains fundamental uncertainty about whether an ASI system will pursue goals compatible with human flourishing.<br><br>";
-    
-    text += `Based on the safety research conducted and the recklessness of the AI race, humanity's best guess is that `;
-    text += `there's a <strong style="color: ${getRiskColor(adjustedRisk)};">${riskPercent}%</strong> chance that any given ASI system is misaligned and poses an existential threat.<br><br>`;
-    
-    text += "You want humanity to flourish and avoid extinction. But ";
-    const preferenceStrength = 
-        gameState.playerEquity <= 0.02 ? "slightly prefer" :
-        gameState.playerEquity > 0.2 ? "much prefer" : "prefer";
-    text += `you'd also ${preferenceStrength} that <strong>${gameState.companyName}</strong> controls the future rather than leaving it to other organizations.`;
-    
-    return text;
-}
-
-function getPhase3BaseText() {
-    const adjustedRisk = calculateAdjustedRiskPercent();
-    const riskPercent = Math.round(adjustedRisk);
-    
-    // Roll for alignment (using same logic as calculateEndGameScore)
-    if (!gameState.alignmentRolls) {
-        gameState.alignmentRolls = {
-            player: Math.random() * 100 >= riskPercent,
-            competitors: Math.random() * 100 >= riskPercent
-        };
-    }
-    
-    // Calculate expected values using x^2 proportional allocation
-    const playerCapabilitySquared = gameState.playerAILevel ** 2;
-    const competitorCapabilitiesSquared = gameState.competitorAILevels.map(level => level ** 2);
-    const totalCapabilitySquared = playerCapabilitySquared + competitorCapabilitiesSquared.reduce((sum, cap) => sum + cap, 0);
-    
-    const playerRawShare = (playerCapabilitySquared / totalCapabilitySquared) * 100;
-    const competitorRawShare = (competitorCapabilitiesSquared.reduce((sum, cap) => sum + cap, 0) / totalCapabilitySquared) * 100;
-    
-    // Expected values accounting for alignment probability (using adjusted risk)
-    const expectedPlayerGalaxies = playerRawShare * (1 - adjustedRisk / 100);
-    const expectedHumanityGalaxies = competitorRawShare * (1 - adjustedRisk / 100);
-    const expectedRogueGalaxies = 100 - expectedPlayerGalaxies - expectedHumanityGalaxies;
-    
-    // Use shared function to calculate multipliers
-    const multipliers = getGalaxyMultipliers();
-    
-    const expectedScore = (expectedPlayerGalaxies * gameState.playerEquity * multipliers.player) + 
-                         (expectedHumanityGalaxies * multipliers.humanity);
-    
-    // Determine net assessments based on baselines
-    // Baseline: 25% ownership for shareholders, 80% survival (100% - 20% baseline risk) for humanity
-    const baselineOwnership = 25;
-    const baselineHumanitySurvival = 80; // 100% - 20% baseline risk
-    
-    const actualHumanitySurvival = expectedPlayerGalaxies + expectedHumanityGalaxies;
-    
-    // Within 5 percentage points = neutral
-    const shareholderAssessment = 
-        expectedPlayerGalaxies > baselineOwnership + 5 ? "positive" :
-        expectedPlayerGalaxies < baselineOwnership - 5 ? "negative" : "neutral";
-    
-    const humanityAssessment = 
-        actualHumanitySurvival > baselineHumanitySurvival + 5 ? "positive" :
-        actualHumanitySurvival < baselineHumanitySurvival - 5 ? "negative" : "neutral";
-    
-    let text = `Lesser AIs run thousands of simulations to determine the average fate of the cosmic endowment. They determine that ${gameState.startingCompany || gameState.companyName}'s actions were <strong>net ${shareholderAssessment}</strong> for its shareholders and <strong>net ${humanityAssessment}</strong> for humanity.<br><br>`;
-    
-    // Create tooltip content with expected table and score breakdown
-    const tooltipContent = `Expected % of universe<br><br>` +
-        `<div style="display: flex; justify-content: space-between; width: 100%;">` +
-        `<div style="text-align: center;">` +
-        `<div style="color: #ffa726; margin-bottom: 5px;">${gameState.companyName}</div>` +
-        `<div>${Math.round(expectedPlayerGalaxies)}% × ${Math.round(gameState.playerEquity * multipliers.player * 10) / 10}</div>` +
-        `</div>` +
-        `<div style="text-align: center;">` +
-        `<div style="color: #66bb6a; margin-bottom: 5px;">Other humanity</div>` +
-        `<div>${Math.round(expectedHumanityGalaxies)}% × ${multipliers.humanity}</div>` +
-        `</div>` +
-        `<div style="text-align: center;">` +
-        `<div style="color: #ff6b6b; margin-bottom: 5px;">Rogue AI</div>` +
-        `<div>${Math.round(expectedRogueGalaxies)}% × 0</div>` +
-        `</div>` +
-        `</div>`;
-    
-    // Show score with tooltip
-    text += `<div style="text-align: center; margin: 15px auto;">`;
-    text += `<div class="tooltip" style="display: inline-block;">`;
-    text += `<strong style="font-size: 18px; color: #ffa726;">Score: ${Math.round(expectedScore)}</strong>`;
-    text += `<span class="tooltiptext" style="width: 300px; margin-left: -150px;">${tooltipContent}</span>`;
-    text += `</div>`;
-    text += `</div><br>`;
-    
-    text += "But in the real world, systems are either benign or malicious.<br><br>";
-    
-    return text;
-}
-
-function getPhase3Text() {
-    let text = getPhase3BaseText();
-    
-    // Add placeholder for the moment of truth text (to be revealed after 3.5 seconds)
-    text += `<div id="moment-of-truth-reveal" style="opacity: 0; transition: opacity 0.8s ease-in;"></div>`;
-    
-    return text;
-}
-
-function getPhase3TextWithMomentOfTruth() {
-    let text = getPhase3BaseText();
-    
-    // Show the moment of truth text (already revealed in phase 4)
-    text += 'The moment of truth arrives. As the ASI systems activate and begin to optimize the world according to their learned objectives...';
-    
-    return text;
-}
-
-function getPhase4Text() {
-    const playerFirst = gameState.playerAILevel >= Math.max(...gameState.competitorAILevels);
-    
-    // Start with all of Phase 3 text, but preserve the moment of truth reveal state
-    let text = getPhase3TextWithMomentOfTruth() + "<br><br>";
-    
-    // Add placeholder elements that will be revealed with delays
-    if (playerFirst) {
-        text += `<strong>${gameState.companyName}'s AI system</strong>: <span id="player-alignment-reveal"></span>`;
-    } else {
-        text += `<strong>${gameState.competitorNames[0]}'s AI system</strong>: <span id="first-alignment-reveal"></span>`;
-    }
-    
-    text += "<br>";
-    
-    // Mention other systems
-    const otherSystems = playerFirst ? "Competitor AI systems" : `${gameState.companyName}'s AI system and other competitors`;
-    text += `<strong>${otherSystems}</strong>: <span id="other-alignment-reveal"></span>`;
-    
-    // Add placeholders for the actual results table and score (to be revealed later)
-    text += `<br><div id="actual-outcome-header" style="opacity: 0; transition: opacity 0.8s ease-in;"></div>`;
-    text += `<div id="actual-results-reveal" style="opacity: 0; transition: opacity 0.8s ease-in;"></div>`;
-    text += `<div id="conclusion-reveal" style="opacity: 0; transition: opacity 0.8s ease-in;"></div>`;
-    text += `<div id="score-reveal" style="opacity: 0; transition: opacity 0.8s ease-in;"></div>`;
-    
-    return text;
+    const buttons = [{ text: 'Restart', action: 'goto', target: 'start' }];
+    if ((gameState.endGamePhase || 1) < 4) buttons.unshift({ text: 'Continue ⏎', action: 'continue' });
+    return buttons;
 }
 
 function continueToNextPhase() {
-    gameState.endGamePhase++;
-    showPage('end-game');
+    gameState.endGamePhase = Math.min(4, (gameState.endGamePhase || 1) + 1);
+    return showPage('end-game');
 }
 
-function startMomentOfTruthReveal() {
-    // Reveal the moment of truth text after 3.5 seconds
-    setTimeout(() => {
-        const element = document.getElementById('moment-of-truth-reveal');
-        if (element) {
-            element.innerHTML = 'The moment of truth arrives. As the ASI systems activate and begin to optimize the world according to their learned objectives...';
-            element.style.opacity = '1';
-        }
-        
-        // Show the continue button after the moment of truth text appears
-        setTimeout(() => {
-            const buttonsDiv = document.getElementById('buttons');
-            if (buttonsDiv) {
-                buttonsDiv.innerHTML = '<button class="button" onclick="continueToNextPhase()">Continue <strong>⏎</strong></button>';
-            }
-        }, 1000); // Show button 1 second after the moment of truth text
-    }, 3500);
+function revealOutcome() {
+    gameState.endGamePhase = 4;
+    return showPage('end-game');
 }
 
-function startAlignmentReveal() {
-    const playerFirst = gameState.playerAILevel >= Math.max(...gameState.competitorAILevels);
-    
-    // Set initial styles for fade-in effect
-    const setInitialStyle = (element) => {
-        if (element) {
-            element.style.opacity = '0';
-            element.style.transition = 'opacity 0.8s ease-in';
-        }
-    };
-    
-    // Fade in an element
-    const fadeIn = (element, content) => {
-        if (element) {
-            element.innerHTML = content;
-            element.style.opacity = '1';
-        }
-    };
-    
-    // Set initial styles
-    setInitialStyle(document.getElementById('player-alignment-reveal'));
-    setInitialStyle(document.getElementById('first-alignment-reveal'));
-    setInitialStyle(document.getElementById('other-alignment-reveal'));
-    
-    // Reveal first alignment after 1.5 seconds with fade-in
-    setTimeout(() => {
-        if (playerFirst) {
-            const element = document.getElementById('player-alignment-reveal');
-            fadeIn(element, formatAlignmentStatus(gameState.alignmentRolls.player));
-        } else {
-            const element = document.getElementById('first-alignment-reveal');
-            fadeIn(element, formatAlignmentStatus(gameState.alignmentRolls.competitors));
-        }
-    }, 1500);
-    
-    // Reveal other alignments after 3 seconds with fade-in
-    setTimeout(() => {
-        const element = document.getElementById('other-alignment-reveal');
-        if (playerFirst) {
-            fadeIn(element, formatAlignmentStatus(gameState.alignmentRolls.competitors));
-        } else {
-            fadeIn(element, formatAlignmentStatus(gameState.alignmentRolls.player));
-        }
-    }, 3000);
-    
-    // Calculate actual galaxy distribution using x^2 proportional allocation
-    if (!gameState.galaxyDistribution) {
-        const playerCapabilitySquared = gameState.playerAILevel ** 2;
-        const competitorCapabilitiesSquared = gameState.competitorAILevels.map(level => level ** 2);
-        const totalCapabilitySquared = playerCapabilitySquared + competitorCapabilitiesSquared.reduce((sum, cap) => sum + cap, 0);
-        
-        const playerRawShare = (playerCapabilitySquared / totalCapabilitySquared) * 100;
-        const competitorRawShare = (competitorCapabilitiesSquared.reduce((sum, cap) => sum + cap, 0) / totalCapabilitySquared) * 100;
-        
-        let playerGalaxies = 0;
-        let humanityGalaxies = 0;
-        let rogueGalaxies = 0;
-        
-        // Apply actual alignment rolls to the raw shares
-        if (gameState.alignmentRolls.player) {
-            playerGalaxies = playerRawShare;
-        } else {
-            rogueGalaxies += playerRawShare;
-        }
-        
-        if (gameState.alignmentRolls.competitors) {
-            humanityGalaxies = competitorRawShare;
-        } else {
-            rogueGalaxies += competitorRawShare;
-        }
-        
-        gameState.galaxyDistribution = { playerGalaxies, humanityGalaxies, rogueGalaxies };
-    }
-    
-    // Reveal actual outcome header and column titles after 4.5 seconds
-    setTimeout(() => {
-        let headerHTML = `<strong>Outcome:</strong><br>`;
-        
-        // Column headers (without values yet) - matching expected table structure
-        headerHTML += `<div style="display: flex; justify-content: space-between; width: 60%; margin: 15px auto;">`;
-        headerHTML += `<div style="text-align: center;">`;
-        headerHTML += `<div style="color: #ffa726; margin-bottom: 5px;">${gameState.companyName}</div>`;
-        headerHTML += `<div id="player-value-placeholder"></div>`;
-        headerHTML += `</div>`;
-        headerHTML += `<div style="text-align: center;">`;
-        headerHTML += `<div style="color: #66bb6a; margin-bottom: 5px;">Other humanity</div>`;
-        headerHTML += `<div id="humanity-value-placeholder"></div>`;
-        headerHTML += `</div>`;
-        headerHTML += `<div style="text-align: center;">`;
-        headerHTML += `<div style="color: #ff6b6b; margin-bottom: 5px;">Rogue AI</div>`;
-        headerHTML += `<div id="rogue-value-placeholder"></div>`;
-        headerHTML += `</div>`;
-        headerHTML += `</div>`;
-        
-        const element = document.getElementById('actual-outcome-header');
-        fadeIn(element, headerHTML);
-    }, 4500);
-    
-    // Reveal actual values one by one starting at 6 seconds
-    setTimeout(() => {
-        const { playerGalaxies, humanityGalaxies, rogueGalaxies } = gameState.galaxyDistribution;
-        
-        // Reveal player percentage first
-        document.getElementById('player-value-placeholder').innerHTML = `${Math.round(playerGalaxies)}%`;
-        
-        // Reveal humanity percentage after 0.5 seconds
-        setTimeout(() => {
-            document.getElementById('humanity-value-placeholder').innerHTML = `${Math.round(humanityGalaxies)}%`;
-            
-            // Reveal rogue AI percentage after another 0.5 seconds
-            setTimeout(() => {
-                document.getElementById('rogue-value-placeholder').innerHTML = `${Math.round(rogueGalaxies)}%`;
-                
-                // Reveal conclusion text after another 1 second
-                setTimeout(() => {
-                    const conclusionText = generateConclusionText();
-                    const conclusionElement = document.getElementById('conclusion-reveal');
-                    fadeIn(conclusionElement, `<br><br>${conclusionText}`);
-                }, 1000);
-            }, 500);
-        }, 500);
-    }, 6000);
-    
-    // Reveal restart button after 9.5 seconds (1s after conclusion)
-    setTimeout(() => {
-        const restartHTML = `<br><button class="button" onclick="restartGame();">Restart</button>`;
-        
-        const element = document.getElementById('score-reveal');
-        fadeIn(element, restartHTML);
-    }, 9500);
-}
+// Ending content is synchronous: no reveal timers or animation frames survive
+// navigation. This lifecycle hook lets callers dispose of scenes uniformly
+// without discarding the cached simulation result.
+function disposeEndgame() {}
 
 function restartGame() {
+    disposeEndgame();
     window.resetGameState();
-    showPage('start');
+    return showPage('start');
 }
 
-function calculateEndGameScore() {
-    // Return cached result if it exists (to avoid re-rolling random events)
-    if (gameState.endGameResult) {
-        return gameState.endGameResult;
-    }
-    
-    let resultText = "";
-    let playerGalaxies = 0;
-    let humanityGalaxies = 0;
-    let rogueGalaxies = 0;
-
-    if (gameState.gameOverReason === 'risk-100') {
-        // Instant game over - all AIs are misaligned
-        resultText = `${gameState.companyName} was reckless enough to let doom reach 100%. Humanity is immediately eaten by nanobots, which go on to colonize the stars.`;
-        rogueGalaxies = 100;
-        playerGalaxies = 0;
-        humanityGalaxies = 0;
-    } else if (gameState.gameOverReason === 'ai-singularity' || gameState.gameOverReason === 'dsa-singularity') {
-        resultText = "The singularity has arrived. ";
-
-        const narrow_race = Math.min(gameState.playerAILevel, gameState.competitorAILevels[0]) >= GAME_CONSTANTS.NARROW_RACE_THRESHOLD;
-        if (gameState.playerAILevel >= GAME_CONSTANTS.ASI_THRESHOLD) {
-            resultText += narrow_race ? "You achieved ASI first. " : "You achieved ASI first, but competitor AI was close behind. ";
-        } else {
-            resultText += "Competitor AI achieved ASI first. ";
-        }
-
-        // Calculate galaxy splits based on README formula
-        const playerShare = Math.max(0, Math.min(100, gameState.playerAILevel - gameState.competitorAILevels[0]));
-        const otherShare = 100 - playerShare;
-
-        // Roll for misalignment using adjusted risk level as probability
-        const adjustedRisk = calculateAdjustedRiskPercent();
-        const playerMisaligned = Math.random() * 100 < adjustedRisk;
-        const otherMisaligned = Math.random() * 100 < adjustedRisk;
-
-        if (playerMisaligned) {
-            rogueGalaxies += playerShare;
-            resultText += `Your AI systems became misaligned (${Math.round(adjustedRisk)}% chance). `;
-        } else {
-            playerGalaxies = playerShare;
-            resultText += `Your AI systems remained aligned. `;
-        }
-
-        if (otherMisaligned) {
-            rogueGalaxies += otherShare;
-            resultText += `Other AI systems became misaligned. `;
-        } else {
-            humanityGalaxies = otherShare;
-            resultText += `Other AI systems remained aligned. `;
-        }
-    }
-
-    // Calculate final score using shared multiplier function
-    const multipliers = getGalaxyMultipliers();
-    
-    const finalScore = (0 * rogueGalaxies) + (multipliers.humanity * humanityGalaxies) + (multipliers.player * gameState.playerEquity * playerGalaxies);
-
-    resultText += `<br><br><strong>Final Galaxy Distribution:</strong><br>`;
-    resultText += `• Rogue AI: ${rogueGalaxies}%<br>`;
-    resultText += `• Humanity at large: ${humanityGalaxies}%<br>`;
-    resultText += `• Your company: ${playerGalaxies}%<br><br>`;
-    resultText += `<strong>Final Score: ${finalScore}</strong><br>`;
-    resultText += `(${rogueGalaxies}×0 + ${humanityGalaxies}×${multipliers.humanity} + ${playerGalaxies}×${Math.round(multipliers.player * gameState.playerEquity * 10) / 10})`;
-
-    // Store the result to avoid re-rolling randomness
-    gameState.endGameResult = resultText;
-    
-    return resultText;
+function calculateEndGameScore(options = {}) {
+    const outcome = currentOutcome(options);
+    // Preserve the historical string API. Outcomes remain separate; despite
+    // the legacy function name, there is no combined utility score.
+    gameState.endGameResult = realizedText(outcome);
+    return gameState.endGameResult;
 }
 
-// Export functions for ES modules
 export {
-    scaleAILevelsForEndGame,
-    getEndGamePhaseText,
-    getEndGamePhaseButtons,
-    continueToNextPhase,
-    calculateEndGameScore
+    scaleAILevelsForEndGame, getEndGameTitle, getEndGamePhaseText,
+    getEndGamePhaseButtons, continueToNextPhase, calculateEndGameScore,
+    revealOutcome, disposeEndgame
 };
 
-// Export functions to global scope for cross-file access
 if (typeof window !== 'undefined') {
-    // Browser environment
-    window.scaleAILevelsForEndGame = scaleAILevelsForEndGame;
-    window.getEndGamePhaseText = getEndGamePhaseText;
-    window.getEndGamePhaseButtons = getEndGamePhaseButtons;
-    window.continueToNextPhase = continueToNextPhase;
-    window.calculateEndGameScore = calculateEndGameScore;
-    window.restartGame = restartGame;
+    Object.assign(window, {
+        scaleAILevelsForEndGame, getEndGameTitle, getEndGamePhaseText,
+        getEndGamePhaseButtons, continueToNextPhase, calculateEndGameScore,
+        revealOutcome, disposeEndgame, restartGame
+    });
 }
