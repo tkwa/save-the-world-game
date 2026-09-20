@@ -6,7 +6,9 @@ A WIP game to represent the AI singularity.
 
 Open `index.html` in a browser, e.g. by using Cursor Live Preview or `python -m http.server 8000`.
 
-The deployed version should also be on Github Pages, at `tkwa.github.io/save-the-world-game`
+Play [Critical Path on tkwa.me](https://tkwa.me/games/critical-path/).
+
+This repository remains the source for the game. The website imports its runtime files with `scripts/sync-critical-path.py` in `tkwa/website`. GitHub Pages serves the `gh-pages` branch, which redirects the old game address to tkwa.me.
 
 ---
 
