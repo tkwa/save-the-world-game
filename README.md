@@ -1,86 +1,53 @@
 # Critical Path
 
-A WIP game to represent the AI singularity.
+A compact strategy game about leading an AI lab through the arrival of superintelligence. Set a standing allocation of AI labor, advance one quarter, and respond to decisions. Optional technical research puzzles improve safeguards. The ending reports human flourishing, human control, and personal ownership separately.
 
-## To run
+[Play on tkwa.me](https://tkwa.me/games/critical-path/) · [Model assumptions](docs/MODEL.md)
 
-Open `index.html` in a browser, e.g. by using Cursor Live Preview or `python -m http.server 8000`.
+## <span class="ai-marker" role="img" aria-label="AI-written title or heading" title="This title or heading was written by AI. Sparkles mark AI-written titles and headings.">✨</span> Run locally
 
-Play [Critical Path on tkwa.me](https://tkwa.me/games/critical-path/).
+From this directory:
 
-This repository remains the source for the game. The website imports its runtime files with `scripts/sync-critical-path.py` in `tkwa/website`. GitHub Pages serves the `gh-pages` branch, which redirects the old game address to tkwa.me.
+```sh
+python3 -m http.server 8000
+```
 
----
+Open [localhost:8000](http://localhost:8000/). The game uses native JavaScript modules, with no build step or runtime packages. Serve it over HTTP rather than opening the HTML file directly. `index.html` is the entry point; `campaign.html` redirects older preview links.
 
-## Game design
+## <span class="ai-marker" role="img" aria-label="AI-written title or heading" title="This title or heading was written by AI. Sparkles mark AI-written titles and headings.">✨</span> Check changes
 
-### Goals
+```sh
+npm ci
+npm test
+npm run lint
+```
 
-* Communicate about a potential AI future
-* The primary goal is to save the world
-* The player is someone with agency, like a company CEO
+Tests use Node's built-in runner. `npm run test:all` runs lint and tests; `npm run test:coverage` adds coverage. Tests exercise production rules, save validation, research scoring, deterministic randomness, and the ending's physical model. Browser QA is still needed after interaction changes: play a campaign, restore a save, use the keyboard, and inspect a narrow viewport and reduced-motion mode.
 
-Important dynamics to model (rough priority order)
+The balance sweep plays all six labs with 12 strategies and 40 seeds: 2,880 complete campaigns. It checks that each run finishes and serializes, and reports timing, risk, finances, treaties, and separate ending outcomes. Use `--seeds 1` for a quick 72-campaign check. Without `--output`, the JSON summary prints to the terminal.
 
-* Existential stakes
-* Unexpected speed of the AI future
-* Tradeoffs between capability and safety
-* The potential for coordination to reduce risk
-* Power of future AI companies over society
+```sh
+node scripts/campaign-balance.mjs --output /tmp/critical-path-balance.json
+```
 
-Possibly:
+## <span class="ai-marker" role="img" aria-label="AI-written title or heading" title="This title or heading was written by AI. Sparkles mark AI-written titles and headings.">✨</span> Code boundaries
 
-* Be engaging enough to go viral
+| Files | Responsibility |
+| --- | --- |
+| `campaign.js` | Campaign rules, quarterly forecasts, allocations, finite product cohorts, research rewards, transition outcomes, save validation. No DOM or storage access. |
+| `campaign-events.js` | Event definitions, prerequisites, costs, and effects. |
+| `random.js` | Seeded random streams and validated snapshots. |
+| `research-puzzles.js` | Puzzle generation and scoring without DOM dependencies. |
+| `research-games.js`, `research-games.css` | Puzzle interaction and cleanup. |
+| `game.js`, `game.css`, `index.html` | Interface, browser saves, import/export, accessibility, and component lifecycles. |
+| `cosmos-math.js`, `cosmos.js` | Industrial model, astronomical scale, and Canvas ending animation. |
 
-### Addressing core goals
+Campaign functions mutate the supplied plain state; forecasts and renderers must not advance its random stream. Use `serializeCampaign` and `restoreCampaign` at the save boundary. Browser autosaves use `critical-path-campaign-v1`; exported JSON supports transfer between browsers.
 
-#### Existential stakes
+The same code version, lab, seed, decisions, and research scores reproduce a campaign. Saves include the random stream and resolved outcome. Replaying or seeking the ending must not reroll it. Changes to the save schema or random algorithm require an explicit compatibility decision and corresponding tests. Dispose research and Cosmos controllers when their views are removed.
 
-* Global conquest plot
-* Rogue AI takeover plot
-* Fear of rogue AI is naturally written into the game
+## <span class="ai-marker" role="img" aria-label="AI-written title or heading" title="This title or heading was written by AI. Sparkles mark AI-written titles and headings.">✨</span> Source and history
 
-#### Unexpected speed
+This repository supplies the runtime imported by `scripts/sync-critical-path.py` in `tkwa/website`. The `gh-pages` branch redirects the old game address to tkwa.me.
 
-* Exponential or superexponential growth
-* Singularity happens in a surprisingly early calendar year
-* The speed of AI development
-
-#### Tradeoffs between capability and safety
-
-* Finite resource allocation
-* Events?
-
-#### Coordination to reduce risk
-
-* International treaty plot
-
-#### Power of future AI companies
-
-* Running for President
-* Erosion of human agency
-  * AI writes legislation, their AIs summarize it and recommend votes
-* AI monopolizes all essential services-- therapist, medical etc.
-* 80%+ unemployment, everyone else survives on welfare or UBI
-
-####
-
-## Notes
-
-* Maybe the game could start in 2011 with quiet exponential growth and progress *through* 2025
-* In a superexponential world, there must be a mechanism to reduce turn time
-* To give a feeling of realism, could use actual names of politicians, make the player's role more prominent
-
-### Things to model
-
-Tier 1
-
-* AI takeover risk
-* Coordination
-* International
-
-Tier 2
-
-* Superpersuasion
-* Military drones
-* Splitting the galaxies
+The [original README and design notes](docs/original-design.md) are preserved verbatim. Additional [prototype notes](docs/prototype/) describe the retired implementation. Git checkpoint `0be4a44` retains that runtime; these historical plans are not requirements for the current game.

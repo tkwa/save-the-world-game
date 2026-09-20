@@ -1,5 +1,7 @@
 import { createRandom } from './random.js';
-import { EVENTS, getEvent, selectEvent } from './campaign-events.js';
+import { EVENTS, getEvent, selectEvent, getChoiceAvailability } from './campaign-events.js';
+
+export { getChoiceAvailability };
 
 // These are game parameters, not forecasts or assessments of the named labs.
 export const LABS = [
@@ -251,7 +253,10 @@ export function getForecast(state) {
     const safetyGain = 4.2 * effort('safety');
     const securityGain = 5 * effort('security') * (1 - state.player.security / 150);
     const diplomacyGain = 3.8 * effort('diplomacy');
-    const capabilityGain = state.player.capability * Math.expm1(rate);
+    // Even a lab that loses its current research can start again when it funds
+    // capability work. Keep zero valid in saved histories; only the productive
+    // base has a floor, so an unfunded or paused lab gets no automatic recovery.
+    const capabilityGain = Math.max(1, state.player.capability) * Math.expm1(rate);
     let treatyStatus = 'No agreement';
     if (state.flags.treatyRatified) treatyStatus = treatyStrength(state) >= 0.65 ? 'Verified agreement holding' : 'Agreement under strain';
     else if (state.flags.inspections) treatyStatus = 'Inspections operating';
@@ -381,19 +386,6 @@ export function getCurrentEvent(state) {
     return state.phase === 'decision' && state.currentEventId ? getEvent(state.currentEventId) : null;
 }
 
-export function getChoiceAvailability(state, choice) {
-    if (!choice || typeof choice !== 'object') return { available: false, reason: 'Unknown choice.' };
-    for (const [path, minimum] of Object.entries(choice.requirements || {})) {
-        if (!BOUNDS[path] || !Number.isFinite(minimum) || !Number.isFinite(read(state, path))) return { available: false, reason: 'Invalid choice requirement.' };
-        if (read(state, path) < minimum) return { available: false, reason: `Requires ${path.split('.').at(-1)} ${minimum}.` };
-    }
-    for (const [path, cost] of Object.entries(choice.costs || {})) {
-        if (!BOUNDS[path] || !Number.isFinite(cost) || cost < 0) return { available: false, reason: 'Invalid choice cost.' };
-        if (read(state, path) < cost) return { available: false, reason: path === 'resources.funds' ? `Requires $${cost}B in available funds.` : `Requires ${cost} ${path.split('.').at(-1)}.` };
-    }
-    return { available: true, reason: '' };
-}
-
 function validateChoiceEffects(choice) {
     for (const [path, amount] of Object.entries(choice.effects || {})) {
         if (!BOUNDS[path] || !Number.isFinite(amount)) throw new TypeError(`Unsupported choice effect: ${path}`);
@@ -497,7 +489,7 @@ export function getTransitionDecision(state) {
         id: 'transition-authority', title: 'Who authorizes deployment?',
         body: `${leaderName} has a system capable of accelerating research far beyond human speed. Your influence and safeguards determine which constraints can credibly survive deployment.`,
         choices: [
-            { id: 'human-checkpoints', label: 'Require human authorization at each expansion', description: 'Stronger control, with a slower initial rollout.', requirements: { 'research.control': 35 }, costs: { 'resources.funds': 3 }, effects: {}, sets: { 'policies.authority': 'human' }, result: 'Deployment proceeds through monitored stages with human authorization.' },
+            { id: 'human-checkpoints', label: 'Require human authorization at each expansion', description: 'Stronger control, with a slower initial rollout.', requirements: { 'research.control': 35 }, effects: {}, sets: { 'policies.authority': 'human' }, result: 'Deployment proceeds through monitored stages with human authorization.' },
             { id: 'shared-council', label: 'Place deployment under an international council', description: 'Share authority and ownership across the participating institutions.', requirements: { 'world.coordination': 45, 'world.verification': 30 }, effects: {}, sets: { 'policies.authority': 'shared' }, result: 'A jointly monitored council receives authority over expansion.' },
             { id: 'delegate', label: 'Delegate operations to the system', description: 'Deploy immediately, accepting weaker human control.', effects: {}, sets: { 'policies.authority': 'delegated' }, result: 'The system receives broad operational authority under the existing safeguards.' }
         ]

@@ -380,3 +380,104 @@ test('factory milestone waits for both its date and frontier threshold', () => {
     assert.equal(state.history.find(entry => entry.kind === 'milestone').turn, 11);
     serializeCampaign(state);
 });
+
+test('a research setback can reach zero without permanently preventing funded recovery', () => {
+    // A saved pending handoff from the preview could reach a paused lab when a
+    // rival crossed the world threshold. Resolve the real choice, including its
+    // cost and research loss, rather than constructing only the final zero.
+    let state = createCampaign({ seed: 'research-recovery' });
+    state.player.capability = 12;
+    state.resources.funds = 100;
+    state.phase = 'decision';
+    state.currentEventId = 'research-handoff';
+    state.seenEvents.push('research-handoff');
+    state = restoreCampaign(serializeCampaign(state));
+    assert.equal(resolveDecision(state, 'separate').ok, true);
+    assert.equal(state.player.capability, 0);
+    assert.equal(state.resources.funds, 95);
+    state = restoreCampaign(serializeCampaign(state));
+    setPlan(state, { capabilities: 60, safety: 10, security: 10, products: 10, diplomacy: 5, infrastructure: 5 });
+    for (let quarter = 0; quarter < 3; quarter++) {
+        const before = state.player.capability;
+        const forecast = getForecast(state);
+        assert.equal(forecast.funding, 1);
+        assert.ok(forecast.capabilityGain > 0);
+        assert.equal(advanceQuarter(state).ok, true);
+        assert.ok(state.player.capability > before, 'paid research must recover from zero and continue progressing');
+        assert.ok(Math.abs(state.player.capability - before - forecast.capabilityGain) < 0.001);
+        state = restoreCampaign(serializeCampaign(state));
+        if (state.phase === 'decision') chooseFirst(state);
+    }
+});
+
+test('the recoverable research base grants nothing to paused or unfunded work', () => {
+    const state = createCampaign({ seed: 'no-free-recovery' });
+    state.player.capability = 0;
+    setPlan(state, { capabilities: 0, safety: 20, security: 15, products: 25, diplomacy: 25, infrastructure: 15 });
+    assert.equal(getForecast(state).capabilityGain, 0);
+    state.resources.funds = 0;
+    state.products = [];
+    setPlan(state, { capabilities: 100, safety: 0, security: 0, products: 0, diplomacy: 0, infrastructure: 0 });
+    assert.equal(getForecast(state).funding, 0);
+    assert.equal(getForecast(state).capabilityGain, 0);
+    advanceQuarter(state);
+    assert.equal(state.player.capability, 0);
+    serializeCampaign(state);
+});
+
+test('established human controls do not disappear because transition cash is exhausted', () => {
+    const state = createCampaign({ seed: 'balance-1', labId: 'openai' });
+    setPlan(state, { capabilities:15, safety:40, security:20, products:10, diplomacy:10, infrastructure:5 });
+    let actions = 0;
+    while (state.phase !== 'transition' && actions++ < 200) {
+        if (state.phase === 'planning') advanceQuarter(state);
+        else chooseFirst(state);
+    }
+    assert.equal(state.phase, 'transition');
+    assert.ok(state.research.control >= 35);
+    state.resources.funds = 0;
+    const checkpoint = getTransitionDecision(state).choices.find(choice => choice.id === 'human-checkpoints');
+    assert.equal(getChoiceAvailability(state, checkpoint).available, true);
+    assert.equal(resolveTransition(state, checkpoint.id).ok, true);
+    assert.equal(state.policies.authority, 'human');
+    assert.equal(state.resources.funds, 0);
+    serializeCampaign(state);
+});
+
+test('transition choices use the same exact resource thresholds as campaign decisions', () => {
+    const state = createCampaign({ seed: 'transition-availability' });
+    while (state.phase !== 'transition') {
+        if (state.phase === 'planning') advanceQuarter(state);
+        else chooseFirst(state);
+    }
+    const choices = getTransitionDecision(state).choices;
+    const human = choices.find(choice => choice.id === 'human-checkpoints');
+    const council = choices.find(choice => choice.id === 'shared-council');
+    state.research.control = 34.999;
+    assert.equal(getChoiceAvailability(state, human).available, false);
+    const before = serializeCampaign(state);
+    assert.equal(resolveTransition(state, human.id).ok, false);
+    assert.equal(serializeCampaign(state), before);
+    state.research.control = 35;
+    assert.equal(getChoiceAvailability(state, human).available, true);
+    state.world.coordination = 44.999;
+    state.world.verification = 30;
+    assert.equal(getChoiceAvailability(state, council).available, false);
+    state.world.coordination = 45;
+    state.world.verification = 29.999;
+    assert.equal(getChoiceAvailability(state, council).available, false);
+    state.world.verification = 30;
+    assert.equal(getChoiceAvailability(state, council).available, true);
+    assert.equal(resolveTransition(state, human.id).ok, true);
+    assert.equal(state.phase, 'transition');
+    const access = getTransitionDecision(state).choices.find(choice => choice.id === 'universal-access');
+    state.resources.funds = 3.999;
+    assert.equal(getChoiceAvailability(state, access).available, false);
+    assert.equal(resolveTransition(state, access.id).ok, false);
+    assert.equal(state.resources.funds, 3.999);
+    state.resources.funds = 4;
+    assert.equal(getChoiceAvailability(state, access).available, true);
+    assert.equal(resolveTransition(state, access.id).ok, true);
+    assert.equal(state.resources.funds, 0);
+    serializeCampaign(state);
+});

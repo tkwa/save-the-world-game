@@ -119,7 +119,7 @@ const EVENTS = [
 
     event('compute-register', 'Counting the machines',
         'US and Chinese officials are discussing what a future agreement could actually verify. Nobody has a complete account of the relevant compute. They ask the leading labs to help build a registry before negotiating limits.',
-        59, state => state.turn >= 4 && !state.flags.computeRegistry, [
+        59, state => state.turn >= 4 && state.player.influence >= 16 && !state.flags.computeRegistry, [
             choice('registry', 'Help fund a reciprocal compute registry',
                 'Spend influence and money on a prerequisite for enforceable limits.',
                 'Your staff work on common reporting standards and a registry pilot. Both sides must declare covered clusters under the same rules.',
@@ -204,7 +204,7 @@ const EVENTS = [
 
     event('reciprocal-inspections', 'The other side gets to look',
         'The compute registry has exposed gaps that declarations alone cannot resolve. Negotiators propose reciprocal inspections of covered facilities. Security staff worry that inspectors will learn details useful to rival labs or intelligence services.',
-        71, state => state.turn >= 8 && state.flags.computeRegistry && !state.flags.inspections, [
+        71, state => state.turn >= 8 && state.player.influence >= 22 && state.flags.computeRegistry && !state.flags.inspections, [
             choice('reciprocal', 'Accept reciprocal inspections with a narrow technical scope',
                 'Trade some secrecy for evidence that both sides are following the rules.',
                 'Inspectors receive defined access to covered facilities on both sides. Sensitive unrelated work stays outside the inspection scope.',
@@ -341,7 +341,7 @@ const EVENTS = [
 
     event('internal-model-gap', 'The model only employees see',
         'Your internal systems are substantially more capable than the public product. Officials are making decisions using an outdated picture of the frontier. Researchers propose a controlled demonstration; the security team opposes distributing the weights.',
-        64, state => state.turn >= 12 && frontier(state) >= 140, [
+        64, state => state.turn >= 12 && capability(state) >= 140, [
             choice('demo', 'Demonstrate capabilities through controlled access',
                 'Improve public understanding without distributing model weights.',
                 'Independent observers and officials test the model through controlled access. Their reports narrow the gap between internal capabilities and the public debate.',
@@ -358,7 +358,7 @@ const EVENTS = [
 
     event('research-handoff', 'The next model’s supervisor',
         'The strongest research agents can propose experiments faster than your best staff can review them. They also help design the tests used on their successors. The team needs a decision about who is allowed to approve the next generation.',
-        83, state => state.turn >= 12 && frontier(state) >= 180, [
+        83, state => state.turn >= 12 && capability(state) >= 180, [
             choice('separate', 'Separate the builder, evaluator, and release authority',
                 'Pay for independent checks and accept a slower research cycle.',
                 'Different teams and systems build, evaluate, and authorize successors. No single research agent can approve its own replacement.',
@@ -545,8 +545,11 @@ function getChoiceAvailability(state, selectedChoice) {
             const current = readNumber(state, path);
             if (current === null || current < amount) {
                 const label = RESOURCE_LABELS[path] || path.split('.').at(-1);
-                return { available: false, reason: path === 'resources.funds' ?
-                    `Requires $${amount}B.` : `Requires ${amount} ${label}.` };
+                const required = path === 'resources.funds' ? `$${amount}B` : `${amount} ${label}`;
+                const value = current === null ? null : Number(current.toFixed(3));
+                const available = value === null ? 'current value unavailable' :
+                    `currently ${path === 'resources.funds' ? `$${value}B` : value}`;
+                return { available: false, reason: `Requires ${required}; ${available}.` };
             }
         }
     }

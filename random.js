@@ -70,34 +70,3 @@ export function createRandom(seed) {
 
     return { random, getState, setState };
 }
-
-function initialSeed() {
-    if (typeof globalThis.crypto?.getRandomValues === 'function') {
-        return globalThis.crypto.getRandomValues(new Uint32Array(1))[0];
-    }
-    // Older runtimes without Web Crypto still work. Saves retain this seed, so
-    // the clock is used only when creating a stream, never when replaying it.
-    const monotonicTime = globalThis.performance?.now?.() ?? 0;
-    return (Date.now() ^ Math.floor(monotonicTime * 1000)) >>> 0;
-}
-
-let campaignRandom = createRandom(initialSeed());
-
-export function random() {
-    return campaignRandom.random();
-}
-
-/** Begin a repeatable campaign stream. This does not reset other game state. */
-export function setRandomSeed(seed) {
-    const replacement = createRandom(seed);
-    campaignRandom = replacement;
-    return campaignRandom.getState();
-}
-
-export function getRandomState() {
-    return campaignRandom.getState();
-}
-
-export function setRandomState(snapshot) {
-    campaignRandom.setState(snapshot);
-}

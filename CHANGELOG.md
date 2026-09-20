@@ -1,3 +1,12 @@
+# 1.0.0 — September 20, 2026
+
+- Replace repeated allocation clicks with a persistent quarterly plan.
+- Products earn revenue over a nine-month lifecycle.
+- Complete the campaign, coordination route, transition choices, and separate outcomes for flourishing, control, and ownership.
+- Add three technical research challenges and a physically scaled cosmic ending.
+- Use a compact interface with keyboard, mobile, reduced-motion, and local save support.
+- Replace the prototype runtime with a deterministic, tested simulation. The original implementation remains in Git history through `0be4a44`.
+
 # Changelog
 
 All notable changes to the Save the World Game will be documented in this file.

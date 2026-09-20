@@ -4,17 +4,14 @@ import {
     RESEARCH_TYPES, createResearchPuzzle, scoreEvaluation, scoreControl,
     inspectControl, optimalControlCut, scoreInterpretability
 } from '../research-puzzles.js';
-import { getRandomState } from '../random.js';
 
-test('each lab is deterministic, distinct, and independent of campaign randomness', () => {
-    const before = getRandomState();
+test('each lab is deterministic and distinct', () => {
     for (const type of Object.keys(RESEARCH_TYPES)) {
         const first = createResearchPuzzle(type, 'lab-seed');
         assert.deepEqual(createResearchPuzzle(type, 'lab-seed'), first);
         assert.notDeepEqual(createResearchPuzzle(type, 'other-seed'), first);
         assert.equal(first.type, type);
     }
-    assert.deepEqual(getRandomState(), before);
     assert.throws(() => createResearchPuzzle('unknown', 0), /Unknown/);
     assert.throws(() => createResearchPuzzle('control', NaN), /seed/);
 });

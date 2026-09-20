@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createRandom, random, setRandomSeed, getRandomState, setRandomState } from '../random.js';
+import { createRandom } from '../random.js';
 
 const draw = (stream, count) => Array.from({ length: count }, () => stream.random());
 
@@ -74,22 +74,4 @@ test('bad seeds and malformed snapshots fail without changing the stream', () =>
         assert.throws(() => stream.setState(snapshot), TypeError);
         assert.deepEqual(stream.getState(), before);
     }
-});
-
-test('the shared campaign stream supports replay without overriding Math.random', () => {
-    const nativeRandom = Math.random;
-    setRandomSeed('campaign');
-    const first = Array.from({ length: 17 }, random);
-    const checkpoint = JSON.parse(JSON.stringify(getRandomState()));
-    const next = Array.from({ length: 9 }, random);
-    setRandomSeed('campaign');
-    assert.deepEqual(Array.from({ length: 17 }, random), first);
-    setRandomState(checkpoint);
-    draw(createRandom(99), 1000);
-    assert.deepEqual(Array.from({ length: 9 }, random), next);
-    assert.equal(Math.random, nativeRandom);
-    const before = getRandomState();
-    assert.throws(() => setRandomSeed(null), TypeError);
-    assert.throws(() => setRandomState({}), TypeError);
-    assert.deepEqual(getRandomState(), before);
 });

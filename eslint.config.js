@@ -23,14 +23,8 @@ export default [
         ResizeObserver: "readonly",
         cancelAnimationFrame: "readonly",
         performance: "readonly",
-        Array: "readonly",
-        // Game globals
-        gameState: "writable",
-        GAME_CONSTANTS: "readonly",
-        INITIAL_TECHNOLOGIES: "readonly",
-        TECHNOLOGY_VISIBILITY: "readonly",
-        TECHNOLOGY_ELEMENT_MAPPING: "readonly",
-        storyContent: "readonly"
+        Array: "readonly"
+
       }
     },
     rules: {

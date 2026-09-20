@@ -154,6 +154,58 @@ test('coordination events require their institutional prerequisites', () => {
     assert.equal(treaty.eligible(state), false);
 });
 
+test('registry and inspection invitations remain unseen until their influence prerequisite is met', () => {
+    for (const [id, turn, minimum, flag] of [
+        ['compute-register', 4, 16, 'computeRegistry'],
+        ['reciprocal-inspections', 8, 22, 'inspections']
+    ]) {
+        const state = stateAt(turn);
+        if (id === 'reciprocal-inspections') state.flags.computeRegistry = true;
+        state.seenEvents = EVENTS.filter(item => item.id !== id).map(item => item.id);
+        state.player.influence = minimum - 0.001;
+        assert.equal(selectEvent(state), null, `${id} cannot consume an unavailable opening`);
+        assert.equal(state.seenEvents.includes(id), false);
+        state.player.influence = minimum;
+        const item = selectEvent(state);
+        assert.equal(item?.id, id, `${id} remains available after preparation`);
+        const agreement = item.choices.find(option => option.sets?.[`flags.${flag}`]);
+        assert.equal(getChoiceAvailability(state, agreement).available, true);
+        state.seenEvents.push(id);
+        assert.equal(selectEvent(state), null, 'a completed invitation remains a one-time decision');
+    }
+});
+
+test('influence eligibility preserves the financial tradeoff and free fallback', () => {
+    const state = preparedState(12);
+    state.flags.computeRegistry = true;
+    state.resources.funds = 0;
+    for (const [id, flag] of [['compute-register', 'computeRegistry'], ['reciprocal-inspections', 'inspections']]) {
+        state.flags.computeRegistry = id === 'reciprocal-inspections';
+        state.seenEvents = EVENTS.filter(item => item.id !== id).map(item => item.id);
+        const item = selectEvent(state);
+        assert.equal(item?.id, id, 'funds do not gate the invitation itself');
+        const agreement = item.choices.find(option => option.sets?.[`flags.${flag}`]);
+        assert.equal(getChoiceAvailability(state, agreement).available, false);
+        assert.ok(item.choices.some(option => getChoiceAvailability(state, option).available));
+    }
+});
+
+test('own-lab model decisions require the player capability threshold even when rivals are ahead', () => {
+    for (const [id, minimum] of [['internal-model-gap', 140], ['research-handoff', 180]]) {
+        const state = stateAt(12);
+        state.player.capability = 12;
+        state.rivals[0].capability = 300;
+        state.seenEvents = EVENTS.filter(item => item.id !== id).map(item => item.id);
+        assert.equal(selectEvent(state), null, `${id} does not describe a rival's model as the player's`);
+        state.player.capability = minimum - 0.001;
+        assert.equal(selectEvent(state), null);
+        state.player.capability = minimum;
+        assert.equal(selectEvent(state)?.id, id);
+        state.turn = 11;
+        assert.equal(selectEvent(state), null, 'the original quarter prerequisite is preserved');
+    }
+});
+
 test('a long slowdown requires new decisions about enforcement, renewal, loopholes, and readiness', () => {
     const state = preparedState();
     const schedule = [
@@ -226,10 +278,26 @@ test('availability checks exact cost and preparation thresholds without changing
     assert.deepEqual(getChoiceAvailability(state, option), { available: true, reason: '' });
     assert.deepEqual(state, before);
     state.world.verification = 37;
-    assert.deepEqual(getChoiceAvailability(state, option), { available: false, reason: 'Requires 38 verification.' });
+    assert.deepEqual(getChoiceAvailability(state, option), { available: false, reason: 'Requires 38 verification; currently 37.' });
     state.world.verification = 38;
     state.resources.funds = 6;
-    assert.deepEqual(getChoiceAvailability(state, option), { available: false, reason: 'Requires $7B.' });
+    assert.deepEqual(getChoiceAvailability(state, option), { available: false, reason: 'Requires $7B; currently $6B.' });
+});
+
+test('unavailable choices report current values without hiding a fractional shortfall', () => {
+    const state = preparedState();
+    state.player.influence = 21.999;
+    state.resources.funds = 6.999;
+    assert.deepEqual(getChoiceAvailability(state, { requirements: { 'player.influence': 22 } }),
+        { available: false, reason: 'Requires 22 influence; currently 21.999.' });
+    assert.deepEqual(getChoiceAvailability(state, { costs: { 'resources.funds': 7 } }),
+        { available: false, reason: 'Requires $7B; currently $6.999B.' });
+    state.player.influence = 21.5;
+    assert.equal(getChoiceAvailability(state, { requirements: { 'player.influence': 22 } }).reason,
+        'Requires 22 influence; currently 21.5.');
+    state.player.influence = NaN;
+    assert.deepEqual(getChoiceAvailability(state, { requirements: { 'player.influence': 22 } }),
+        { available: false, reason: 'Requires 22 influence; current value unavailable.' });
 });
 
 test('malformed or unknown requirements fail closed rather than granting a choice', () => {
