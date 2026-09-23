@@ -5,8 +5,8 @@ import { getQuarterlyRisk } from './risk.js';
 
 export { getChoiceCost, getChoiceAvailability };
 
-// Display anchors only: the January 2026 frontier is approximately 155 ECI;
-// 225 is this scenario's superintelligence threshold, not an Epoch forecast.
+// Display anchors: the January 2026 frontier is approximately 155 ECI;
+// the superintelligence threshold is 225.
 // Keeping the simulation's original capability units preserves saved campaigns.
 export const ECI_START = 155;
 export const ECI_ASI = 225;
@@ -20,7 +20,6 @@ export function capabilityToECI(capability) {
     return ECI_START + (ECI_ASI - ECI_START) * (Math.log1p(capability) - ECI_LOG_START) / ECI_LOG_SPAN;
 }
 
-// These are game parameters, not forecasts or assessments of the named labs.
 export const LABS = [
     { id: 'openai', name: 'OpenAI', country: 'US', description: 'A balanced starting organization.', bonuses: { capabilities: 1.04, safety: 1, security: 1, products: 1, diplomacy: 1, infrastructure: 1 } },
     { id: 'anthropic', name: 'Anthropic', country: 'US', description: 'A safety research starting advantage.', bonuses: { capabilities: 0.98, safety: 1.16, security: 1, products: 1, diplomacy: 1, infrastructure: 1 } },
@@ -226,9 +225,7 @@ const PRODUCT_CURVES = {
 function cohortRevenue(cohort, turn, frontier) {
     const age = turn - cohort.launchTurn;
     if (age < 0 || age >= cohort.lifetimeQuarters) return 0;
-    // A better frontier reduces demand for old products, even before their
-    // contracts expire. This is deliberately a game model of short product
-    // cycles, not a forecast of any particular company's revenue.
+    // A better frontier reduces demand for old products before their contracts expire.
     const competition = Math.min(1, Math.sqrt(cohort.frontierAtLaunch / Math.max(10, frontier)));
     return cohort.initialRevenue * PRODUCT_CURVES[cohort.lifetimeQuarters][age] * competition;
 }

@@ -20,7 +20,7 @@ export const MERCURY_MASS_KG = 3.3010e23;
 export const STEFAN_BOLTZMANN = 5.670374419e-8;
 export const ORBITAL_TIME_SCALE = 0.02;
 
-// Astronomical/physical constants, not manufacturing forecasts:
+// Astronomical and physical limits used by the Dyson swarm calculation:
 // https://nssdc.gsfc.nasa.gov/planetary/factsheet/sunfact.html
 // https://nssdc.gsfc.nasa.gov/planetary/factsheet/mercuryfact.html
 // https://nssdc.gsfc.nasa.gov/planetary/factsheet/fact_notes.html
