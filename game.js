@@ -1,8 +1,9 @@
 import {
     LABS, SECTORS, createCampaign, setAllocation, setPlan, getForecast,
-    advanceQuarter, getCurrentEvent, getChoiceAvailability, resolveDecision,
+    advanceQuarter, getCurrentEvent, getChoiceCost, getChoiceAvailability, resolveDecision,
     getTransitionDecision, resolveTransition, serializeCampaign, restoreCampaign,
-    startResearchTrial, completeResearchTrial, cancelResearchTrial, recordEvaluationProgress, capabilityToECI, ECI_START, ECI_ASI
+    startResearchTrial, completeResearchTrial, cancelResearchTrial, recordEvaluationProgress, capabilityToECI, ECI_START, ECI_ASI,
+    formatMoney
 } from './campaign.js';
 import { createCosmos } from './cosmos.js';
 import { mountResearchGame, RESEARCH_TYPES } from './research-games.js';
@@ -53,19 +54,18 @@ function number(value, digits = 0) {
     return Number.isFinite(Number(value)) ? Number(value).toLocaleString('en-US', { maximumFractionDigits: digits, minimumFractionDigits: digits }) : '—';
 }
 function percent(value, digits = 0) { return `${number(Number(value) * 100, digits)}%`; }
+function quarterlyPercent(value) { return value > 0 && value < 0.0001 ? '&lt;0.01%' : percent(value, 2); }
 function date(turn = campaign?.turn || 0) { return `Q${turn % 4 + 1} ${2026 + Math.floor(turn / 4)}`; }
-function money(value) { return `$${number(value, 1)}B`; }
+const money = formatMoney;
 function signed(value, digits = 1) { return `${value >= 0 ? '+' : ''}${number(value, digits)}`; }
+function signedMoney(value) { return `${value >= 0 ? '+' : '−'}${money(Math.abs(value)).slice(1)}`; }
 function makeSeed() {
     const words = ['cedar','orbit','dawn','harbor','solstice','juniper','meridian','signal'];
     const values = new Uint32Array(2);
     crypto.getRandomValues(values);
     return `${words[values[0] % words.length]}-${String(values[1] % 10000).padStart(4, '0')}`;
 }
-function marker() {
-    return '<span class="ai-marker" role="img" aria-label="AI-written title or heading" title="This title or heading was written by AI. Sparkles mark AI-written titles and headings.">✨</span>';
-}
-function heading(text, level = 2, id = '') { return `<h${level}${id ? ` id="${id}" tabindex="-1"` : ''}>${marker()}${escape(text)}</h${level}>`; }
+function heading(text, level = 2, id = '') { return `<h${level}${id ? ` id="${id}" tabindex="-1"` : ''}>${escape(text)}</h${level}>`; }
 function button(label, action, extra = '', type = 'secondary') {
     return `<button type="button" class="button ${type}" data-action="${action}" ${extra}>${label}</button>`;
 }
@@ -148,23 +148,27 @@ function renderWelcome() {
     </main>`;
 }
 function renderFooterLinks() {
-    return '<footer class="footer-links"><a href="/projects/">← Projects</a><a href="https://github.com/tkwa/save-the-world-game" target="_blank" rel="noopener">Source code</a><span>0.6.0-beta.2</span></footer>';
+    return '<footer class="footer-links"><a href="/projects/">← Projects</a><a href="https://github.com/tkwa/save-the-world-game" target="_blank" rel="noopener">Source code</a><span>0.6.0-beta.3</span></footer>';
 }
 function renderMetrics(forecast) {
     const rivals = Math.max(...campaign.rivals.map(r => r.capability));
     const lead = capabilityToECI(campaign.player.capability) - capabilityToECI(rivals);
     const position = Math.abs(lead) < 0.05 ? 'Level with the nearest rival' : `${number(Math.abs(lead),1)} points ${lead > 0 ? 'ahead of nearest rival' : 'behind the leader'}`;
+    const riskMetric = campaign.riskModel === 'quarterly-v1'
+        ? `<div class="metric"><span class="metric-label">Current risk / quarter</span><span class="metric-value number risk-values ${forecast.risk > .1 ? 'negative' : ''}">You ${quarterlyPercent(forecast.riskOwn)}<br>Other labs ${quarterlyPercent(forecast.riskOthers)}</span><span class="metric-detail">Existential · combined ${quarterlyPercent(forecast.risk)}</span></div>`
+        : `<div class="metric"><span class="metric-label">Transition risk estimate</span><span class="metric-value number ${forecast.risk > .35 ? 'negative' : ''}">${percent(forecast.riskLow)}–${percent(forecast.riskHigh)}</span><span class="metric-detail">World-level risk if ASI arrived now</span></div>`;
     return `<div class="metrics" aria-label="Campaign indicators">
       <div class="metric"><span class="metric-label" title="Epoch Capabilities Index">ECI</span><span class="metric-value number">${number(capabilityToECI(campaign.player.capability),1)}</span><span class="metric-detail">${position}</span></div>
-      <div class="metric"><span class="metric-label">Transition risk estimate</span><span class="metric-value number ${forecast.risk > .35 ? 'negative' : ''}">${percent(forecast.riskLow)}–${percent(forecast.riskHigh)}</span><span class="metric-detail">World-level risk if ASI arrived now</span></div>
-      <div class="metric"><span class="metric-label">Available funds</span><span class="metric-value number">${money(campaign.resources.funds)}</span><span id="forecast-net" class="metric-detail">${signed(forecast.quarterlyRevenue - forecast.quarterlyCost)}B expected next quarter</span></div>
+      ${riskMetric}
+      <div class="metric"><span class="metric-label">Available funds</span><span class="metric-value number">${money(campaign.resources.funds)}</span><span id="forecast-net" class="metric-detail">${signedMoney(forecast.quarterlyRevenue - forecast.actualSpending)} expected next quarter</span></div>
       <div class="metric coordination-metric"><span class="metric-label">International coordination</span><span class="metric-value">${escape(forecast.treatyStatus)}</span><span class="metric-detail">${escape(coordinationObstacle())}</span></div>
     </div>`;
 }
 function renderChoices(event, transition = false) {
     return `<div class="choice-grid">${event.choices.map(choice => {
         const availability = getChoiceAvailability(campaign, choice);
-        const costLabels = Object.entries(choice.costs || {}).map(([key,value]) => key === 'resources.funds' ? money(value) : `${number(value)} ${key.split('.').pop()}`);
+        const costLabels = Object.entries(choice.costs || {}).map(([key,value]) => key === 'resources.funds'
+            ? money(getChoiceCost(campaign, key, value)) : `${number(value)} ${key.split('.').pop()}`);
         return `<button type="button" class="choice" data-action="${transition ? 'transition-choice' : 'event-choice'}" data-choice="${escape(choice.id)}" ${!availability.available || saveConflict ? 'disabled' : ''}><strong>${escape(choice.label)}</strong><span class="choice-description">${escape(choice.description || '')}</span>${costLabels.length ? `<span class="choice-cost">Cost: ${escape(costLabels.join(' · '))}</span>` : ''}${!availability.available ? `<span class="choice-unavailable">${escape(availability.reason)}</span>` : ''}</button>`;
     }).join('')}</div>`;
 }
@@ -197,9 +201,99 @@ function renderPlan(forecast) {
 function renderStandingPlan() {
     return `<details class="standing-plan"><summary>Standing plan</summary><p class="muted small">${SECTORS.map(sector => `${escape(sector.label)} ${campaign.allocations[sector.id]}%`).join(' · ')}</p></details>`;
 }
+const RACE_MILESTONES = [
+    { id:'sar', label:'SAR', name:'Superhuman AI Researcher', eci:200, description:'AI can automate the R&D loop, including coding and selecting experiments with judgment comparable to the best lab researchers.' },
+    { id:'ted', label:'TED', name:'Top-Expert-Dominating AI', eci:215, description:'AI matches or exceeds leading human experts across nearly all cognitive work.' },
+    { id:'asi', label:'ASI', name:'Artificial Superintelligence', eci:ECI_ASI, description:'AI is substantially beyond the best humans across nearly all cognitive work.' }
+];
+function racePosition(eci) {
+    const start = capabilityToECI(0);
+    return Math.max(0, Math.min(100, (eci - start) / (ECI_ASI - start) * 100));
+}
 function renderRace() {
     const labs = [{ id:campaign.labId, name:LABS.find(l => l.id === campaign.labId)?.name || campaign.labId, capability:campaign.player.capability }, ...campaign.rivals].sort((a,b) => b.capability-a.capability);
-    return `<section class="section" aria-labelledby="race-heading"><div class="section-heading"><h3 id="race-heading">The frontier</h3><span class="small muted">ASI at ${ECI_ASI} ECI</span></div>${labs.map(lab => `<div class="race-row ${lab.id === campaign.labId ? 'player' : ''}"><div class="race-label"><strong>${escape(lab.name)}${lab.id === campaign.labId ? ' · you' : ''}</strong><span class="mono">${number(capabilityToECI(lab.capability),1)}</span></div><div class="race-track"><div class="race-fill" style="width:${Math.min(100,(capabilityToECI(lab.capability)-capabilityToECI(0))/(ECI_ASI-capabilityToECI(0))*100)}%"></div></div></div>`).join('')}<p class="small muted">Epoch Capabilities Index. The ASI threshold is a scenario assumption.</p></section>`;
+    return `<section class="section" aria-labelledby="race-heading"><div class="section-heading"><h3 id="race-heading">The frontier</h3><span class="small muted">ECI</span></div>
+      <div class="race-chart"><div class="race-guides" aria-hidden="true">${RACE_MILESTONES.map(milestone => `<span class="race-guide" style="left:${racePosition(milestone.eci)}%"></span>`).join('')}</div>
+      <div class="race-axis" aria-label="Capability milestones">${RACE_MILESTONES.map(milestone => `<button type="button" id="race-${milestone.id}" class="race-milestone race-milestone-${milestone.id}" style="left:${racePosition(milestone.eci)}%" aria-label="${escape(milestone.label)}: ${escape(milestone.name)}, ${milestone.eci} ECI" data-race-tooltip="${escape(`${milestone.name}. ${milestone.description} ${milestone.eci} ECI is a game milestone, not an Epoch or AI2040 ECI forecast.`)}">${milestone.label}</button>`).join('')}</div>
+      ${labs.map(lab => `<div class="race-row ${lab.id === campaign.labId ? 'player' : ''}"><div class="race-label"><strong>${escape(lab.name)}${lab.id === campaign.labId ? ' · you' : ''}</strong><span class="mono">${number(capabilityToECI(lab.capability),1)}</span></div><div class="race-track"><div class="race-fill" style="width:${racePosition(capabilityToECI(lab.capability))}%"></div></div></div>`).join('')}</div>
+      <p class="small muted">Epoch Capabilities Index · milestone positions are game assumptions.</p></section>`;
+}
+
+function installRaceTooltips() {
+    const tooltip = document.createElement('div');
+    tooltip.id = 'race-tooltip';
+    tooltip.className = 'race-tooltip';
+    tooltip.setAttribute('role', 'tooltip');
+    tooltip.hidden = true;
+    document.body.append(tooltip);
+    let active = null, pinned = null, closeTimer;
+    const triggerFor = node => node instanceof window.Element ? node.closest('[data-race-tooltip]') : null;
+    function hide() {
+        clearTimeout(closeTimer);
+        active?.removeAttribute('aria-describedby');
+        active = pinned = null;
+        tooltip.hidden = true;
+    }
+    function position() {
+        if (!active) return;
+        const anchor = active.getBoundingClientRect();
+        const box = tooltip.getBoundingClientRect();
+        tooltip.style.left = `${Math.max(8, Math.min(anchor.left + (anchor.width - box.width) / 2, document.documentElement.clientWidth - box.width - 8))}px`;
+        tooltip.style.top = `${anchor.bottom + box.height + 16 <= window.innerHeight ? anchor.bottom + 8 : Math.max(8, anchor.top - box.height - 8)}px`;
+    }
+    function show(node) {
+        clearTimeout(closeTimer);
+        if (active !== node) { hide(); active = node; }
+        tooltip.textContent = node.dataset.raceTooltip;
+        tooltip.hidden = false;
+        node.setAttribute('aria-describedby', tooltip.id);
+        position();
+    }
+    function leave() {
+        clearTimeout(closeTimer);
+        closeTimer = setTimeout(() => {
+            if (active && !pinned && active !== document.activeElement && !active.matches(':hover') && !tooltip.matches(':hover')) hide();
+        }, 120);
+    }
+    document.addEventListener('pointerover', event => {
+        if (event.pointerType === 'touch') return;
+        if (tooltip.contains(event.target)) { clearTimeout(closeTimer); return; }
+        const trigger = triggerFor(event.target);
+        if (trigger && !trigger.contains(event.relatedTarget)) show(trigger);
+    });
+    document.addEventListener('pointerout', event => {
+        if (active && (active.contains(event.target) || tooltip.contains(event.target))
+            && !active.contains(event.relatedTarget) && !tooltip.contains(event.relatedTarget)) leave();
+    });
+    document.addEventListener('focusin', event => {
+        const trigger = triggerFor(event.target);
+        if (trigger) show(trigger);
+        else { pinned = null; leave(); }
+    });
+    document.addEventListener('focusout', event => {
+        if (active?.contains(event.target)) { pinned = null; leave(); }
+    });
+    document.addEventListener('click', event => {
+        const trigger = triggerFor(event.target);
+        if (trigger) {
+            if (pinned === trigger) hide();
+            else { show(trigger); pinned = trigger; }
+        } else if (!tooltip.contains(event.target)) hide();
+    });
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && active) { event.preventDefault(); hide(); }
+    });
+    document.addEventListener('scroll', event => {
+        if (tooltip.contains(event.target) || !active) return;
+        const anchor = active.getBoundingClientRect();
+        if (anchor.bottom < 0 || anchor.top > window.innerHeight) hide();
+        else if (active === document.activeElement || pinned) position();
+        else hide();
+    }, true);
+    window.addEventListener('resize', position);
+    new window.MutationObserver(() => {
+        if (active && (!active.isConnected || active.closest('[inert]'))) hide();
+    }).observe(app, { childList:true, subtree:true, attributes:true, attributeFilter:['inert'] });
 }
 function coordinationObstacle() {
     if (!campaign.flags.computeRegistry) return 'No shared registry of frontier compute';
@@ -217,7 +311,7 @@ function renderProductCashflow(forecast) {
 function renderResearchTrials() {
     return `<section class="research-trials"><div class="section-heading"><h3>Technical research</h3><span class="small muted">Optional</span></div>${Object.entries(RESEARCH_TYPES).map(([type,info]) => {
         const completed = campaign.researchTrials.completed[type];
-        return `<div class="trial-row"><span>${marker()}${escape(info.title)}</span><span class="muted small">${completed ? `${percent(completed.score)} · complete` : escape(info.duration)}</span>${button(completed ? 'Complete' : 'Investigate','start-trial',`id="trial-${type}" data-trial="${type}" aria-label="${escape(info.title)}: ${completed ? 'complete' : 'investigate'}" ${completed || campaign.phase !== 'planning' || saveConflict ? 'disabled' : ''}`)}</div>`;
+        return `<div class="trial-row"><span>${escape(info.title)}</span><span class="muted small">${completed ? `${percent(completed.score)} · complete` : escape(info.duration)}</span>${button(completed ? 'Complete' : 'Investigate','start-trial',`id="trial-${type}" data-trial="${type}" aria-label="${escape(info.title)}: ${completed ? 'complete' : 'investigate'}" ${completed || campaign.phase !== 'planning' || saveConflict ? 'disabled' : ''}`)}</div>`;
     }).join('')}</section>`;
 }
 function renderResearch() {
@@ -236,22 +330,27 @@ function renderCampaign() {
       ${!onboardingDismissed && campaign.turn === 0 ? `<div class="notice onboarding">Set a standing plan, then advance a quarter. Moving a slider redistributes the budget.${button('Got it','dismiss-onboarding','','ghost')}</div>` : ''}
       <nav class="tab-bar" role="tablist" aria-label="Campaign views">${[['overview','Overview'],['research','Research'],['history','Log']].map(([id,label]) => `<button type="button" role="tab" id="tab-${id}" tabindex="${activeTab === id ? '0' : '-1'}" aria-selected="${activeTab === id}" aria-controls="campaign-view" data-action="tab" data-tab="${id}">${label}${id === 'overview' && pending ? ' · decision' : ''}</button>`).join('')}</nav>
       <div id="campaign-view" role="tabpanel" aria-labelledby="tab-${activeTab}">${activeTab === 'overview' ? `<div class="dashboard"><div class="primary-column">${pending ? renderDecision()+renderStandingPlan() : renderPlan(forecast)+renderReport()}</div><aside class="sidebar" aria-label="World and research">${renderRace()}${renderProducts(forecast)}</aside></div>` : activeTab === 'research' ? renderResearch() : renderHistory()}</div>
-    </main><div class="footer-bar"><div class="footer-inner"><div class="footer-summary"><span>Next quarter: <strong id="forecast-capability">${signed(forecast.eciGain,1)} ECI</strong></span><span>Receipts <strong id="forecast-income">${money(forecast.quarterlyRevenue)}</strong> − costs <strong id="forecast-cost">${money(forecast.quarterlyCost)}</strong></span></div>${button(pending ? 'Decision required' : 'Advance quarter →', pending ? 'show-decision' : 'advance', `id="advance-button" ${saveConflict ? 'disabled' : ''}`, '')}</div></div>`;
+    </main><div class="footer-bar"><div class="footer-inner"><div class="footer-summary"><span>Next quarter: <strong id="forecast-capability">${signed(forecast.eciGain,1)} ECI</strong></span><span>Receipts <strong id="forecast-income">${money(forecast.quarterlyRevenue)}</strong> − costs <strong id="forecast-cost">${money(forecast.actualSpending)}</strong></span></div>${button(pending ? 'Decision required' : 'Advance quarter →', pending ? 'show-decision' : 'advance', `id="advance-button" ${saveConflict ? 'disabled' : ''}`, '')}</div></div>`;
 }
 function renderEnding() {
     const outcome = campaign.outcome;
+    const early = campaign.transition?.earlyIncident === true;
     const titles = { flourishing:'A future to inhabit', fragile:'The work is not over', captured:'Power without permission', extinction:'No one left to inherit it' };
-    return `<main id="main" class="ending-shell">${renderNotice()}<header class="ending-heading"><div class="eyebrow">${escape(String(outcome.year))} · ${escape(outcome.winner || 'The transition')}</div>${heading(titles[outcome.kind] || 'Beyond the transition',1,'ending-title')}<p>${escape(outcome.summary)}</p></header>
-      <section aria-label="Your future"><div class="cosmos-stage"><canvas id="cosmos-canvas" aria-label="Animated projection from the Sun to nearby stars. A text summary of the milestones follows." role="img"></canvas></div><div class="cosmos-caption"><span id="cosmos-year" class="number">${escape(String(outcome.year))}</span><p id="cosmos-phase">${outcome.survival ? 'The first collectors' : 'An empty inheritance'}</p><p id="cosmos-scale"></p><p id="cosmos-reach"></p></div><div class="cosmos-control-bar">${button('Play','cosmos-toggle','id="cosmos-toggle"','secondary')}<label class="sr-only" for="cosmos-seek">Ending animation progress</label><input id="cosmos-seek" type="range" min="0" max="1000" step="1" value="0">${button('Replay','cosmos-replay','','ghost')}<span class="small muted">${reducedMotion.matches ? 'Reduced motion' : 'Projection'}</span></div></section>
-      <div class="ending-metrics"><div class="ending-metric"><span class="metric-label">Human flourishing</span><strong class="number">${number(outcome.flourishing)}<span class="small muted">/100</span></strong><span>Health, access, and room to live</span></div><div class="ending-metric"><span class="metric-label">Human control</span><strong class="number">${number(outcome.humanControl)}%</strong><span>Authority people can retain and contest</span></div><div class="ending-metric"><span class="metric-label">Your ownership</span><strong class="number">${number(outcome.personalOwnership,1)}%</strong><span>Personal share of the emerging economy</span></div></div>
-      <div class="ending-details"><section>${heading('What shaped this outcome',3)}<ul class="cause-list">${(outcome.causes || []).map(cause => `<li>${escape(cause)}</li>`).join('')}</ul><p class="small muted" style="margin-top:20px">Estimated existential risk at the transition: ${percent(outcome.transitionRisk,1)}. This is one realized future, not a guarantee or an overall score.</p></section><section>${heading('Beyond the transition',3)}<div class="milestones">${[
+    const cosmosSection = early ? '' : `<section aria-label="Your future"><div class="cosmos-stage"><canvas id="cosmos-canvas" aria-label="Animated projection from the Sun to nearby stars. A text summary of the milestones follows." role="img"></canvas></div><div class="cosmos-caption"><span id="cosmos-year" class="number">${escape(String(outcome.year))}</span><p id="cosmos-phase">${outcome.survival ? 'The first collectors' : 'An empty inheritance'}</p><p id="cosmos-scale"></p><p id="cosmos-reach"></p></div><div class="cosmos-control-bar">${button('Play','cosmos-toggle','id="cosmos-toggle"','secondary')}<label class="sr-only" for="cosmos-seek">Ending animation progress</label><input id="cosmos-seek" type="range" min="0" max="1000" step="1" value="0">${button('Replay','cosmos-replay','','ghost')}<span class="small muted">${reducedMotion.matches ? 'Reduced motion' : 'Projection'}</span></div></section>`;
+    const riskSummary = campaign.riskModel === 'quarterly-v1'
+        ? `Estimated existential risk ${early ? 'in the incident quarter' : 'at deployment'}: ${quarterlyPercent(outcome.transitionRisk)} per quarter.`
+        : `Estimated existential risk at the transition: ${percent(outcome.transitionRisk,1)}.`;
+    return `<main id="main" class="ending-shell">${renderNotice()}<header class="ending-heading"><div class="eyebrow">${early ? 'Before ASI · ' : ''}${escape(String(outcome.year))} · ${escape(outcome.winner || 'The transition')}</div>${heading(titles[outcome.kind] || 'Beyond the transition',1,'ending-title')}<p>${escape(outcome.summary)}</p></header>
+      ${cosmosSection}
+      <div class="ending-metrics"><div class="ending-metric"><span class="metric-label">Human flourishing</span><strong class="number">${early ? 'Unknown' : `${number(outcome.flourishing)}<span class="small muted">/100</span>`}</strong><span>Health, access, and room to live</span></div><div class="ending-metric"><span class="metric-label">Human control</span><strong class="number">${number(outcome.humanControl)}%</strong><span>Authority people can retain and contest</span></div><div class="ending-metric"><span class="metric-label">Your ownership</span><strong class="number">${early ? 'Unknown' : `${number(outcome.personalOwnership,1)}%`}</strong><span>${early ? 'Later ownership is unresolved' : 'Personal share of the emerging economy'}</span></div></div>
+      <div class="ending-details ${early ? 'early' : ''}"><section>${heading('What shaped this outcome',3)}<ul class="cause-list">${(outcome.causes || []).map(cause => `<li>${escape(cause)}</li>`).join('')}</ul><p class="small muted" style="margin-top:20px">${riskSummary} This is one realized future, not a guarantee or an overall score.</p></section>${early ? '' : `<section>${heading('Beyond the transition',3)}<div class="milestones">${[
         ['First-year economy',outcome.survival ? `${number(outcome.economyYearOne,1)}× pre-ASI output` : 'Human economy lost'],
         ['Aging treatments',outcome.survival && outcome.agingSolvedYear ? String(outcome.agingSolvedYear) : 'Not reached for humanity'],
         ['Mature nanotechnology',outcome.nanotechYear ? String(outcome.nanotechYear) : 'Not reached'],
         ['Dyson swarm begins',outcome.dysonStartYear ? String(outcome.dysonStartYear) : 'Not reached'],
         ['Swarm construction',outcome.dysonCompletionYears ? `${number(outcome.dysonCompletionYears,1)} years` : 'Not reached'],
         ['Interstellar probes',outcome.probeLaunchYear ? String(outcome.probeLaunchYear) : 'Not reached']
-      ].map(([label,value]) => `<div class="milestone"><span>${label}</span><span class="mono">${escape(value)}</span></div>`).join('')}</div></section></div>
+      ].map(([label,value]) => `<div class="milestone"><span>${label}</span><span class="mono">${escape(value)}</span></div>`).join('')}</div></section>`}</div>
       <div class="ending-actions">${button('Another campaign','home','','')}${button('Export this run','export')}${button('Read the campaign log','ending-history')}${button('Model notes','model')}</div>${renderFooterLinks()}
     </main>`;
 }
@@ -259,9 +358,9 @@ function renderModal() {
     if (!modal) return '';
     let content;
     if (modal === 'research') return '<div class="modal-backdrop" data-action="modal-backdrop"><section class="modal research-modal" role="dialog" aria-modal="true" aria-label="Technical research"><div id="research-game"></div></section></div>';
-    if (modal === 'help') content = `${heading('How to play',2,'dialog-title')}<ol class="help-list"><li>Choose a lab and set the standing allocation of AI labor. Moving a slider redistributes the remaining budget; lock a share to protect it.</li><li>Advance one quarter. Research, income, rivals, and negotiations develop together. Respond to decisions when they arrive.</li><li>Watch what your lead is buying. Safety evidence, security, international agreements, and legitimate authority address different problems.</li><li>When a lab reaches superintelligence, make a few final choices about control, access, and expansion. Human flourishing and your ownership are reported separately.</li></ol><p class="small muted">Progress saves automatically in this browser. Export a save before switching devices. Keyboard: Tab between controls, arrow keys adjust sliders, N advances a quarter, ? opens this guide.</p>`;
+    if (modal === 'help') content = `${heading('How to play',2,'dialog-title')}<ol class="help-list"><li>Choose a lab and set the standing allocation of AI labor. Moving a slider redistributes the remaining budget; lock a share to protect it.</li><li>Advance one quarter. Research, income, rivals, and negotiations develop together. Respond to decisions when they arrive.</li><li>Watch what your lead is buying. Safety evidence, security, international agreements, and legitimate authority address different problems. Loss of control can happen before superintelligence.</li><li>When a lab reaches superintelligence, make a few final choices about control, access, and expansion. Human flourishing and your ownership are reported separately.</li></ol><p class="small muted">Progress saves automatically in this browser. Export a save before switching devices. Keyboard: Tab between controls, arrow keys adjust sliders, N advances a quarter, ? opens this guide.</p>`;
     else if (modal === 'history') content = `${heading('Campaign log',2,'dialog-title')}${renderHistory()}`;
-    else content = `${heading('Model notes',2,'dialog-title')}<div class="text-block"><p>This game explores a worldview; it is not a forecasting tool. Its default trajectory starts in January 2026 and reaches superintelligence between late 2027 and 2034. Strong, sustained coordination can push that date later.</p><details><summary>Campaign indices</summary><p>Capability uses the <a href="https://epoch.ai/eci" target="_blank" rel="noopener">Epoch Capabilities Index (ECI)</a> scale. Your lab begins at ${ECI_START} in January 2026; this scenario assumes superintelligence at ${ECI_ASI}. The starting scale is anchored to Epoch’s current data, while future scores and the ASI threshold are game assumptions. Research and institutional indices summarize mechanisms rather than measuring them directly.</p></details><details open><summary>Risk and uncertainty</summary><p>The reference worldview assigns roughly 20% probability to existential catastrophe. A campaign's risk changes with safety research, deployment, security, and institutions. The displayed range reflects limited evidence; the ending resolves uncertainty once and preserves that result in the save.</p></details><details><summary>Research and international coordination</summary><p>Alignment, control, evaluations, interpretability, and security do different work. Agreements depend on incentives and verification. Diplomacy without enforcement does not stop hidden development; public safety work can help rival labs as well as your own.</p></details><details><summary>After superintelligence</summary><p>Successful transitions can double economic output in the first year and accelerate thereafter. Aging and nanotechnology can be solved within two years. Dyson-swarm construction begins in the ASI year and can take 3.5–80 years, depending on industrial expansion and institutions.</p></details><details><summary>Outcomes and values</summary><p>Human flourishing, human control, and personal ownership are separate. The game does not collapse them into a combined score. A company's market lead is not a measure of human welfare.</p></details><details><summary>Sources and scenario framing</summary><p>Critical Path draws primarily on Thomas Kwa's worldview and the original game, with mechanisms inspired by <a href="https://ai-2027.com/" target="_blank" rel="noopener">AI 2027</a> and <a href="https://ai-2040.com/" target="_blank" rel="noopener">AI 2040</a>. The latter is a proposed coordination path, not the default timeline. Future events involving real labs are fictional possibilities, viewed from January 2026.</p></details><p class="small muted">${campaign ? `World seed: ${escape(campaign.seed)} · ${escape(date())}` : 'The same lab, seed, and decisions reproduce the same campaign.'}</p></div>`;
+    else content = `${heading('Model notes',2,'dialog-title')}<div class="text-block"><p>This game explores a worldview; it is not a forecasting tool. Its default trajectory starts in January 2026 and reaches superintelligence between late 2027 and 2034. Strong, sustained coordination can push that date later.</p><details><summary>Campaign indices</summary><p>Capability uses the <a href="https://epoch.ai/eci" target="_blank" rel="noopener">Epoch Capabilities Index (ECI)</a> scale. Your lab begins at ${ECI_START} in January 2026; this scenario assumes superintelligence at ${ECI_ASI}. The starting scale is anchored to Epoch’s current data, while future scores and the ASI threshold are game assumptions. Research and institutional indices summarize mechanisms rather than measuring them directly.</p></details><details open><summary>Risk and uncertainty</summary><p>${campaign?.riskModel === 'quarterly-v1' ? 'Each displayed percentage is the conditional risk of permanent loss of human control during one quarter, from your company or from other companies. Alignment sets a long-run risk ceiling; control, monitoring, and evaluations suppress your company’s risk between about ECI 180 and 225, then lose their leverage. There is one deterministic, save-stable risk draw per quarter; if a lab reaches superintelligence, that draw waits for your authority choice. A takeover can happen before ASI. These are game assumptions, not measured probabilities for the named labs.' : 'This saved campaign uses the earlier transition-only risk model. The displayed range reflects limited evidence; the ending resolves uncertainty once and preserves that result in the save.'}</p></details><details><summary>Research and international coordination</summary><p>Alignment, control, evaluations, interpretability, and security do different work. Agreements depend on incentives and verification. Diplomacy without enforcement does not stop hidden development; public safety work can help rival labs as well as your own.</p></details><details><summary>After superintelligence</summary><p>Successful transitions can double economic output in the first year and accelerate thereafter. Aging and nanotechnology can be solved within two years. Dyson-swarm construction begins in the ASI year and can take 3.5–80 years, depending on industrial expansion and institutions.</p></details><details><summary>Outcomes and values</summary><p>Human flourishing, human control, and personal ownership are separate. The game does not collapse them into a combined score. A company's market lead is not a measure of human welfare.</p></details><details><summary>Sources and scenario framing</summary><p>Critical Path draws primarily on Thomas Kwa's worldview and the original game, with mechanisms inspired by <a href="https://ai-2027.com/" target="_blank" rel="noopener">AI 2027</a> and <a href="https://ai-2040.com/" target="_blank" rel="noopener">AI 2040</a>. The latter is a proposed coordination path, not the default timeline. Future events involving real labs are fictional possibilities, viewed from January 2026.</p></details><p class="small muted">${campaign ? `World seed: ${escape(campaign.seed)} · ${escape(date())}` : 'The same lab, seed, and decisions reproduce the same campaign.'}</p></div>`;
     return `<div class="modal-backdrop" data-action="modal-backdrop"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="dialog-title">${content}<div class="close-row">${button('Close','close-modal','id="close-modal"','')}</div></section></div>`;
 }
 
@@ -355,7 +454,7 @@ function updatePlanReadouts() {
     const forecast = getForecast(campaign);
     const products = document.getElementById('product-cashflow');
     if (products) products.innerHTML = renderProductCashflow(forecast);
-    const updates = { 'diversity-readout':`${percent(forecast.diversityBonus)} diversity bonus`, 'forecast-capability':`${signed(forecast.eciGain,1)} ECI`, 'forecast-income':money(forecast.quarterlyRevenue), 'forecast-cost':money(forecast.quarterlyCost), 'forecast-net':`${signed(forecast.quarterlyRevenue - forecast.quarterlyCost)}B expected next quarter` };
+    const updates = { 'diversity-readout':`${percent(forecast.diversityBonus)} diversity bonus`, 'forecast-capability':`${signed(forecast.eciGain,1)} ECI`, 'forecast-income':money(forecast.quarterlyRevenue), 'forecast-cost':money(forecast.actualSpending), 'forecast-net':`${signedMoney(forecast.quarterlyRevenue - forecast.actualSpending)} expected next quarter` };
     for (const [id,text] of Object.entries(updates)) { const node = document.getElementById(id); if (node) node.textContent = text; }
     for (const control of document.querySelectorAll('[data-preset]')) {
         control.setAttribute('aria-pressed',Object.entries(presets[control.dataset.preset]).every(([key,value]) => campaign.allocations[key] === value));
@@ -457,11 +556,17 @@ app.addEventListener('click', event => {
         else if (action === 'show-decision') { activeTab = 'overview'; render({focus:'decision-title'}); }
         else if (action === 'advance' && !saveConflict) {
             const result = advanceQuarter(campaign);
-            if (campaign.phase === 'decision' || campaign.phase === 'transition') activeTab = 'overview';
-            applyResult(result,campaign.phase === 'decision' || campaign.phase === 'transition' ? 'decision-title' : 'advance-button');
-            announce(`${date()}. ${campaign.phase === 'planning' ? 'Quarter complete.' : 'A decision is ready.'}`);
+            if (campaign.phase !== 'planning') activeTab = 'overview';
+            applyResult(result,campaign.phase === 'complete' ? 'ending-title' : campaign.phase === 'decision' || campaign.phase === 'transition' ? 'decision-title' : 'advance-button');
+            announce(campaign.phase === 'complete' ? campaign.outcome.summary
+                : `${date()}. ${campaign.phase === 'planning' ? 'Quarter complete.' : 'A decision is ready.'}`);
+            if (campaign.phase === 'complete' && !reducedMotion.matches) cosmos?.play();
         }
-        else if (action === 'event-choice' && !saveConflict) { applyResult(resolveDecision(campaign,target.dataset.choice),'advance-button'); announce('Decision recorded.'); }
+        else if (action === 'event-choice' && !saveConflict) {
+            applyResult(resolveDecision(campaign,target.dataset.choice),campaign.phase === 'complete' ? 'ending-title' : campaign.phase === 'transition' ? 'decision-title' : 'advance-button');
+            announce(campaign.phase === 'complete' ? campaign.outcome.summary : 'Decision recorded.');
+            if (campaign.phase === 'complete' && !reducedMotion.matches) cosmos?.play();
+        }
         else if (action === 'transition-choice' && !saveConflict) {
             applyResult(resolveTransition(campaign,target.dataset.choice),campaign.phase === 'complete' ? 'ending-title' : 'decision-title');
             if (campaign.phase === 'complete') { announce(campaign.outcome.summary); if (!reducedMotion.matches) cosmos?.play(); }
@@ -517,4 +622,5 @@ window.addEventListener('pagehide', () => { persist(); cosmos?.dispose(); cosmos
 window.addEventListener('pageshow', event => { if (event.persisted && screen === 'campaign' && campaign?.phase === 'complete') setupCosmos(cosmosPlaying); });
 reducedMotion.addEventListener('change', () => { if (campaign?.phase === 'complete') render(); });
 savedCampaign = readSave();
+installRaceTooltips();
 render();

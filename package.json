@@ -1,6 +1,6 @@
 {
   "name": "save-the-world-game",
-  "version": "0.6.0-beta.2",
+  "version": "0.6.0-beta.3",
   "description": "A compact strategy game about the AI transition",
   "type": "module",
   "scripts": {

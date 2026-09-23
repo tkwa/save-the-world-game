@@ -531,6 +531,16 @@ const RESOURCE_LABELS = {
     'world.treatyCoverage': 'treaty coverage'
 };
 
+function getChoiceCost(state, path, amount) {
+    if (path !== 'resources.funds' || amount === 0) return amount;
+    const capability = readNumber(state, 'player.capability');
+    if (capability === null || capability < 0) return NaN;
+    // Large deployments and institutions cost more to build at frontier scale.
+    // An early decision retains its authored price in billions of dollars.
+    const scale = Math.pow(Math.max(1, capability / 30), 0.85);
+    return Math.round(amount * scale * 10) / 10;
+}
+
 function getChoiceAvailability(state, selectedChoice) {
     if (!isRecord(state) || !isRecord(selectedChoice)) {
         return { available: false, reason: 'This choice is unavailable.' };
@@ -542,10 +552,12 @@ function getChoiceAvailability(state, selectedChoice) {
             if (typeof amount !== 'number' || !Number.isFinite(amount) || amount < 0 || !NUMERIC_PATHS.has(path)) {
                 return { available: false, reason: 'This choice has invalid requirements.' };
             }
+            const requiredAmount = field === 'costs' ? getChoiceCost(state, path, amount) : amount;
+            if (!Number.isFinite(requiredAmount)) return { available: false, reason: 'This choice has invalid requirements.' };
             const current = readNumber(state, path);
-            if (current === null || current < amount) {
+            if (current === null || current < requiredAmount) {
                 const label = RESOURCE_LABELS[path] || path.split('.').at(-1);
-                const required = path === 'resources.funds' ? `$${amount}B` : `${amount} ${label}`;
+                const required = path === 'resources.funds' ? `$${requiredAmount}B` : `${requiredAmount} ${label}`;
                 const value = current === null ? null : Number(current.toFixed(3));
                 const available = value === null ? 'current value unavailable' :
                     `currently ${path === 'resources.funds' ? `$${value}B` : value}`;
@@ -603,4 +615,4 @@ function validateEventCatalog(catalog = EVENTS) {
     return errors;
 }
 
-export { EVENTS, RETIRED_EVENT_IDS, FLAG_EFFECTS, POLICY_VALUES, getEvent, selectEvent, getChoiceAvailability, validateEventCatalog };
+export { EVENTS, RETIRED_EVENT_IDS, FLAG_EFFECTS, POLICY_VALUES, getEvent, selectEvent, getChoiceCost, getChoiceAvailability, validateEventCatalog };

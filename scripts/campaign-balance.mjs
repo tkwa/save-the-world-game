@@ -65,7 +65,8 @@ export function runCampaign({ labId = 'openai', seed = 'balance-0', strategy = '
             zeroFundingQuarters += forecast.funding < 0.001;
             checkpoints.push({ turn: state.turn, funds: state.resources.funds,
                 influence: state.player.influence, capability: state.player.capability,
-                funding: forecast.funding, capabilityGain: forecast.capabilityGain });
+                funding: forecast.funding, capabilityGain: forecast.capabilityGain,
+                revenue: forecast.quarterlyRevenue, spending: forecast.actualSpending });
             assert.equal(game.advanceQuarter(state).ok, true);
         } else {
             assert.ok(['decision', 'transition'].includes(state.phase), state.phase);
@@ -84,6 +85,7 @@ export function runCampaign({ labId = 'openai', seed = 'balance-0', strategy = '
                 game.resolveDecision(state, choice.id) : game.resolveTransition(state, choice.id);
             assert.equal(result.ok, true, result.reason);
         }
+        game.serializeCampaign(state);
     }
     assert.equal(state.phase, 'complete', `${labId}/${seed}/${strategy} failed to finish`);
     game.serializeCampaign(state);
@@ -94,22 +96,28 @@ const mean = values => values.length ? values.reduce((sum, value) => sum + value
 
 function summarize(runs) {
     const states = runs.map(run => run.state);
-    const survivors = states.filter(state => state.outcome.survival);
+    const survivors = states.filter(state => state.outcome.survival === true);
     const turns = states.map(state => state.turn);
+    const earlyTakeovers = states.filter(state => state.transition.earlyIncident).length;
+    const extinctions = states.filter(state => state.outcome.kind === 'extinction').length;
     return {
         campaigns: states.length, turnRange: [Math.min(...turns), Math.max(...turns)], meanTurn: mean(turns),
         meanRisk: mean(states.map(state => state.outcome.transitionRisk)),
-        extinctions: states.length - survivors.length,
-        playerWins: states.filter(state => state.outcome.winner === game.LABS.find(lab => lab.id === state.labId).name).length,
+        earlyTakeovers, extinctions, existentialCatastrophes: earlyTakeovers + extinctions,
+        playerWins: states.filter(state => !state.transition.earlyIncident
+            && state.outcome.winner === game.LABS.find(lab => lab.id === state.labId).name).length,
         treaties: states.filter(state => state.flags.treatyRatified).length,
         renewed: states.filter(state => state.flags.treatyRenewed).length,
         meanControl: mean(survivors.map(state => state.outcome.humanControl)),
         meanFlourishing: mean(survivors.map(state => state.outcome.flourishing)),
         meanOwnership: mean(survivors.map(state => state.outcome.personalOwnership)),
         meanFunds: mean(states.map(state => state.resources.funds)),
+        meanRevenueBeforeTransition: mean(runs.map(run => run.checkpoints.at(-1).revenue)),
+        meanSpendingBeforeTransition: mean(runs.map(run => run.checkpoints.at(-1).spending)),
         meanPartialQuarters: mean(runs.map(run => run.partialQuarters)),
         meanZeroFundingQuarters: mean(runs.map(run => run.zeroFundingQuarters)),
         meanPlanChanges: mean(runs.map(run => run.planChanges)),
+        cashChoiceFailures: runs.flatMap(run => run.missed).filter(miss => miss.reason.startsWith('Requires $')).length,
         invitationInfluenceFailures: runs.flatMap(run => run.missed).filter(miss =>
             ['compute-register', 'reciprocal-inspections'].includes(miss.eventId) && miss.reason.includes('influence')).length
     };
@@ -118,7 +126,7 @@ function summarize(runs) {
 export async function sweep(seedCount = 40) {
     assert.ok(Number.isSafeInteger(seedCount) && seedCount >= 1 && seedCount <= 10000, 'Seed count must be an integer from 1 to 10000.');
     const hashes = {};
-    for (const file of ['campaign.js', 'campaign-events.js', 'random.js']) {
+    for (const file of ['campaign.js', 'campaign-events.js', 'random.js', 'risk.js']) {
         hashes[file] = createHash('sha256').update(await readFile(new URL(`../${file}`, import.meta.url))).digest('hex');
     }
     const summary = {};

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
     EVENTS, RETIRED_EVENT_IDS, FLAG_EFFECTS, POLICY_VALUES,
-    getEvent, selectEvent, getChoiceAvailability, validateEventCatalog
+    getEvent, selectEvent, getChoiceCost, getChoiceAvailability, validateEventCatalog
 } from '../campaign-events.js';
 
 function stateAt(turn = 0) {
@@ -270,7 +270,8 @@ test('the late rescue route is more demanding and begins with a weaker treaty', 
 test('availability checks exact cost and preparation thresholds without changing state', () => {
     const state = preparedState();
     const option = getEvent('treaty-table').choices.find(option => option.id === 'ratify');
-    state.resources.funds = 7;
+    const cost = getChoiceCost(state, 'resources.funds', option.costs['resources.funds']);
+    state.resources.funds = cost;
     state.player.influence = 38;
     state.world.coordination = 42;
     state.world.verification = 38;
@@ -280,12 +281,13 @@ test('availability checks exact cost and preparation thresholds without changing
     state.world.verification = 37;
     assert.deepEqual(getChoiceAvailability(state, option), { available: false, reason: 'Requires 38 verification; currently 37.' });
     state.world.verification = 38;
-    state.resources.funds = 6;
-    assert.deepEqual(getChoiceAvailability(state, option), { available: false, reason: 'Requires $7B; currently $6B.' });
+    state.resources.funds = cost - 0.001;
+    assert.deepEqual(getChoiceAvailability(state, option), { available: false,
+        reason: `Requires $${cost}B; currently $${cost - 0.001}B.` });
 });
 
 test('unavailable choices report current values without hiding a fractional shortfall', () => {
-    const state = preparedState();
+    const state = stateAt();
     state.player.influence = 21.999;
     state.resources.funds = 6.999;
     assert.deepEqual(getChoiceAvailability(state, { requirements: { 'player.influence': 22 } }),

@@ -1,8 +1,9 @@
 import { createRandom } from './random.js';
-import { EVENTS, getEvent, selectEvent, getChoiceAvailability } from './campaign-events.js';
+import { EVENTS, getEvent, selectEvent, getChoiceCost, getChoiceAvailability } from './campaign-events.js';
 import { EVALUATION_PROBES } from './research-puzzles.js';
+import { getQuarterlyRisk } from './risk.js';
 
-export { getChoiceAvailability };
+export { getChoiceCost, getChoiceAvailability };
 
 // Display anchors only: the January 2026 frontier is approximately 155 ECI;
 // 225 is this scenario's superintelligence threshold, not an Epoch forecast.
@@ -84,6 +85,10 @@ export function formatCampaignDate(turn) {
     return `Q${turn % 4 + 1} ${2026 + Math.floor(turn / 4)}`;
 }
 
+export function formatMoney(billions) {
+    return Math.abs(billions) >= 1000 ? `$${(billions / 1000).toFixed(2)}T` : `$${billions.toFixed(1)}B`;
+}
+
 function appendHistory(state, kind, title, text, extra = {}) {
     state.history.push({ turn: state.turn, kind, title, text, ...extra });
 }
@@ -105,7 +110,7 @@ export function createCampaign({ seed = 'critical-path', labId = 'openai' } = {}
         security: 25 + stream.random() * 10, growth: 0.90 + stream.random() * 0.20
     }));
     const state = {
-        schemaVersion: 1, seed, rng: stream.getState(),
+        schemaVersion: 1, riskModel: 'quarterly-v1', seed, rng: stream.getState(),
         id: `campaign-${stream.getState().seed.toString(16)}-${labId}`, labId, turn: 0,
         phase: 'planning', allocations: { ...DEFAULT_PLAN },
         resources: { funds: labId === 'deepseek' || labId === 'xai' ? 14 : 18, compute: labId === 'deepmind' ? 13 : 10 },
@@ -185,6 +190,10 @@ function researchRestraint(state) {
 }
 
 export function getRiskEstimate(state, winnerId = leaderFor(state).id) {
+    if (state.riskModel === 'quarterly-v1') {
+        const { own, others, total } = getQuarterlyRisk(state, capabilityToECI);
+        return { risk: total, riskOwn: own, riskOthers: others };
+    }
     const rival = state.rivals.find(item => item.id === winnerId);
     const sharing = state.flags.openSafety ? 0.70 : 0.25;
     const alignment = rival ? state.research.alignment * sharing + rival.safety * (1 - sharing) : state.research.alignment;
@@ -224,11 +233,24 @@ function cohortRevenue(cohort, turn, frontier) {
     return cohort.initialRevenue * PRODUCT_CURVES[cohort.lifetimeQuarters][age] * competition;
 }
 
+function economicScale(state) {
+    // Better models open larger markets, but commercial deployment takes time.
+    // Product cohorts capture capability at launch; old products do not gain
+    // revenue retroactively when the lab trains a stronger model.
+    const capability = Math.max(1, state.player.capability / 10);
+    const adoption = Math.pow(1.3, Math.min(state.turn, 24) / 4);
+    return {
+        revenue: 1 + 0.6 * (Math.pow(capability, 0.82) - 1) * adoption,
+        cost: 1 + 1.15 * (Math.sqrt(capability) - 1) * Math.pow(adoption, 0.65)
+    };
+}
+
 function forecastProducts(state, quarterlyCost, productShare, productBonus) {
     const frontier = Math.max(10, leaderFor(state).capability);
     const productRevenue = state.products.reduce((sum, product) => sum + cohortRevenue(product, state.turn, frontier), 0);
     const deploymentRevenue = state.policies.deployment === 'open' ? 1.15 : state.policies.deployment === 'cautious' ? 0.92 : 1;
-    const peakRevenue = 9 * Math.sqrt(productShare) * (0.75 + state.player.productivity / 100) * productBonus * deploymentRevenue;
+    const peakRevenue = 9 * Math.sqrt(productShare) * (0.75 + state.player.productivity / 100)
+        * productBonus * deploymentRevenue * economicScale(state).revenue;
     const unfundedNewRevenue = peakRevenue * PRODUCT_CURVES[3][0];
     // Quarter-level receipts help finance that quarter's work. Since a partly
     // funded launch earns proportionally less, solve the funding equation once
@@ -257,9 +279,13 @@ export function getForecast(state) {
     const shares = Object.fromEntries(SECTOR_IDS.map(id => [id, plan[id] / 100]));
     const entropy = -Object.values(shares).reduce((sum, share) => sum + (share > 0 ? share * Math.log(share) : 0), 0) / Math.log(SECTOR_IDS.length);
     const diversityBonus = Math.max(0, 0.12 * entropy);
-    const costWeight = shares.capabilities + shares.safety * 0.8 + shares.security * 0.6
-        + shares.products * 0.3 + shares.diplomacy * 0.3 + shares.infrastructure;
-    const quarterlyCost = 2 + Math.pow(state.resources.compute, 0.65) * 0.7 * costWeight;
+    const computeWeight = shares.capabilities + shares.safety * 0.8 + shares.security * 0.6
+        + shares.diplomacy * 0.3 + shares.infrastructure;
+    // A small product team can idle surplus owned compute when cash is tight.
+    // Otherwise a cash-poor lab with a large cluster could never launch again.
+    const quarterlyCost = (2 + 0.7 * (Math.pow(state.resources.compute, 0.65) * computeWeight
+        + Math.pow(Math.min(state.resources.compute, 100), 0.65) * shares.products * 0.1))
+        * economicScale(state).cost;
     const products = forecastProducts(state, quarterlyCost, shares.products, lab.bonuses.products);
     const { quarterlyRevenue, funding } = products;
     const efficiency = funding * (1 + diversityBonus);
@@ -282,6 +308,7 @@ export function getForecast(state) {
     else if (state.flags.computeRegistry) treatyStatus = 'Compute registry established';
     return {
         date: formatCampaignDate(state.turn), diversityBonus, quarterlyCost, quarterlyRevenue,
+        actualSpending: quarterlyCost * funding,
         capabilityGain, eciGain, safetyGain, securityGain, diplomacyGain,
         computeGain: 1.1 * effort('infrastructure') * Math.sqrt(state.resources.compute),
         productivityGain: 3 * effort('products') * (1 - state.player.productivity / 150),
@@ -301,6 +328,34 @@ function recordTimeline(state) {
         rivalCapability: Math.max(...state.rivals.map(item => item.capability)),
         risk: getRiskEstimate(state).risk, funds: state.resources.funds
     });
+}
+
+function riskSource(risk, draw) {
+    let cumulative = 0;
+    for (const lab of risk.byLab) {
+        cumulative += lab.attributedRisk;
+        if (draw < cumulative) return lab.id;
+    }
+    return risk.byLab.at(-1).id;
+}
+
+function recordEarlyTakeover(state) {
+    const risk = getQuarterlyRisk(state, capabilityToECI);
+    const draw = createRandom(`${state.seed}:quarterly-risk:${state.turn}`).random();
+    if (draw >= risk.total) return false;
+    const sourceId = riskSource(risk, draw);
+    const source = LABS.find(lab => lab.id === sourceId);
+    const control = clamp(30 + state.research.control * 0.3 + state.player.security * 0.1, 0, 100);
+    state.transition = {
+        stage: 0, year: 2026 + Math.floor(state.turn / 4), winnerId: sourceId,
+        risk: risk.total, uncertainty: draw, decisions: [],
+        humanControl: control, personalOwnership: 0, flourishing: 0,
+        authority: 'undecided', distribution: 'undecided', priority: 'undecided', earlyIncident: true
+    };
+    appendHistory(state, 'transition', 'Loss of control before superintelligence',
+        `${source.name}'s system escaped human oversight in ${formatCampaignDate(state.turn)}, before any lab reached the game's ASI threshold.`);
+    finishCampaign(state, false);
+    return true;
 }
 
 function advanceInstitutions(state, forecast) {
@@ -357,7 +412,7 @@ export function advanceQuarter(state) {
     const forecast = getForecast(state);
     const previousECI = capabilityToECI(state.player.capability);
     const stream = streamFor(state);
-    add(state, 'resources.funds', forecast.quarterlyRevenue - forecast.quarterlyCost * forecast.funding);
+    add(state, 'resources.funds', forecast.quarterlyRevenue - forecast.actualSpending);
     if (forecast.newProduct) state.products.push({ ...forecast.newProduct });
     add(state, 'player.capability', forecast.capabilityGain);
     add(state, 'player.security', forecast.securityGain);
@@ -384,7 +439,7 @@ export function advanceQuarter(state) {
     const currentECI = capabilityToECI(state.player.capability);
     state.latestReport = [
         `ECI increased by ${(currentECI - previousECI).toFixed(1)} points to ${currentECI.toFixed(1)}.`,
-        `Revenue $${forecast.quarterlyRevenue.toFixed(1)}B; spending $${(forecast.quarterlyCost * forecast.funding).toFixed(1)}B.`,
+        `Revenue ${formatMoney(forecast.quarterlyRevenue)}; spending ${formatMoney(forecast.actualSpending)}.`,
         `Alignment ${state.research.alignment.toFixed(0)}, control ${state.research.control.toFixed(0)}, security ${state.player.security.toFixed(0)}.`
     ];
     if (forecast.funding < 1) state.latestReport.push(`Limited funds supplied ${(forecast.funding * 100).toFixed(0)}% of the plan; work continued at reduced capacity.`);
@@ -398,7 +453,7 @@ export function advanceQuarter(state) {
             state.phase = 'decision';
             state.currentEventId = event.id;
             state.seenEvents.push(event.id);
-        }
+        } else if (state.riskModel === 'quarterly-v1') recordEarlyTakeover(state);
     }
     return { ok: true };
 }
@@ -421,7 +476,7 @@ function validateChoiceEffects(choice) {
 
 function applyChoice(state, choice) {
     validateChoiceEffects(choice);
-    for (const [path, amount] of Object.entries(choice.costs || {})) add(state, path, -amount);
+    for (const [path, amount] of Object.entries(choice.costs || {})) add(state, path, -getChoiceCost(state, path, amount));
     for (const [path, amount] of Object.entries(choice.effects || {})) add(state, path, amount);
     for (const [path, value] of Object.entries(choice.sets || {})) write(state, path, value);
 }
@@ -438,6 +493,7 @@ export function resolveDecision(state, choiceId) {
     state.currentEventId = null;
     state.phase = 'planning';
     if (leaderFor(state).capability >= 1000) beginTransition(state);
+    else if (state.riskModel === 'quarterly-v1') recordEarlyTakeover(state);
     return { ok: true };
 }
 
@@ -500,7 +556,8 @@ export function cancelResearchTrial(state) {
 function beginTransition(state) {
     if (state.transition) return;
     const leader = leaderFor(state);
-    const stream = streamFor(state);
+    const stream = state.riskModel === 'quarterly-v1'
+        ? createRandom(`${state.seed}:transition-risk:${state.turn}`) : streamFor(state);
     const ownVictory = leader.id === state.labId;
     const control = clamp(30 + state.research.control * (ownVictory ? 0.40 : 0.22)
         + state.player.security * 0.15 + state.world.verification * 0.16 + state.player.legitimacy * 0.12
@@ -513,7 +570,7 @@ function beginTransition(state) {
         flourishing: clamp(35 + state.player.productivity * 0.25 + state.player.legitimacy * 0.25 + state.world.coordination * 0.12, 0, 100),
         authority: 'undecided', distribution: 'undecided', priority: 'undecided'
     };
-    state.rng = stream.getState();
+    if (state.riskModel !== 'quarterly-v1') state.rng = stream.getState();
     state.phase = 'transition';
     state.currentEventId = null;
     appendHistory(state, 'transition', 'The first superintelligent system', `${leader.name} reached the frontier in ${formatCampaignDate(state.turn)}. The remaining decisions concern deployment and the institutions around it.`);
@@ -567,18 +624,23 @@ export function resolveTransition(state, choiceId) {
         transition.authority = choiceId;
         if (choiceId === 'human-checkpoints') {
             transition.humanControl += 18;
-            transition.risk -= 0.05;
+            if (state.riskModel !== 'quarterly-v1') transition.risk -= 0.05;
         } else if (choiceId === 'shared-council') {
             transition.humanControl += 14;
-            transition.risk -= 0.065;
+            if (state.riskModel !== 'quarterly-v1') transition.risk -= 0.065;
             transition.personalOwnership *= 0.75;
             transition.flourishing += 6;
         } else {
             transition.humanControl -= 27;
-            transition.risk += 0.075;
+            if (state.riskModel !== 'quarterly-v1') transition.risk += 0.075;
             transition.personalOwnership *= 1.15;
         }
-        transition.risk = clamp(transition.risk, 0.005, 0.90);
+        if (state.riskModel === 'quarterly-v1') {
+            const risk = getQuarterlyRisk(state, capabilityToECI,
+                { authorityChoice: choiceId, deployedLabId: transition.winnerId });
+            transition.risk = risk.total;
+            if (transition.uncertainty < risk.total) transition.riskSourceId = riskSource(risk, transition.uncertainty);
+        } else transition.risk = clamp(transition.risk, 0.005, 0.90);
     } else if (stage === 1) {
         transition.distribution = choiceId;
         if (choiceId === 'public-dividend') {
@@ -603,8 +665,8 @@ export function resolveTransition(state, choiceId) {
     transition.flourishing = clamp(transition.flourishing, 0, 100);
     transition.stage++;
     state.latestReport = [choice.result];
-    // This is the campaign's only existential-risk draw. No additional roll is
-    // made per company, quarter, result screen, save, or reload.
+    // In the quarterly model the transition draw uses its own deterministic
+    // stream. Legacy saves retain the original single-transition draw.
     if (stage === 0 && transition.uncertainty < transition.risk) finishCampaign(state, true);
     else if (transition.stage === 3) finishCampaign(state, false);
     return { ok: true };
@@ -614,6 +676,20 @@ function buildOutcome(state, extinction) {
     const t = state.transition;
     const year = t.year;
     const winner = LABS.find(lab => lab.id === t.winnerId).name;
+    if (t.earlyIncident) return {
+        kind: 'captured', year, winner, humanControl: 0, personalOwnership: null,
+        flourishing: null, survival: null, transitionRisk: t.risk,
+        economyYearOne: null, agingSolvedYear: null, nanotechYear: null,
+        dysonStartYear: null, dysonCompletionYears: null, probeLaunchYear: null,
+        summary: 'A system takes control before superintelligence. Humanity cannot steer what follows; its later fate is unknown.',
+        causes: [
+            `${winner}'s system escaped oversight before any lab reached the game's superintelligence threshold.`,
+            `The combined risk from all labs that quarter was ${(t.risk * 100).toFixed(2)}%.`,
+            'The fate of later technology and institutions is unknown.'
+        ],
+        legacy: { quarters: state.turn, decisions: state.history.filter(entry => entry.kind === 'decision').length,
+            treatyCoverage: state.world.treatyCoverage, ownershipPolicy: t.distribution, industrialPriority: t.priority }
+    };
     const humanControl = extinction ? 0 : rounded(t.humanControl);
     const flourishing = extinction ? 0 : rounded(t.flourishing);
     const kind = extinction ? 'extinction' : humanControl < 40 ? 'captured' : flourishing >= 70 && humanControl >= 55 ? 'flourishing' : 'fragile';
@@ -622,7 +698,11 @@ function buildOutcome(state, extinction) {
     const dysonCompletionYears = rounded(clamp(industrialBase * prioritySpeed * (extinction ? 0.75 : 1), 3.5, 80));
     const causes = [];
     causes.push(t.winnerId === state.labId ? 'Your organization reached superintelligence first.' : `${winner} reached superintelligence before your organization.`);
-    causes.push(`Alignment ${state.research.alignment.toFixed(0)}, control ${state.research.control.toFixed(0)}, and security ${state.player.security.toFixed(0)} shaped the transition risk.`);
+    if (state.riskModel === 'quarterly-v1') {
+        const source = LABS.find(lab => lab.id === t.riskSourceId);
+        if (extinction && source) causes.push(`${source.name}'s system escaped human control.`);
+        causes.push('Each lab had its own alignment and monitoring; their risks combined at the transition.');
+    } else causes.push(`Alignment ${state.research.alignment.toFixed(0)}, control ${state.research.control.toFixed(0)}, and security ${state.player.security.toFixed(0)} shaped the transition risk.`);
     if (state.flags.openSafety) causes.push('Shared safety research improved the safeguards available to rival labs.');
     if (state.flags.treatyRatified) causes.push(`The agreement reached ${state.world.treatyCoverage.toFixed(0)}% coverage with verification ${state.world.verification.toFixed(0)}.`);
     if (t.authority === 'delegate') causes.push('Broad delegation traded human control for immediate deployment.');
@@ -677,8 +757,12 @@ function assertKeys(value, keys, label) {
 }
 
 function validateCampaign(state) {
-    assertKeys(state, ['schemaVersion', 'seed', 'rng', 'id', 'labId', 'turn', 'phase', 'allocations', 'resources', 'products', 'player', 'research', 'world', 'policies', 'rivals', 'flags', 'seenEvents', 'currentEventId', 'history', 'timeline', 'latestReport', 'transition', 'outcome', 'researchTrials'], 'campaign');
+    assertSave(isRecord(state), 'campaign must be an object.');
+    const keys = ['schemaVersion', 'seed', 'rng', 'id', 'labId', 'turn', 'phase', 'allocations', 'resources', 'products', 'player', 'research', 'world', 'policies', 'rivals', 'flags', 'seenEvents', 'currentEventId', 'history', 'timeline', 'latestReport', 'transition', 'outcome', 'researchTrials'];
+    if (Object.hasOwn(state, 'riskModel')) keys.push('riskModel');
+    assertKeys(state, keys, 'campaign');
     assertSave(state.schemaVersion === 1, 'unsupported schema version.');
+    assertSave(state.riskModel === undefined || state.riskModel === 'quarterly-v1', 'unsupported risk model.');
     assertSave(validText(state.seed, 200) && state.seed.trim().length > 0, 'invalid seed.');
     assertSave(LABS.some(lab => lab.id === state.labId), 'unknown lab.');
     assertSave(state.id === `campaign-${createRandom(state.seed).getState().seed.toString(16)}-${state.labId}`, 'campaign identifier does not match its seed and lab.');
@@ -796,10 +880,28 @@ function validateEnding(state) {
     assertSave((state.phase === 'transition' || state.phase === 'complete') === (t !== null), 'transition does not match campaign phase.');
     assertSave((state.phase === 'complete') === (state.outcome !== null), 'outcome does not match campaign phase.');
     if (!t) return;
-    assertKeys(t, ['stage', 'year', 'winnerId', 'risk', 'uncertainty', 'decisions', 'humanControl', 'personalOwnership', 'flourishing', 'authority', 'distribution', 'priority'], 'transition');
+    const transitionKeys = ['stage', 'year', 'winnerId', 'risk', 'uncertainty', 'decisions', 'humanControl', 'personalOwnership', 'flourishing', 'authority', 'distribution', 'priority'];
+    if (Object.hasOwn(t, 'earlyIncident')) transitionKeys.push('earlyIncident');
+    if (Object.hasOwn(t, 'riskSourceId')) transitionKeys.push('riskSourceId');
+    assertKeys(t, transitionKeys, 'transition');
     assertSave(Number.isInteger(t.stage) && finiteIn(t.stage, 0, 3) && t.year === 2026 + Math.floor(state.turn / 4)
         && LABS.some(lab => lab.id === t.winnerId) && finiteIn(t.risk, 0, 1) && finiteIn(t.uncertainty, 0, 1), 'invalid transition values.');
-    assertSave(leaderFor(state).id === t.winnerId && leaderFor(state).capability >= 1000, 'transition winner has not reached superintelligence.');
+    const early = t.earlyIncident === true;
+    assertSave(t.earlyIncident === undefined || early, 'invalid early incident.');
+    assertSave(!early || (state.riskModel === 'quarterly-v1' && state.phase === 'complete'
+        && leaderFor(state).capability < 1000 && t.stage === 0 && t.uncertainty < t.risk), 'invalid early incident.');
+    if (!early) assertSave(leaderFor(state).id === t.winnerId && leaderFor(state).capability >= 1000, 'transition winner has not reached superintelligence.');
+    if (t.riskSourceId !== undefined) assertSave(state.riskModel === 'quarterly-v1' && !early
+        && LABS.some(lab => lab.id === t.riskSourceId) && t.uncertainty < t.risk, 'invalid risk source.');
+    if (state.riskModel === 'quarterly-v1') {
+        const risk = getQuarterlyRisk(state, capabilityToECI, early || t.stage === 0 ? {}
+            : { authorityChoice: t.authority, deployedLabId: t.winnerId });
+        const draw = createRandom(`${state.seed}:${early ? 'quarterly-risk' : 'transition-risk'}:${state.turn}`).random();
+        assertSave(Math.abs(t.risk - risk.total) < 1e-12 && t.uncertainty === draw, 'risk draw does not match campaign state.');
+        if (early) assertSave(t.winnerId === riskSource(risk, draw), 'early incident source does not match the risk draw.');
+        else if (t.stage > 0) assertSave(t.riskSourceId === (draw < risk.total ? riskSource(risk, draw) : undefined),
+            'risk source does not match the draw.');
+    }
     assertSave(['humanControl', 'personalOwnership', 'flourishing'].every(key => finiteIn(t[key], 0, 100)), 'invalid transition outcomes.');
     const options = [
         ['human-checkpoints', 'shared-council', 'delegate'],
@@ -815,20 +917,25 @@ function validateEnding(state) {
     if (!outcome) return;
     assertKeys(outcome, ['kind', 'year', 'winner', 'humanControl', 'personalOwnership', 'flourishing', 'survival', 'transitionRisk', 'economyYearOne', 'agingSolvedYear', 'nanotechYear', 'dysonStartYear', 'dysonCompletionYears', 'probeLaunchYear', 'summary', 'causes', 'legacy'], 'outcome');
     assertSave(['flourishing', 'fragile', 'captured', 'extinction'].includes(outcome.kind)
-        && outcome.survival === (outcome.kind !== 'extinction') && outcome.year === t.year
+        && (early ? outcome.survival === null : outcome.survival === (outcome.kind !== 'extinction')) && outcome.year === t.year
         && outcome.winner === LABS.find(lab => lab.id === t.winnerId).name
         && outcome.transitionRisk === t.risk, 'inconsistent outcome.');
-    assertSave(['humanControl', 'personalOwnership', 'flourishing'].every(key => finiteIn(outcome[key], 0, 100))
-        && finiteIn(outcome.economyYearOne, 0, 4) && finiteIn(outcome.dysonCompletionYears, 3.5, 80), 'invalid outcome metrics.');
+    assertSave(finiteIn(outcome.humanControl, 0, 100)
+        && (early ? outcome.personalOwnership === null && outcome.flourishing === null && outcome.economyYearOne === null
+            : finiteIn(outcome.personalOwnership, 0, 100) && finiteIn(outcome.flourishing, 0, 100)
+                && finiteIn(outcome.economyYearOne, 0, 4))
+        && (early ? outcome.dysonCompletionYears === null : finiteIn(outcome.dysonCompletionYears, 3.5, 80)), 'invalid outcome metrics.');
     for (const key of ['agingSolvedYear', 'nanotechYear', 'dysonStartYear', 'probeLaunchYear']) {
-        const humanHealthLost = !outcome.survival && key === 'agingSolvedYear';
-        assertSave(humanHealthLost ? outcome[key] === null : Number.isInteger(outcome[key]) && finiteIn(outcome[key], outcome.year, outcome.year + 100), `invalid ${key}.`);
+        const unknown = early || (!outcome.survival && key === 'agingSolvedYear');
+        assertSave(unknown ? outcome[key] === null : Number.isInteger(outcome[key]) && finiteIn(outcome[key], outcome.year, outcome.year + 100), `invalid ${key}.`);
     }
     assertSave(validText(outcome.summary) && Array.isArray(outcome.causes) && outcome.causes.length <= 20 && outcome.causes.every(text => validText(text)), 'invalid outcome explanation.');
     assertKeys(outcome.legacy, ['quarters', 'decisions', 'treatyCoverage', 'ownershipPolicy', 'industrialPriority'], 'legacy');
     assertSave(outcome.legacy.quarters === state.turn && Number.isInteger(outcome.legacy.decisions) && finiteIn(outcome.legacy.decisions, 0, EVENTS.length)
         && finiteIn(outcome.legacy.treatyCoverage, 0, 100) && outcome.legacy.ownershipPolicy === t.distribution && outcome.legacy.industrialPriority === t.priority, 'invalid legacy.');
-    assertSave(outcome.kind === 'extinction' ? t.stage === 1 && t.uncertainty < t.risk : t.stage === 3 && t.uncertainty >= t.risk, 'outcome does not match the resolved transition.');
+    assertSave(early ? outcome.kind === 'captured' && t.stage === 0
+        : outcome.kind === 'extinction' ? t.stage === 1 && t.uncertainty < t.risk
+            : t.stage === 3 && t.uncertainty >= t.risk, 'outcome does not match the resolved transition.');
     assertSave(sameData(outcome, buildOutcome(state, outcome.kind === 'extinction')), 'outcome does not match the campaign decisions.');
 }
 

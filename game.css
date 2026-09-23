@@ -26,7 +26,6 @@
   .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
   .skip-link { position:fixed; top:-100px; left:16px; z-index:100; background:var(--text); color:var(--bg); padding:10px; }
   .skip-link:focus { top:8px; }
-  .ai-marker { display:inline-block; margin-right:.35em; font:10px system-ui,sans-serif; vertical-align:middle; cursor:help; }
 }
 @layer layout {
   .site-header { max-width:1240px; padding:6px 18px; margin:auto; display:flex; align-items:center; justify-content:space-between; gap:12px; border-bottom:1px solid var(--line); }
@@ -51,6 +50,7 @@
   .metric:first-child { border-left:0; padding-left:0; }
   .metric-label { display:block; color:var(--muted); font-size:11px; }
   .metric-value { font-size:20px; font-variant-numeric:tabular-nums; }
+  .risk-values { display:block; font-size:13px; line-height:1.35; white-space:nowrap; }
   .metric-detail { display:block; font-size:11px; color:var(--muted); }
   .tab-bar { display:flex; gap:20px; margin-bottom:12px; border-bottom:1px solid var(--line); }
   .tab-bar button { padding:5px 2px; color:var(--muted); border-bottom:2px solid transparent; }
@@ -116,7 +116,8 @@
   .allocation-help dt { font-weight:600; }
   .allocation-help dd { margin:0; color:var(--muted); }
   .standing-plan { padding:6px 0; border:0; }
-  .race-row { display:grid; grid-template-columns:145px minmax(20px,1fr); align-items:center; gap:10px; margin:5px 0; }
+  .race-chart { --race-label-width:145px; --race-gap:10px; position:relative; margin-bottom:8px; }
+  .race-row { display:grid; grid-template-columns:var(--race-label-width) minmax(20px,1fr); align-items:center; gap:var(--race-gap); margin:5px 0; }
   .race-label { display:flex; justify-content:space-between; align-items:center; gap:5px; font-size:11px; }
   .race-label strong { font-weight:400; }
   .race-label .mono { white-space:nowrap; }
@@ -124,6 +125,15 @@
   .race-fill { height:100%; background:#888; min-width:2px; }
   .race-row.player .race-fill { background:var(--text); }
   .race-row.player .race-label strong { font-weight:700; }
+  .race-axis { position:relative; height:48px; margin-left:calc(var(--race-label-width) + var(--race-gap)); }
+  .race-guides { position:absolute; z-index:1; top:12px; bottom:0; left:calc(var(--race-label-width) + var(--race-gap)); right:0; pointer-events:none; }
+  .race-guide { position:absolute; top:0; bottom:0; border-left:1px dotted #aaa; transform:translateX(-1px); }
+  .race-milestone { position:absolute; z-index:2; top:0; transform:translateX(-50%); min-width:28px; min-height:24px; padding:3px 2px; background:var(--bg); color:var(--muted); font-size:10px; line-height:18px; text-decoration:underline dotted; text-underline-offset:3px; }
+  .race-milestone:hover,.race-milestone:focus-visible { color:var(--text); }
+  .race-milestone-ted { top:24px; }
+  .race-milestone-sar,.race-milestone-asi { transform:translateX(-100%); }
+  .race-tooltip { position:fixed; z-index:1000; width:max-content; max-width:min(24rem,calc(100vw - 16px)); max-height:calc(100dvh - 16px); overflow:auto; padding:9px 11px; border:1px solid #777; background:var(--surface2); color:var(--text); font-size:12px; line-height:1.5; box-shadow:0 3px 12px #0005; }
+  .race-tooltip[hidden] { display:none; }
   .research-list { display:grid; gap:6px; }
   .research-row { display:grid; grid-template-columns:1fr 50px 25px; align-items:center; gap:5px; font-size:11px; }
   progress { width:100%; height:4px; border:0; background:#333; }
@@ -159,6 +169,7 @@
   .help-list { margin:12px 0; padding-left:22px; }
   .help-list li + li { margin-top:10px; }
   .ending-shell { max-width:1240px; padding:18px 18px 40px; margin:auto; }
+  .ending-details.early { grid-template-columns:1fr; }
   .ending-heading { margin-bottom:16px; }
   .ending-heading h1 { font-size:26px; margin-bottom:8px; }
   .ending-heading p { max-width:95ch; color:var(--muted); }
@@ -202,6 +213,9 @@
     .ending-metric { padding:10px 7px; } .ending-metric .number { font-size:22px; }
   }
   @media (max-width:440px) {
+    .risk-values { font-size:12px; }
+    .race-chart { --race-label-width:110px; --race-gap:8px; }
+    .race-label { font-size:10px; }
     .site-header { align-items:start; flex-direction:column; gap:2px; } .header-actions { width:100%; justify-content:space-between; }
     .allocation-row { grid-template-columns:102px minmax(45px,1fr) 31px 27px; gap:5px; } .allocation-row label { font-size:11px; }
     .secondary-indicators,.research-cards { grid-template-columns:1fr; }
@@ -209,6 +223,7 @@
     .cosmos-control-bar > .small { display:none; } .ending-metric .number { font-size:20px; }
     .modal-backdrop { padding:8px; } .modal { padding:12px; }
   }
+  @media (max-width:319px) { .ending-metric .number { font-size:17px; } }
   @media (pointer:coarse) { .button,.tab-bar button { min-height:40px; } .allocation-row { min-height:44px; } .lock-button { height:40px; } }
   @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none!important; transition:none!important; scroll-behavior:auto!important; } }
 }

@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
     LABS, createCampaign, setPlan, getForecast, advanceQuarter, getCurrentEvent,
-    getChoiceAvailability, resolveDecision, getTransitionDecision, resolveTransition,
-    startResearchTrial, completeResearchTrial, cancelResearchTrial, serializeCampaign, restoreCampaign
+    getChoiceCost, getChoiceAvailability, resolveDecision, getTransitionDecision, resolveTransition,
+    startResearchTrial, completeResearchTrial, cancelResearchTrial, serializeCampaign, restoreCampaign, formatMoney
 } from '../campaign.js';
 
 function chooseFirst(state, preferences = {}) {
@@ -47,7 +47,7 @@ test('forecasts are read-only and funded quarterly production matches the shown 
     assert.deepEqual(getForecast(state), forecast);
     assert.equal(forecast.date, 'Q1 2026');
     assert.equal(forecast.leader.id, state.labId);
-    assert.ok(forecast.riskLow <= forecast.risk && forecast.risk <= forecast.riskHigh);
+    assert.ok(Math.abs(forecast.riskOwn + forecast.riskOthers - forecast.risk) < 1e-12);
     assert.equal(advanceQuarter(state).ok, true);
     assert.ok(Math.abs(state.player.capability - before.player.capability - forecast.capabilityGain) < 0.001);
     assert.ok(Math.abs(state.resources.funds - before.resources.funds - forecast.quarterlyRevenue + forecast.quarterlyCost) < 0.001);
@@ -104,6 +104,68 @@ test('frontier competition makes an older product less valuable', () => {
     const before = getForecast(state).productRevenue;
     state.rivals[0].capability = 40;
     assert.equal(getForecast(state).productRevenue, before / 2);
+});
+
+test('new product value follows the selling lab’s capability while old contracts keep their launch value', () => {
+    const weak = createCampaign({ seed: 'capability-market' });
+    const strong = createCampaign({ seed: 'capability-market' });
+    for (const state of [weak, strong]) {
+        state.resources.funds = 1000;
+        state.products = [];
+        state.turn = 12;
+        state.rivals[0].capability = 300;
+        setPlan(state, { capabilities: 30, safety: 20, security: 10, products: 30, diplomacy: 5, infrastructure: 5 });
+    }
+    strong.player.capability = 300;
+    const weakLaunch = getForecast(weak);
+    const strongLaunch = getForecast(strong);
+    assert.equal(weakLaunch.funding, 1);
+    assert.equal(strongLaunch.funding, 1);
+    assert.ok(strongLaunch.newProduct.initialRevenue > weakLaunch.newProduct.initialRevenue * 20);
+    weak.products = [{ id: 'product-11', launchTurn: 11, initialRevenue: 5,
+        lifetimeQuarters: 3, frontierAtLaunch: 300 }];
+    strong.products = structuredClone(weak.products);
+    assert.equal(getForecast(weak).productRevenue, getForecast(strong).productRevenue,
+        'existing contract receipts must not be repriced upward by new capability');
+});
+
+test('money display switches to trillions while preserving useful quarterly precision', () => {
+    assert.equal(formatMoney(987.65), '$987.6B');
+    assert.equal(formatMoney(1250), '$1.25T');
+});
+
+test('large owned clusters can idle capacity and finance a new product after cash runs out', () => {
+    const state = createCampaign({ seed: 'product-restart' });
+    state.resources.funds = 0;
+    state.resources.compute = 200;
+    state.products = [];
+    setPlan(state, { capabilities: 0, safety: 0, security: 0, products: 100, diplomacy: 0, infrastructure: 0 });
+    const forecast = getForecast(state);
+    assert.equal(forecast.funding, 1);
+    assert.ok(forecast.quarterlyRevenue > forecast.actualSpending);
+    assert.equal(advanceQuarter(state).ok, true);
+    assert.ok(state.resources.funds > 0);
+    assert.equal(state.products.length, 1);
+});
+
+test('scaled decision costs are displayed as available funds and charged exactly once', () => {
+    const state = createCampaign({ seed: 'scaled-decision' });
+    state.player.capability = 600;
+    state.phase = 'decision';
+    state.currentEventId = 'credential-breach';
+    state.seenEvents.push('credential-breach');
+    const choice = getCurrentEvent(state).choices.find(item => item.id === 'isolate');
+    const cost = getChoiceCost(state, 'resources.funds', choice.costs['resources.funds']);
+    assert.ok(cost > choice.costs['resources.funds'] * 5);
+    state.resources.funds = cost - 0.001;
+    assert.equal(getChoiceAvailability(state, choice).available, false);
+    const before = serializeCampaign(state);
+    assert.equal(resolveDecision(state, choice.id).ok, false);
+    assert.equal(serializeCampaign(state), before);
+    state.resources.funds = cost;
+    assert.equal(getChoiceAvailability(state, choice).available, true);
+    assert.equal(resolveDecision(state, choice.id).ok, true);
+    assert.equal(state.resources.funds, 0);
 });
 
 test('partly funded launches earn only their funded share and match the cash-flow forecast', () => {
@@ -167,6 +229,44 @@ test('research and safety plans produce different race results and risks', () =>
     assert.ok(research.outcome.transitionRisk > safety.outcome.transitionRisk);
     assert.equal(research.outcome.winner, 'OpenAI');
     assert.notEqual(safety.outcome.winner, 'OpenAI');
+});
+
+test('a pre-ASI takeover can come from another lab and survives save and replay', () => {
+    const initial = createCampaign({ seed: 'balance-10', labId: 'openai' });
+    const first = play(initial);
+    const second = play(restoreCampaign(serializeCampaign(createCampaign({ seed: 'balance-10', labId: 'openai' }))));
+    assert.deepEqual(first, second);
+    assert.equal(first.transition.earlyIncident, true);
+    assert.equal(first.transition.winnerId, 'anthropic');
+    assert.ok(first.player.capability < 1000);
+    assert.ok(Math.max(...first.rivals.map(rival => rival.capability)) < 1000);
+    assert.equal(first.outcome.kind, 'captured');
+    assert.equal(first.outcome.nanotechYear, null, 'a pre-ASI ending must not invent later technology');
+    assert.equal(first.outcome.flourishing, null, 'later welfare is unknown');
+    assert.equal(first.outcome.survival, null, 'later survival is unknown');
+    assert.equal(restoreCampaign(serializeCampaign(first)).outcome.summary, first.outcome.summary);
+    for (const corrupt of [
+        state => { state.transition.risk += 0.01; state.outcome.transitionRisk += 0.01; },
+        state => { state.transition.uncertainty = 0; },
+        state => { state.transition.winnerId = 'openai'; state.outcome.winner = 'OpenAI'; }
+    ]) {
+        const tampered = structuredClone(first);
+        corrupt(tampered);
+        assert.throws(() => restoreCampaign(JSON.stringify(tampered)), /Invalid campaign save/);
+    }
+});
+
+test('campaigns saved under the earlier risk model keep their transition-only risk path', () => {
+    const legacy = createCampaign({ seed: 'legacy-risk' });
+    delete legacy.riskModel;
+    const forecast = getForecast(legacy);
+    assert.ok(forecast.riskLow < forecast.risk && forecast.risk < forecast.riskHigh);
+    assert.equal(restoreCampaign(serializeCampaign(legacy)).riskModel, undefined);
+    legacy.player.capability = 800;
+    for (const rival of legacy.rivals) rival.capability = 700;
+    assert.equal(advanceQuarter(legacy).ok, true);
+    assert.notEqual(legacy.phase, 'complete', 'the new per-quarter draw must not apply to a legacy save');
+    serializeCampaign(legacy);
 });
 
 test('verification and sustained diplomacy can delay the race; signatures alone cannot', () => {
@@ -282,7 +382,7 @@ test('trial inputs are strict, all three rewards are bounded, and completion doe
 });
 
 test('cancellation gives no reward and trial operations cannot mutate decisions or ended campaigns', () => {
-    const state = createCampaign({ seed: 'trial-phase-guards' });
+    const state = createCampaign({ seed: 'trial-phase-guards-0' });
     const before = structuredClone(state);
     const { trial } = startResearchTrial(state, 'evaluation');
     assert.equal(cancelResearchTrial(state).ok, true);
@@ -471,11 +571,12 @@ test('transition choices use the same exact resource thresholds as campaign deci
     assert.equal(resolveTransition(state, human.id).ok, true);
     assert.equal(state.phase, 'transition');
     const access = getTransitionDecision(state).choices.find(choice => choice.id === 'universal-access');
-    state.resources.funds = 3.999;
+    const accessCost = getChoiceCost(state, 'resources.funds', access.costs['resources.funds']);
+    state.resources.funds = accessCost - 0.001;
     assert.equal(getChoiceAvailability(state, access).available, false);
     assert.equal(resolveTransition(state, access.id).ok, false);
-    assert.equal(state.resources.funds, 3.999);
-    state.resources.funds = 4;
+    assert.equal(state.resources.funds, accessCost - 0.001);
+    state.resources.funds = accessCost;
     assert.equal(getChoiceAvailability(state, access).available, true);
     assert.equal(resolveTransition(state, access.id).ok, true);
     assert.equal(state.resources.funds, 0);

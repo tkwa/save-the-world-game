@@ -1,3 +1,14 @@
+# 0.6.0-beta.3 — September 22, 2026
+
+- Increase product revenue with the model's capability at launch and the time available for market adoption. Existing products keep their launch value and still expire after three quarters.
+- Scale operating and one-time decision costs with the frontier. Product teams can idle surplus compute, so a cash-poor lab can recover through a smaller launch.
+- Show actual funded spending in the forecast and quarterly report, and switch to trillions when values pass $1,000 billion.
+- Show your company's and other companies' existential risk per quarter. Risk can trigger a pre-ASI takeover, while old saves retain their earlier transition-only risk rule.
+- Add vertical SAR, TED, and ASI guides through every capability bar, with compact milestone definitions on hover, focus, and tap. Their ECI positions are game assumptions.
+- Recheck economic balance across 2,880 seeded campaigns and play through an entire browser campaign, including save/resume and the transition.
+
+Still in beta. Human playtesting and revisions remain required before 1.0.
+
 # 0.6.0-beta.2 — September 20, 2026
 
 - Replace Paired replay with a short evaluation investigation: choose experiments, read tool traces, and file a scoped report before the explanation is revealed.
