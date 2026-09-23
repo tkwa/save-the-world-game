@@ -1,3 +1,10 @@
+# 0.6.0-beta.4 — September 22, 2026
+
+- Move the vertical capability guides to AGI (175 ECI), SAR (190 ECI), and ASI (225 ECI). Define each milestone on hover, focus, and tap.
+- Shorten the chart tooltips and surrounding copy, and make the risk, lead, and coordination summaries more direct.
+
+Still in beta pending human playtesting.
+
 # 0.6.0-beta.3 — September 22, 2026
 
 - Increase product revenue with the model's capability at launch and the time available for market adoption. Existing products keep their launch value and still expire after three quarters.

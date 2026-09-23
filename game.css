@@ -130,7 +130,7 @@
   .race-guide { position:absolute; top:0; bottom:0; border-left:1px dotted #aaa; transform:translateX(-1px); }
   .race-milestone { position:absolute; z-index:2; top:0; transform:translateX(-50%); min-width:28px; min-height:24px; padding:3px 2px; background:var(--bg); color:var(--muted); font-size:10px; line-height:18px; text-decoration:underline dotted; text-underline-offset:3px; }
   .race-milestone:hover,.race-milestone:focus-visible { color:var(--text); }
-  .race-milestone-ted { top:24px; }
+  .race-milestone-agi { top:24px; }
   .race-milestone-sar,.race-milestone-asi { transform:translateX(-100%); }
   .race-tooltip { position:fixed; z-index:1000; width:max-content; max-width:min(24rem,calc(100vw - 16px)); max-height:calc(100dvh - 16px); overflow:auto; padding:9px 11px; border:1px solid #777; background:var(--surface2); color:var(--text); font-size:12px; line-height:1.5; box-shadow:0 3px 12px #0005; }
   .race-tooltip[hidden] { display:none; }
