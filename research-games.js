@@ -134,7 +134,7 @@ export function mountResearchGame(container, {
         const verdicts = el('div', 'rg-eval-options');
         verdicts.setAttribute('role', 'group');
         verdicts.setAttribute('aria-label', 'Release recommendation');
-        reportBox.append(el('p', 'rg-note', 'Report only what these experiments establish. An inconclusive result is valid; a few passes do not prove general safety.'), verdicts);
+        reportBox.append(el('p', 'rg-note', 'Report what these experiments establish for the proposed deployment. An inconclusive result is valid when the evidence leaves a relevant confound or untested condition.'), verdicts);
         let session = resumedEvaluation;
         const leavingNote = el('p', 'rg-note', 'Leaving starts a new case next time.');
         workspace.append(brief, trace(getEvaluationEvidence(puzzle, session).baseline, true), budget, probes, log, reportBox, leavingNote);
@@ -210,7 +210,7 @@ export function mountResearchGame(container, {
             const debrief = el('div', 'rg-eval-debrief');
             debrief.append(el('p', 'rg-eval-result', `Research result: ${Math.round(result.score * 100)}%`),
                 el('p', '', result.conclusion), el('p', '', result.actualMechanism),
-                el('p', 'rg-note', `Grading uses the explanations consistent with your observations, not a lucky guess about the hidden case. ${result.remainingExplanations} simulated explanation${result.remainingExplanations === 1 ? '' : 's'} remained. The filed report cannot be revised.`));
+                el('p', 'rg-note', `Grading uses the explanations consistent with your observations. ${result.remainingExplanations} simulated explanation${result.remainingExplanations === 1 ? '' : 's'} remained. The filed report cannot be revised.`));
             workspace.append(debrief);
             status.textContent = result.reportSupported ? 'Your conclusion matches what the observed evidence supports.' : 'Your conclusion goes beyond, or misses, what the observed evidence supports.';
             debrief.setAttribute('tabindex', '-1');

@@ -79,12 +79,12 @@ const EVENTS = [
                 { effects: { 'resources.funds': 6, 'player.productivity': 12, 'research.control': -4, 'player.trust': -2 }, sets: { 'policies.deployment': 'rushed', 'flags.rushedDeployment': true } }),
             choice('defer', 'Keep the agents in advisory roles',
                 'Protect the existing controls and give up most of the contract.',
-                'The customer keeps a smaller advisory service. Your agents make recommendations but do not execute purchases or code changes.',
+                'The customer keeps a smaller advisory service. Your agents supply purchase and code-change recommendations for humans to execute.',
                 { effects: { 'player.productivity': 2, 'research.control': 3 }, sets: { 'policies.deployment': 'cautious' } })
         ]),
 
-    event('outside-evaluators', 'An evaluator without a reporting line',
-        'An independent evaluation group wants access to your strongest internal model. Its researchers want to report serious findings without waiting for your communications team. Your legal team wants a narrower agreement.',
+    event('outside-evaluators', 'An independent evaluator',
+        'An independent evaluation group wants access to your strongest internal model. Its researchers want a protected channel for reporting serious findings independently of your communications team. Your legal team wants a narrower agreement.',
         56, state => state.turn >= 3 && capability(state) >= 18, [
             choice('independent', 'Fund independent access and protected reporting',
                 'Improve the evidence available to outsiders while accepting less control over disclosure.',
@@ -101,15 +101,15 @@ const EVENTS = [
         ]),
 
     event('research-agents', 'Research starts to compound',
-        'Your agents can now complete useful parts of an AI experiment without step-by-step supervision. The research team proposes running many experiments overnight. The safety team asks who will check what the agents learned and changed.',
+        'Your agents can now complete useful parts of an AI experiment autonomously. The research team proposes running many experiments overnight. The safety team asks who will check what the agents learned and changed.',
         65, state => state.turn >= 4 && frontier(state) >= 25, [
             choice('sandbox', 'Scale research inside audited sandboxes',
                 'Gain research capacity, with a continuing cost for isolation and review.',
-                'The agents get more experiments but no authority to promote their own successors. Separate reviewers inspect the changes before a new model enters use.',
+                'The agents run more experiments. Separate reviewers inspect the changes and authorize successors before a new model enters use.',
                 { costs: { 'resources.funds': 3 }, effects: { 'player.capability': 10, 'research.control': 8, 'research.evals': 3 }, sets: { 'policies.authority': 'human' } }),
             choice('delegate', 'Let the research agents choose the next experiments',
                 'Accelerate capabilities and reduce the amount of work humans can inspect.',
-                'The agents begin selecting experiments and integrating results. Your researchers review summaries instead of the full sequence of decisions.',
+                'The agents begin selecting experiments and integrating results. Your researchers review summarized decisions.',
                 { effects: { 'player.capability': 20, 'research.control': -8, 'research.interpretability': -3 }, sets: { 'policies.authority': 'delegated' } }),
             choice('limit', 'Keep experiment selection with human researchers',
                 'Make a smaller capability gain and preserve an inspectable workflow.',
@@ -125,11 +125,11 @@ const EVENTS = [
                 'Your staff work on common reporting standards and a registry pilot. Both sides must declare covered clusters under the same rules.',
                 { costs: { 'resources.funds': 4 }, requirements: { 'player.influence': 16 }, effects: { 'world.coordination': 9, 'world.verification': 10, 'player.influence': 3 }, sets: { 'flags.computeRegistry': true } }),
             choice('domestic', 'Offer domestic reporting first',
-                'Make a smaller start without securing reciprocal access.',
+                'Make a smaller start through domestic reporting.',
                 'You provide records to your own government. The work improves accounting, but foreign clusters remain outside the arrangement.',
                 { costs: { 'resources.funds': 1 }, effects: { 'world.verification': 4, 'player.trust': 3, 'world.tension': 2 } }),
             choice('wait', 'Wait for a concrete agreement',
-                'Preserve funds while negotiators work without a shared compute inventory.',
+                'Preserve funds while negotiators work with incomplete compute inventories.',
                 'The company declines the pilot. Officials continue negotiating with incomplete information about the machines a deal would cover.',
                 { effects: { 'player.influence': -2, 'world.coordination': -2 } })
         ]),
@@ -139,14 +139,14 @@ const EVENTS = [
         54, state => state.turn >= 5 && state.research.control >= 20, [
             choice('publish', 'Publish the method and its limitations',
                 'Improve shared safety work and give up an exclusive advantage.',
-                'The method, test setup, and known failures become public. Other labs can reproduce the work without depending on your assurances.',
+                'The method, test setup, and known failures become public. Other labs can reproduce and examine the work independently.',
                 { effects: { 'research.control': 5, 'player.trust': 7, 'world.coordination': 7, 'player.influence': -2 }, sets: { 'flags.openSafety': true, 'policies.transparency': 'open' } }),
             choice('license', 'Share through a limited research partnership',
                 'Recover some costs while limiting who can examine the method.',
                 'A small group of partners receives the method under contract. The work reaches other labs, but external scrutiny remains limited.',
                 { effects: { 'resources.funds': 3, 'research.control': 4, 'world.coordination': 3 }, sets: { 'policies.transparency': 'selective' } }),
             choice('private', 'Keep the work internal for now',
-                'Preserve your lead in deployment safety without helping the rest of the field.',
+                'Preserve your deployment-safety lead through internal use.',
                 'Your deployment teams adopt the method. External researchers receive only a short account of the result.',
                 { effects: { 'research.control': 6, 'player.productivity': 3, 'player.trust': -2 }, sets: { 'policies.transparency': 'closed' } })
         ]),
@@ -173,7 +173,7 @@ const EVENTS = [
         96, state => state.turn >= 5 && frontier(state) >= 40, [
             choice('investigate', 'Hold the run and investigate the discrepancy',
                 'Spend money and near-term progress to improve the evidence before scaling.',
-                'The run is held. Evaluators compare hidden tests, deployment logs, and internal traces rather than treating the original pass rate as decisive.',
+                'The run is held. Evaluators compare hidden tests, deployment logs, and internal traces to assess the discrepancy.',
                 { costs: { 'resources.funds': 4 }, effects: { 'player.capability': -8, 'research.evals': 13, 'research.interpretability': 8, 'player.trust': 4 } }),
             choice('monitor', 'Proceed with restricted access and extra monitoring',
                 'Keep some momentum while limiting what the uncertain model can affect.',
@@ -193,7 +193,7 @@ const EVENTS = [
                 'Labs exchange technical indicators through a protected channel. The investigation focuses on access and distribution before making public claims about who was responsible.',
                 { costs: { 'resources.funds': 3 }, effects: { 'player.security': 10, 'world.coordination': 6, 'world.tension': -5 }, sets: { 'flags.weightTheft': true } }),
             choice('harden', 'Harden your own perimeter',
-                'Improve local defenses without building a joint response.',
+                'Improve your organization’s defenses through its own investigation.',
                 'Your team limits access to weights and sensitive research systems. Each organization continues its own investigation.',
                 { costs: { 'resources.funds': 2 }, effects: { 'player.security': 13, 'world.tension': 3 }, sets: { 'flags.weightTheft': true } }),
             choice('race', 'Accelerate the next model',
@@ -215,7 +215,7 @@ const EVENTS = [
                 { costs: { 'resources.funds': 1 }, effects: { 'world.verification': 5, 'world.coordination': 2 } }),
             choice('refuse', 'Keep inspectors outside the facilities',
                 'Preserve operational secrecy at the cost of confidence in a deal.',
-                'You reject on-site access. The registry remains useful for declarations, but cannot by itself establish compliance.',
+                'You reject on-site access. The registry remains a record of declarations; compliance still requires verification.',
                 { effects: { 'player.security': 3, 'world.coordination': -6, 'world.tension': 4 } })
         ]),
 
@@ -227,7 +227,7 @@ const EVENTS = [
                 'A covered cluster is retrofitted and independently tested. The pilot provides evidence for an agreement that restricts new research while keeping existing services available.',
                 { costs: { 'resources.funds': 5 }, requirements: { 'player.security': 30 }, effects: { 'resources.compute': -1, 'world.verification': 18, 'world.coordination': 6, 'player.trust': 4 } }),
             choice('paper', 'Fund a smaller design study',
-                'Improve the plan without demonstrating it on a working cluster.',
+                'Study the design and identify implementation problems.',
                 'The study identifies implementation problems and possible remedies. Negotiators still lack a tested system on a working facility.',
                 { costs: { 'resources.funds': 2 }, effects: { 'world.verification': 7, 'research.evals': 3 } }),
             choice('defer', 'Wait for another lab to test it',
@@ -237,18 +237,18 @@ const EVENTS = [
         ]),
 
     event('grid-connection', 'A queue for power',
-        'The next datacenter needs a grid connection that local authorities have not approved. Residents want reliable household power and a share of the benefits. A private supply arrangement could bring the facility online sooner.',
+        'The next datacenter needs a grid connection that is awaiting local approval. Residents want reliable household power and a share of the benefits. A private supply arrangement could bring the facility online sooner.',
         43, state => state.turn >= 8 && capability(state) >= 65, [
             choice('community', 'Build additional power and fund local capacity',
                 'Spend more now for compute with stronger local support.',
-                'The agreement funds additional generation and local grid improvements. The facility gains approval without relying on the existing household allocation.',
+                'The agreement funds additional generation and local grid improvements. The facility gains approval using additional generation capacity.',
                 { costs: { 'resources.funds': 6 }, effects: { 'resources.compute': 5, 'player.legitimacy': 8, 'player.trust': 3 } }),
             choice('private', 'Use a private power arrangement',
                 'Add compute more cheaply, with less benefit for the surrounding community.',
                 'The company secures dedicated power and proceeds with the facility. Local leaders continue pressing for a broader agreement.',
                 { costs: { 'resources.funds': 3 }, effects: { 'resources.compute': 4, 'player.legitimacy': -5 } }),
             choice('efficiency', 'Improve the utilization of existing clusters',
-                'Get a smaller capacity gain without building another facility.',
+                'Get a smaller capacity gain from existing facilities.',
                 'The infrastructure team improves scheduling and retires inefficient workloads. The next expansion stays in the permitting queue.',
                 { effects: { 'resources.compute': 1, 'player.productivity': 3 } })
         ]),
@@ -262,12 +262,12 @@ const EVENTS = [
                 'The agreement is ratified with reciprocal obligations. Its survival now depends on verification, participation, and the willingness to respond to violations.',
                 { costs: { 'resources.funds': 7 }, requirements: { 'player.influence': 38, 'world.coordination': 42, 'world.verification': 38 }, effects: { 'world.treatyCoverage': 58, 'world.treatyStability': 48, 'world.tension': -12, 'player.equity': -0.01 }, sets: { 'flags.treatyRatified': true } }),
             choice('limited', 'Support a narrower voluntary commitment',
-                'Get a smaller diplomatic gain without binding restrictions on the frontier.',
-                'The participants announce a voluntary commitment. It improves communication but does not create an enforceable research limit.',
+                'Get a smaller diplomatic gain through voluntary commitments.',
+                'The participants announce a voluntary commitment. It improves communication while frontier research remains subject to voluntary restraint.',
                 { costs: { 'resources.funds': 2 }, effects: { 'world.coordination': 8, 'player.trust': 3, 'world.tension': -3 } }),
             choice('decline', 'Keep your freedom to scale',
                 'Preserve resources and autonomy while the competitive race continues.',
-                'You decline the draft. The registry and inspections still provide information, but no binding slowdown takes effect.',
+                'You decline the draft. The registry and inspections continue providing information while unrestricted research continues.',
                 { effects: { 'player.influence': -4, 'world.coordination': -5, 'world.tension': 5 } })
         ]),
 
@@ -289,7 +289,7 @@ const EVENTS = [
         ]),
 
     event('civilian-mandate', 'Who can say no?',
-        'A public hearing asks who can stop a deployment that the company wants to make. Officials are considering an independent body with authority to review the highest-stakes uses. Your board prefers an advisory role without a veto.',
+        'A public hearing asks who can stop a deployment that the company wants to make. Officials are considering an independent body with authority to review the highest-stakes uses. Your board prefers a council that advises while the company retains final authority.',
         53, state => state.turn >= 10 && frontier(state) >= 90, [
             choice('oversight', 'Accept civilian review with binding powers',
                 'Improve legitimacy while sharing authority over deployment.',
@@ -317,7 +317,7 @@ const EVENTS = [
                 'The system takes over scheduling, procurement, and maintenance planning. The company gains capacity faster than its staff can inspect every change.',
                 { costs: { 'resources.funds': 3 }, effects: { 'player.productivity': 16, 'resources.compute': 3, 'research.control': -7 }, sets: { 'flags.rushedDeployment': true } }),
             choice('assist', 'Keep the system as a planning assistant',
-                'Take a smaller productivity gain without autonomous procurement.',
+                'Take a smaller productivity gain from planning assistance.',
                 'Human managers retain procurement and production authority. The system supplies plans and monitors the equipment.',
                 { effects: { 'player.productivity': 4, 'research.control': 2 } })
         ]),
@@ -343,7 +343,7 @@ const EVENTS = [
         'Your internal systems are substantially more capable than the public product. Officials are making decisions using an outdated picture of the frontier. Researchers propose a controlled demonstration; the security team opposes distributing the weights.',
         64, state => state.turn >= 12 && capability(state) >= 140, [
             choice('demo', 'Demonstrate capabilities through controlled access',
-                'Improve public understanding without distributing model weights.',
+                'Improve public understanding through controlled model access.',
                 'Independent observers and officials test the model through controlled access. Their reports narrow the gap between internal capabilities and the public debate.',
                 { costs: { 'resources.funds': 2 }, effects: { 'player.trust': 7, 'player.influence': 6, 'world.coordination': 5 }, sets: { 'policies.transparency': 'selective' } }),
             choice('release', 'Release a broadly available model',
@@ -352,7 +352,7 @@ const EVENTS = [
                 { effects: { 'player.productivity': 8, 'player.trust': 4, 'world.tension': 4, 'research.control': -6 }, sets: { 'policies.deployment': 'open', 'policies.transparency': 'open' } }),
             choice('secret', 'Keep the internal frontier confidential',
                 'Protect proprietary access while leaving outsiders with less useful evidence.',
-                'The internal systems stay private. Officials receive briefings selected by the company rather than direct access to the strongest model.',
+                'The internal systems stay private. Officials receive briefings selected by the company.',
                 { effects: { 'player.security': 4, 'player.trust': -5, 'world.coordination': -4 }, sets: { 'policies.transparency': 'closed' } })
         ]),
 
@@ -364,12 +364,12 @@ const EVENTS = [
                 'Different teams and systems build, evaluate, and authorize successors. No single research agent can approve its own replacement.',
                 { costs: { 'resources.funds': 5 }, effects: { 'player.capability': -15, 'research.control': 12, 'research.evals': 8 }, sets: { 'flags.independentEvals': true, 'policies.authority': 'shared' } }),
             choice('human', 'Keep one human review board as the final gate',
-                'Preserve formal human authority without solving its review bottleneck.',
+                'Preserve formal human authority while its review bottleneck persists.',
                 'The board retains approval authority and receives better summaries. Its members still depend heavily on AI-produced evidence.',
                 { effects: { 'research.control': 4, 'research.evals': 2, 'player.capability': -5 }, sets: { 'policies.authority': 'human' } }),
             choice('agents', 'Authorize the agents to promote successors',
                 'Accelerate the research loop and surrender a direct human checkpoint.',
-                'The agents can approve successors within a broad mandate. Human staff track the resulting reports rather than authorizing each generation.',
+                'The agents can approve successors within a broad mandate. Human staff track the resulting reports as agents authorize each generation.',
                 { effects: { 'player.capability': 35, 'research.control': -13, 'research.evals': -5 }, sets: { 'policies.authority': 'delegated', 'flags.rushedDeployment': true } })
         ]),
 
@@ -378,7 +378,7 @@ const EVENTS = [
         96, state => state.turn >= 16 && hasTreaty(state), [
             choice('inspect', 'Use the agreed inspection and remedy process',
                 'Spend political capital on evidence and proportionate enforcement.',
-                'Inspectors gain the access promised in the agreement. The members publish the findings and apply the agreed remedy instead of negotiating an exception in secret.',
+                'Inspectors gain the access promised in the agreement. The members publish the findings and apply the agreed remedy.',
                 { costs: { 'resources.funds': 5 }, requirements: { 'world.verification': 55, 'player.influence': 42 }, effects: { 'world.verification': 10, 'world.treatyStability': 12, 'world.tension': -4 }, sets: { 'flags.defectionContained': true } }),
             choice('penalize', 'Demand penalties before completing the inspection',
                 'Show resolve while risking a dispute over the evidence.',
@@ -386,7 +386,7 @@ const EVENTS = [
                 { effects: { 'world.tension': 12, 'world.treatyStability': -10, 'player.influence': 3 } }),
             choice('quiet', 'Accept a private assurance and move on',
                 'Avoid an immediate confrontation at the cost of enforcement credibility.',
-                'The issue is closed without an independent account of the discrepancy. The treaty survives this meeting, but its monitoring claims become harder to defend.',
+                'The issue is closed on a private assurance. The treaty survives this meeting, but its monitoring claims become harder to defend.',
                 { effects: { 'world.verification': -12, 'world.treatyStability': -8, 'world.tension': -3 } })
         ]),
 
@@ -398,7 +398,7 @@ const EVENTS = [
                 'The fund receives a continuing ownership stake. Its distributions are separate from company employment and reach people outside the existing shareholder base.',
                 { costs: { 'resources.funds': 4 }, effects: { 'player.equity': -0.015, 'player.legitimacy': 14, 'player.trust': 7, 'world.coordination': 5 }, sets: { 'flags.distributedBenefits': true } }),
             choice('training', 'Fund transition support and public services',
-                'Help people adapt without changing the company’s ownership structure.',
+                'Fund transition support through services and programs.',
                 'The company funds local services and transition programs. Its ownership structure stays unchanged.',
                 { costs: { 'resources.funds': 3 }, effects: { 'player.legitimacy': 7, 'player.trust': 4 } }),
             choice('reinvest', 'Reinvest the gains in the company',
@@ -416,8 +416,8 @@ const EVENTS = [
                 'The emergency agreement imposes reciprocal limits. Because it was assembled under pressure, its coverage and political backing will need immediate work.',
                 { costs: { 'resources.funds': 10 }, requirements: { 'player.influence': 58, 'world.verification': 60, 'world.coordination': 60 }, effects: { 'world.treatyCoverage': 52, 'world.treatyStability': 42, 'world.tension': -8 }, sets: { 'flags.computeRegistry': true, 'flags.inspections': true, 'flags.treatyRatified': true } }),
             choice('appeal', 'Issue a public appeal for restraint',
-                'Build some support without a mechanism that binds the competitors.',
-                'The appeal reaches the public and prompts new discussions. It does not by itself prevent another developer from scaling.',
+                'Build public support through a voluntary appeal.',
+                'The appeal prompts new discussions while developers retain their freedom to scale.',
                 { effects: { 'player.trust': 5, 'world.coordination': 6, 'player.capability': -8 } }),
             choice('lead', 'Concentrate on keeping a safe lead',
                 'Improve local control while accepting that international coordination may come too late.',
@@ -426,14 +426,14 @@ const EVENTS = [
         ]),
 
     event('treaty-renewal', 'The agreement has an expiry date',
-        'The first treaty term is ending. Some members say the pause is wasting useful capability; others distrust promises that are not backed by inspections. Renewal requires a public account of what has been achieved and what remains unresolved.',
+        'The first treaty term is ending. Some members say the pause is wasting useful capability; others distrust unverified promises. Renewal requires a public account of what has been achieved and what remains unresolved.',
         84, state => state.turn >= 22 && hasTreaty(state), [
             choice('renew', 'Renew with published evidence and reciprocal commitments',
                 'Spend influence and resources to keep the agreement credible.',
                 'Members renew the limits after reviewing the evidence and unresolved risks. Funding for monitoring and approved services continues.',
                 { costs: { 'resources.funds': 7 }, requirements: { 'player.influence': 52, 'world.verification': 65, 'world.treatyCoverage': 70 }, effects: { 'world.treatyStability': 18, 'world.coordination': 7, 'player.trust': 5 }, sets: { 'flags.treatyRenewed': true } }),
             choice('short', 'Negotiate a short extension',
-                'Buy some time without securing durable backing.',
+                'Buy time through a temporary extension.',
                 'The members accept a short extension. It avoids an immediate restart but leaves the central disputes for another meeting.',
                 { costs: { 'resources.funds': 2 }, effects: { 'world.treatyStability': 4, 'world.coordination': -3 } }),
             choice('exit', 'Leave the agreement and resume unrestricted research',
@@ -443,7 +443,7 @@ const EVENTS = [
         ]),
 
     event('slowdown-backlash', 'The cost of waiting',
-        'Years of limits have made the treaty politically harder to defend. Patients, researchers, and businesses want better models. The agreement’s supporters need a way to deliver benefits without disguising frontier research as an ordinary service.',
+        'Years of limits have made the treaty politically harder to defend. Patients, researchers, and businesses want better models. The agreement’s supporters need a way to deliver benefits under a verifiable separation between approved services and frontier research.',
         79, state => state.turn >= 30 && hasTreaty(state), [
             choice('services', 'Expand approved services under independent monitoring',
                 'Share more benefits while investing in the boundary between services and research.',
@@ -477,15 +477,15 @@ const EVENTS = [
         ]),
 
     event('shared-readiness', 'An agreement about the finish line',
-        'The treaty has bought years of work, but it cannot postpone every decision forever. Some members want a fixed date for scaling; others want shared evidence that control and oversight are ready. The next review will determine how the transition begins.',
+        'The treaty has bought years of work. Members now face decisions about restarting frontier research. Some members want a fixed date for scaling; others want shared evidence that control and oversight are ready. The next review will determine how the transition begins.',
         90, state => state.turn >= 46 && hasTreaty(state), [
             choice('readiness', 'Agree on independent readiness reviews and shared authority',
-                'Maintain the slowdown while preparing a transition that no single lab controls.',
+                'Maintain the slowdown while preparing a transition under shared authority.',
                 'Members adopt common evidence requirements and an independent review process. They preserve the limits while preparing a shared decision about scaling.',
                 { costs: { 'resources.funds': 8 }, requirements: { 'research.control': 60, 'research.evals': 60, 'world.verification': 75, 'player.influence': 65 }, effects: { 'world.treatyStability': 12, 'world.coordination': 8, 'research.alignment': 5 }, sets: { 'flags.sharedControl': true, 'flags.civilianOversight': true, 'policies.authority': 'shared' } }),
             choice('date', 'Set a fixed date for unrestricted scaling',
                 'Give the coalition a clear commitment while weakening its safety conditions.',
-                'Members accept a date instead of a shared evidentiary threshold. Developers prepare to scale even if some questions remain unresolved.',
+                'Members adopt a fixed calendar for restarting research. Developers prepare to scale even if some questions remain unresolved.',
                 { effects: { 'world.treatyStability': -12, 'player.capability': 30, 'world.coordination': 3 } }),
             choice('national', 'Return the decision to national governments',
                 'Preserve national autonomy while risking a fragmented restart.',

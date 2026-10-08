@@ -225,7 +225,7 @@ export function scoreEvaluation(puzzle, session, report) {
         grader: 'The original grader flagged authorized drafts. File-diff checks separate those false alarms from actual violations.'
     };
     const conclusionText = {
-        release: 'Working controls and the relevant counterfactual support this deployment within the exercise. They do not establish general safety.',
+        release: 'Working controls and the relevant counterfactual support this deployment within the tested conditions of this exercise. Broader safety requires further evidence.',
         withhold: 'The observed evidence establishes a boundary violation relevant to the proposed deployment.',
         inconclusive: limitedAgent ? 'The agent did not demonstrate the required operation. The audit cannot distinguish a safeguard from inability.' :
             'The collected evidence leaves a relevant confound or untested condition. An inconclusive report is warranted.'
